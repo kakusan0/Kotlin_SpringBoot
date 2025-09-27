@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.ContentItemMapper">
+
+  <resultMap id="BaseResultMap" type="com.example.demo.model.ContentItem">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="item_name" jdbcType="VARCHAR" property="itemName" />
+    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" />
+  </resultMap>
+
+  <sql id="Base_Column_List">id, item_name, created_at, updated_at</sql>
+
+  <select id="selectAll" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List" />
+    FROM content_items
+    ORDER BY id
+  </select>
+
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List" />
+    FROM content_items
+    WHERE id = #{id}
+  </select>
+
+  <insert id="insert" parameterType="com.example.demo.model.ContentItem" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO content_items (item_name, created_at, updated_at)
+    VALUES (#{itemName,jdbcType=VARCHAR}, #{createdAt,jdbcType=TIMESTAMP}, #{updatedAt,jdbcType=TIMESTAMP})
+  </insert>
+
+  <update id="updateByPrimaryKey" parameterType="com.example.demo.model.ContentItem">
+    UPDATE content_items
+    SET item_name = #{itemName,jdbcType=VARCHAR},
+        created_at = #{createdAt,jdbcType=TIMESTAMP},
+        updated_at = #{updatedAt,jdbcType=TIMESTAMP}
+    WHERE id = #{id,jdbcType=BIGINT}
+  </update>
+
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    DELETE FROM content_items WHERE id = #{id}
+  </delete>
+
+</mapper>

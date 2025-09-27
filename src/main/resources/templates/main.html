@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: commonHead(${currentScreen ?: 'メインページ'})}"></head>
+
+<body>
+
+  <!-- 固定ヘッダー -->
+  <header class="header">
+    <div class="d-flex align-items-center h-100 px-3 px-md-5 position-relative">
+      <div>
+        <button aria-controls="sidebarMenu" aria-label="メニューを開く" class="btn btn-primary d-md-none border-0"
+          data-bs-target="#sidebarMenu" data-bs-toggle="offcanvas" type="button">
+          <i class="bi bi-list"></i>
+        </button>
+        <button class="btn btn-primary d-none d-md-block border-0" id="pcSidebarToggle" aria-label="サイドバーを開閉"
+          type="button">
+          <i class="bi bi-list"></i>
+        </button>
+      </div>
+      <div class="position-absolute top-50 start-50 translate-middle d-flex align-items-center">
+        <button class="btn btn-secondary" data-bs-target="#scrollableModal" data-bs-toggle="modal" id="itemSelectButton"
+          type="button">
+          <span id="selectedItemName" th:text="${selectedScreenName ?: 'ツールを選択'}" />
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- サイドバー（モバイルではオフキャンバス） -->
+  <div aria-labelledby="sidebarMenuLabel" class="offcanvas offcanvas-start offcanvas-md is-collapsed" id="sidebarMenu"
+    tabindex="-1">
+    <div class="offcanvas-body p-0">
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link text-dark" href="/">
+            <i class="bi bi-house-door-fill"></i>
+            <span>Home</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-dark" href="#">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-dark" href="#">
+            <i class="bi bi-gear-fill"></i>
+            <span>Settings</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ（currentScreen に応じて切替） -->
+  <main class="main-content p-4 is-collapsed">
+    <div class="container-fluid">
+      <div th:switch="${currentScreen}">
+        <div th:case="'ホーム'">
+          <div th:replace="~{fragments/home :: content}"></div>
+        </div>
+        <div th:case="'ダッシュボード'">
+          <div th:replace="~{fragments/dashboard :: content}"></div>
+        </div>
+        <div th:case="'設定'">
+          <div th:replace="~{fragments/settings :: content}"></div>
+        </div>
+        <div th:case="*">
+          <p>ツールを選択ボタンから表示する画面を選択してください。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- モーダル -->
+  <div th:replace="~{fragments/modals/errorModal :: content}"></div>
+  <div th:replace="~{fragments/modals/contentModal :: content}"></div>
+
+
+</body>
+
+</html>
