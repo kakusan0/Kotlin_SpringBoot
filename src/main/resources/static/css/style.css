@@ -107,6 +107,13 @@ textarea,
 .opt-btn { padding:6px 8px; border-radius:6px; border:1px solid #ccc; background:#f1f3f5; color:#212529; font-size:0.85rem; cursor:pointer; }
 .opt-btn.opt-on { background:#0d6efd; color:#fff; border-color:#0d6efd; }
 .opt-btn:focus { outline: 2px solid rgba(13,110,253,0.12); outline-offset:2px; }
+/* Ensure the compact panel stays on top so buttons receive pointer events */
+.compact-pwgen { position: relative; z-index: 2; }
+/* Ensure option buttons accept pointer events */
+.opt-btn { pointer-events: auto; }
+
+/* debug highlight when button is activated */
+.opt-btn.pw-debug-active { box-shadow: 0 0 0 3px rgba(13,110,253,0.2) inset; transform: translateY(1px); }
 
 /* 小さなトースト（コピー通知）のスタイル */
 .pw-toast { position: fixed; right: 10px; bottom: 10px; background: #28a745; color: #fff; padding: 6px 10px; border-radius: 4px; z-index: 9999; }
@@ -116,16 +123,36 @@ textarea,
   body {
     /* ヘッダーが下に来るので、paddingを下に変更 */
     padding-top: 0;
-    padding-bottom: var(--header-height);
+    /* セーフエリアの高さを考慮してパディングを調整 */
+    padding-bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
   }
 
   .header {
     /* ヘッダーを画面下部に固定 */
     top: auto;
     bottom: 0;
-    /* ▼▼▼ 修正: ヘッダー上線に変更 ▼▼▼ */
+    /* セーフエリアに対応して高さを確保 */
+    height: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     border-bottom: none;
     border-top: 1px solid #dee2e6;
+    /* タッチ操作しやすいように少し上方向に表示 */
+    box-shadow: 0 -1px 4px rgba(0,0,0,0.04);
+  }
+
+  /* ヘッダー内部のコンテンツを安全に中央揃えにする */
+  .header > .d-flex {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px; /* 左右のタッチ領域を確保 */
+    box-sizing: border-box;
+  }
+
+  /* ヘッダーボタンのタッチ領域を広げる（モバイル向け） */
+  .header .btn {
+    padding: 10px 12px;
   }
 
   .offcanvas.offcanvas-start {
@@ -155,7 +182,7 @@ textarea,
   /* ▼▼▼ 追加: スマホ表示でモーダルがフッターに被らないように調整 ▼▼▼ */
   #scrollableModal.modal {
     /* モーダル全体の高さを、フッターの高さを引いた分に制限する */
-    height: calc(var(--app-height) - var(--header-height));
+    height: calc(var(--app-height) - (var(--header-height) + env(safe-area-inset-bottom, 0px)));
   }
 
 }
@@ -272,4 +299,67 @@ textarea,
   .offcanvas-body .nav {
     margin-top: 0;
   }
+}
+
+/* --- critical styles moved from head fragment --- */
+html, body { height: 100%; }
+body { padding-top: 60px; margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+.header { position: fixed; top: 0; left: 0; width: 100%; height: 60px; background: #fff; z-index: 1050; border-bottom: 1px solid #dee2e6; }
+.main-content { margin-left: 160px; }
+@media (max-width:767.98px) {
+  body { padding-top: 0; padding-bottom: 60px; }
+  .main-content { margin-left: 0; }
+  /* For mobile: center the main button and place the menu button at left */
+  .header > .d-flex { justify-content: center; position: relative; }
+  .header > .d-flex > div:first-child {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  /* Make the previously absolute center container flow normally so it's centered by flex */
+  .header .position-absolute.top-50.start-50.translate-middle {
+    position: static;
+    transform: none;
+    margin: 0;
+  }
+}
+
+/* Fallback styles when JS toggles body.header-bottom (for environments where media queries may not apply) */
+body.header-bottom {
+  padding-top: 0;
+  padding-bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+}
+
+body.header-bottom .header {
+  top: auto;
+  bottom: 0;
+  height: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-bottom: none;
+  border-top: 1px solid #dee2e6;
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.04);
+}
+
+/* header inner layout for header-bottom fallback */
+body.header-bottom .header > .d-flex {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+body.header-bottom .header > .d-flex > div:first-child {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+body.header-bottom .header .position-absolute.top-50.start-50.translate-middle {
+  position: static;
+  transform: none;
+  margin: 0;
 }

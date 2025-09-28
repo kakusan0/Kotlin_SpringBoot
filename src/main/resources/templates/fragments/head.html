@@ -7,53 +7,14 @@
     <!-- SEO: ページごとの説明を設定可能。コントローラで model.addAttribute("description", "...") を渡すと上書きされます -->
     <meta name="description"
         th:attr="content=${description != null ? description : 'シンプルな管理用ダッシュボード。ツールの選択とコンテンツ表示を提供します。'}" />
-    <!-- Critical CSS: 最初のレンダリングに必要な最小限のスタイルをインライン化 -->
-    <style>
-        /* Critical styles for initial render */
-        html,
-        body {
-            height: 100%;
-        }
-
-        body {
-            padding-top: 60px;
-            margin: 0;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial
-        }
-
-        .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 60px;
-            background: #fff;
-            z-index: 1050;
-            border-bottom: 1px solid #dee2e6
-        }
-
-        .main-content {
-            margin-left: 160px
-        }
-
-        @media (max-width:767.98px) {
-            body {
-                padding-top: 0;
-                padding-bottom: 60px
-            }
-
-            .main-content {
-                margin-left: 0
-            }
-        }
-    </style>
+    <!-- Critical CSS moved to /css/style.css for maintainability and caching -->
 
     <!-- Stylesheets: preload を使って非同期にロード（onload で stylesheet に切り替え） -->
     <link rel="preload" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}" as="style"
         onload="this.onload=null;this.rel='stylesheet'">
     <link rel="preload" th:href="@{/webjars/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css}" as="style"
         onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" th:href="@{/css/style.css}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link th:href="@{/css/style.css}" rel="stylesheet">
     <noscript>
         <link th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}" rel="stylesheet" />
         <link th:href="@{/webjars/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css}" rel="stylesheet" />
@@ -61,16 +22,10 @@
     </noscript>
 
     <!-- Preload important icon font to avoid blocking font fetch later -->
-    <script defer th:src="@{/webjars/jquery/3.7.1/jquery.min.js}"></script>
     <script defer th:src="@{/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js}"></script>
     <script defer th:src="@{/js/main.js}"></script>
-    <!-- Ensure page is reloaded if restored from bfcache (back-forward cache) to avoid showing protected content after logout -->
-    <script>
-        window.addEventListener('pageshow', function (event) {
-            if (event.persisted) {
-                window.location.reload();
-            }
-        });
-    </script>
+    <script defer th:src="@{/js/pwgen.js}"></script>
+    <!-- pageshow (bfcache 復帰時のリロード) は外部スクリプト /js/main.js に移しました -->
+
     <title th:text="${title}">アプリケーション</title>
 </head>

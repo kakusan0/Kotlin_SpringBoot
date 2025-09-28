@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{fragments/head :: commonHead(${currentScreen ?: 'メインページ'})}"></head>
+<head th:replace="~{fragments/head :: commonHead(${currentScreen ?: 'メインページ'})}">
+  <!-- Static fallback title to satisfy template validators; runtime fragment will replace head content -->
+  <title th:text="${currentScreen ?: 'メインページ'}">アプリケーション</title>
+</head>
 
 <body>
 
@@ -21,7 +24,7 @@
       <div class="position-absolute top-50 start-50 translate-middle d-flex align-items-center">
         <button class="btn btn-secondary" data-bs-target="#scrollableModal" data-bs-toggle="modal" id="itemSelectButton"
           type="button">
-          <span id="selectedItemName" th:text="${selectedScreenName ?: 'ツールを選択'}" />
+          <span id="selectedItemName" th:text="${selectedScreenName ?: 'ツールを選択'}"></span>
         </button>
       </div>
     </div>
