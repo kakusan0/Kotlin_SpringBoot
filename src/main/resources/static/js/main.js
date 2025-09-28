@@ -137,14 +137,38 @@
             const modalEl = document.getElementById('scrollableModal');
             if (modalEl && window.bootstrap && bootstrap.Modal) {
               // populate modal body before showing
-              populateContentModal(selectedSidebarMenu, screens);
-              const inst = bootstrap.Modal.getOrCreateInstance(modalEl);
-              inst.show();
-            } else {
-              // fallback: populate only
-              populateContentModal(selectedSidebarMenu, screens);
-            }
-          });
+              // fetch filtered screens from server for the selected menu
+              (async function () {
+                try {
+                  const resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(label), { credentials: 'same-origin' }, 10000);
+                  if (resp && resp.ok) {
+                    const filteredScreens = await resp.json();
+                    populateContentModal(selectedSidebarMenu, filteredScreens);
+                  } else {
+                    // fallback to using previously fetched screens if server call fails
+                    populateContentModal(selectedSidebarMenu, screens);
+                  }
+                } catch (e) {
+                  populateContentModal(selectedSidebarMenu, screens);
+                }
+              })();
+               const inst = bootstrap.Modal.getOrCreateInstance(modalEl);
+               inst.show();
+             } else {
+               // fallback: populate only
+              (async function () {
+                try {
+                  const resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(label), { credentials: 'same-origin' }, 10000);
+                  if (resp && resp.ok) {
+                    const filteredScreens = await resp.json();
+                    populateContentModal(selectedSidebarMenu, filteredScreens);
+                    return;
+                  }
+                } catch (e) { /* ignore */ }
+                populateContentModal(selectedSidebarMenu, screens);
+              })();
+             }
+           });
 
           if (manageLi) ul.insertBefore(li, manageLi);
           else ul.appendChild(li);
@@ -203,9 +227,15 @@
     if (itemSelectButton) {
       itemSelectButton.addEventListener('click', async function () {
         // fetch screens and populate modal, filter by selectedSidebarMenu if set
+        const selectedSidebarMenu = itemSelectButton.innerText;
         try {
-          const resp = await fetch('/api/content/all');
-          if (!resp.ok) return;
+          let resp;
+          if (selectedSidebarMenu) {
+            resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(selectedSidebarMenu), { credentials: 'same-origin' }, 10000);
+          } else {
+            resp = await fetchWithTimeout('/api/content/all', { credentials: 'same-origin' }, 10000);
+          }
+          if (!resp || !resp.ok) return;
           const screens = await resp.json();
           populateContentModal(selectedSidebarMenu, screens);
         } catch (e) { /* ignore */ }

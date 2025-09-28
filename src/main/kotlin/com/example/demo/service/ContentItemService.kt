@@ -18,6 +18,10 @@ class ContentItemService(
     @Cacheable(cacheNames = ["contentItemById"], key = "#id")
     fun getById(id: Long): ContentItem? = contentItemMapper.selectByPrimaryKey(id)
 
+    // 追加: menuName でフィルタした一覧取得
+    // Mapper 側の selectByMenuName が環境によって未解決になることがあるため、安全のため selectAll をフィルタして返す実装にする
+    fun getByMenuName(menuName: String): List<ContentItem> = contentItemMapper.selectAll().filter { it.menuName == menuName }
+
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["contentItems"], allEntries = true),
@@ -42,4 +46,3 @@ class ContentItemService(
     )
     fun delete(id: Long): Int = contentItemMapper.deleteByPrimaryKey(id)
 }
-

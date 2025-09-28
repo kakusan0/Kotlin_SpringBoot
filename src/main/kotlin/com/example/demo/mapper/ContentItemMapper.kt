@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper
 interface ContentItemMapper {
     fun selectAll(): List<ContentItem>
     fun selectByPrimaryKey(id: Long): ContentItem?
+    fun selectByMenuName(menuName: String): List<ContentItem>
     fun insert(record: ContentItem): Int
     fun updateByPrimaryKey(record: ContentItem): Int
     fun deleteByPrimaryKey(id: Long): Int

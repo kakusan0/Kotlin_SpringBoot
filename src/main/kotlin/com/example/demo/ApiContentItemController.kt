@@ -13,6 +13,12 @@ class ApiContentItemController(
     @GetMapping("/all")
     fun all(): List<ContentItem> = contentItemService.getAll()
 
+    @GetMapping
+    fun all(@RequestParam(required = false) menuName: String?): List<ContentItem> {
+        return if (menuName.isNullOrBlank()) contentItemService.getAll()
+        else contentItemService.getByMenuName(menuName)
+    }
+
     @PostMapping
     fun create(@RequestBody item: ContentItem): ResponseEntity<ContentItem> {
         contentItemService.insert(item)
@@ -32,4 +38,3 @@ class ApiContentItemController(
         return ResponseEntity.noContent().build()
     }
 }
-
