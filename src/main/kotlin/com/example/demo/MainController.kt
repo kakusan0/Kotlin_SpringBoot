@@ -37,7 +37,7 @@ class MainController(
         model.addAttribute("menus", menus)
         val current = if (screenName == "未選択") "" else screenName
         model.addAttribute("currentScreen", current)
-        model.addAttribute("selectedScreenName", if (screenName == "未選択") "メニューを選択" else menus.get(0).name)
+        model.addAttribute("selectedScreenName", if (screenName == "未選択") "メニューを選択" else menus[0].name)
         return "main"
     }
 }
