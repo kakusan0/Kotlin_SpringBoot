@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.PathMapper">
+
+  <resultMap id="BaseResultMap" type="com.example.demo.model.Path">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="deleted" jdbcType="BOOLEAN" property="deleted" />
+    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" javaType="java.time.OffsetDateTime" />
+    <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" javaType="java.time.OffsetDateTime" />
+  </resultMap>
+
+  <sql id="Base_Column_List">id, name, deleted, created_at, updated_at</sql>
+
+  <select id="selectAllActive" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List" />
+    FROM paths
+    WHERE deleted = FALSE
+    ORDER BY id
+  </select>
+
+  <select id="selectAllIncludingDeleted" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List" />
+    FROM paths
+    ORDER BY id
+  </select>
+
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List" />
+    FROM paths
+    WHERE id = #{id}
+  </select>
+
+  <insert id="insert" parameterType="com.example.demo.model.Path" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO paths (name, deleted, created_at, updated_at)
+    VALUES (
+      #{name,jdbcType=VARCHAR},
+      COALESCE(#{deleted,jdbcType=BOOLEAN}, FALSE),
+      #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
+      #{updatedAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}
+    )
+  </insert>
+
+  <update id="updateByPrimaryKey" parameterType="com.example.demo.model.Path">
+    UPDATE paths
+    SET name = #{name,jdbcType=VARCHAR},
+        deleted = COALESCE(#{deleted,jdbcType=BOOLEAN}, deleted),
+        created_at = #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
+        updated_at = #{updatedAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}
+    WHERE id = #{id,jdbcType=BIGINT}
+  </update>
+
+  <update id="logicalDelete" parameterType="java.lang.Long">
+    UPDATE paths SET deleted = TRUE WHERE id = #{id}
+  </update>
+
+  <update id="restore" parameterType="java.lang.Long">
+    UPDATE paths SET deleted = FALSE WHERE id = #{id}
+  </update>
+
+</mapper>

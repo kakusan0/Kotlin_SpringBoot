@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: commonHead('管理画面')}">
+  <title>管理画面</title>
+</head>
+
+<body>
+  <!-- 固定ヘッダー（簡易コピー） -->
+  <header class="header">
+    <div class="d-flex align-items-center h-100 px-3 px-md-5 position-relative">
+      <div>
+        <button aria-controls="sidebarMenu" aria-label="メニューを開く" class="btn btn-primary d-md-none border-0"
+          data-bs-target="#sidebarMenu" data-bs-toggle="offcanvas" type="button">
+          <i class="bi bi-list"></i>
+        </button>
+        <button class="btn btn-primary d-none d-md-block border-0" id="pcSidebarToggle" aria-label="サイドバーを開閉"
+          type="button">
+          <i class="bi bi-list"></i>
+        </button>
+      </div>
+      <div class="position-absolute top-50 start-50 translate-middle d-flex align-items-center">
+        <strong>管理</strong>
+      </div>
+    </div>
+  </header>
+
+  <!-- サイドバー（簡易） -->
+  <div aria-labelledby="sidebarMenuLabel" class="offcanvas offcanvas-start offcanvas-md" id="sidebarMenu" tabindex="-1">
+    <div class="offcanvas-body p-0">
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link text-dark" href="/">
+            <i class="bi bi-house-door-fill"></i>
+            <span>Home</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-dark" href="/manage">
+            <i class="bi bi-gear-fill"></i>
+            <span>管理</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <main class="main-content p-4">
+    <div class="container-fluid">
+      <h2>メニュー／画面管理</h2>
+
+      <!-- Tabs -->
+      <ul class="nav nav-tabs mb-3" id="manageTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="menus-tab" data-bs-toggle="tab" data-bs-target="#menus" type="button"
+            role="tab" aria-controls="menus" aria-selected="true">メニュー管理</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="screens-tab" data-bs-toggle="tab" data-bs-target="#screens" type="button"
+            role="tab" aria-controls="screens" aria-selected="false">画面管理</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="paths-tab" data-bs-toggle="tab" data-bs-target="#paths" type="button"
+            role="tab" aria-controls="paths" aria-selected="false">パス管理</button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <!-- Menu 管理タブ -->
+        <div class="tab-pane fade show active" id="menus" role="tabpanel" aria-labelledby="menus-tab">
+          <div class="mb-3">
+            <button id="addMenuBtn" class="btn btn-primary">メニューを追加</button>
+          </div>
+          <div id="menuArea">
+            <table class="table table-striped" id="menuTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>メニュー名</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- フォールバック: サーバーサイド描画（JSがまだ走っていない/失敗時に表示） -->
+                <tr th:each="m : ${menus}">
+                  <td th:text="${m.id}">1</td>
+                  <td th:text="${m.name}">Menu</td>
+                  <td><span class="text-muted">読み込み後に置き換え</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 管理タブ -->
+        <div class="tab-pane fade" id="screens" role="tabpanel" aria-labelledby="screens-tab">
+          <div class="mb-3">
+            <button id="addScreenBtn" class="btn btn-primary">画面を追加</button>
+          </div>
+          <div id="manageArea">
+            <table class="table table-striped" id="manageTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>メニュー名</th>
+                  <th>画面名</th>
+                  <th>パス名</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- フォールバック: サーバーサイド描画（JSがまだ走っていない/失敗時に表示） -->
+                <tr th:each="s : ${screens}">
+                  <td th:text="${s.id}">1</td>
+                  <td th:text="${s.menuName}"></td>
+                  <td th:text="${s.itemName}"></td>
+                  <td th:text="${s.pathName}"></td>
+                  <td><span class="text-muted">読み込み後に置き換え</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Path 管理タブ -->
+        <div class="tab-pane fade" id="paths" role="tabpanel" aria-labelledby="paths-tab">
+          <div class="mb-3">
+            <button id="addPathBtn" class="btn btn-primary">パスを追加</button>
+          </div>
+          <div id="pathArea">
+            <table class="table table-striped" id="pathTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>パス名</th>
+                  <th>状態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- rows populated by manage.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script th:src="@{/js/manage.js}" defer></script>
+</body>
+
+</html>

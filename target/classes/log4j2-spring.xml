@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="60" packages="org.apache.logging.log4j">
+    <Properties>
+        <Property name="LOG_DIR">logs</Property>
+        <Property name="APP_LOG">${LOG_DIR}/app.log</Property>
+        <Property name="AUDIT_LOG">${LOG_DIR}/audit.log</Property>
+        <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg | rid=%X{requestId} uid=%X{userId} ip=%X{clientIp} %X{method} %X{uri}%n%throwable</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${PATTERN}"/>
+        </Console>
+
+        <RollingFile name="AppFile" fileName="${APP_LOG}" filePattern="${APP_LOG}-%d{yyyy-MM-dd}-%i.gz">
+            <PatternLayout pattern="${PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+                <SizeBasedTriggeringPolicy size="20 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+
+        <RollingFile name="AuditFile" fileName="${AUDIT_LOG}" filePattern="${AUDIT_LOG}-%d{yyyy-MM-dd}-%i.gz">
+            <PatternLayout pattern="${PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+                <SizeBasedTriggeringPolicy size="20 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="60"/>
+        </RollingFile>
+
+        <JDBC name="AuditDB" tableName="audit_log">
+            <ConnectionSource class="org.apache.logging.log4j.core.appender.db.jdbc.DriverManagerConnectionSource"
+                               url="${env:LOG_DB_URL:-jdbc:postgresql://localhost:5432/demo_db}"
+                               user="${env:LOG_DB_USER:-demo_user}"
+                               password="${env:LOG_DB_PASS:-demo_pass}"
+                               driverClassName="org.postgresql.Driver"/>
+            <Column name="event_time" isEventTimestamp="true"/>
+            <Column name="level" pattern="%level"/>
+            <Column name="logger" pattern="%logger"/>
+            <Column name="message" pattern="%message"/>
+            <Column name="thread" pattern="%thread"/>
+            <Column name="exception" pattern="%ex{full}"/>
+            <Column name="request_id" pattern="%X{requestId}"/>
+            <Column name="user_id" pattern="%X{userId}"/>
+            <Column name="client_ip" pattern="%X{clientIp}"/>
+            <Column name="method" pattern="%X{method}"/>
+            <Column name="uri" pattern="%X{uri}"/>
+        </JDBC>
+    </Appenders>
+
+    <Loggers>
+        <!-- Application loggers -->
+        <AsyncLogger name="com.example.demo" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppFile"/>
+        </AsyncLogger>
+
+        <!-- Dedicated audit logger -->
+        <AsyncLogger name="AUDIT" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AuditFile"/>
+            <AppenderRef ref="AuditDB"/>
+        </AsyncLogger>
+
+        <Root level="warn">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppFile"/>
+        </Root>
+    </Loggers>
+</Configuration>
+
