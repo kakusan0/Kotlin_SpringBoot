@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2ec078ba-5ddb-4fac-bc5e-11d17bed784b" name="変更" comment="a" />
+    <list default="true" id="2ec078ba-5ddb-4fac-bc5e-11d17bed784b" name="変更" comment="a">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -75,6 +77,7 @@
     "RunOnceActivity.restore.workspace.module": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "Spring Boot.DemoApplication.executor": "Debug",
+    "git-widget-placeholder": "main",
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "C:/Users/gmaki/Downloads/demo (1)/demo/pom.xml",
     "node.js.detected.package.eslint": "true",
@@ -138,6 +141,7 @@
       <workItem from="1758979544645" duration="19719000" />
       <workItem from="1759018622347" duration="155000" />
       <workItem from="1759018791426" duration="56145000" />
+      <workItem from="1759085785326" duration="27000" />
     </task>
     <task id="LOCAL-00001" summary="Remove HELP.md and README_MYBATISGENERATOR_REMOVED.txt files">
       <option name="closed" value="true" />
