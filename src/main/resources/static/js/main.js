@@ -31,6 +31,47 @@
     return fetch(resource, Object.assign({}, options, { signal })).finally(() => clearTimeout(id));
   };
 
+  // Simple in-memory cache for content API responses
+  const contentCache = {
+    ttl: 30000, // 30 seconds
+    all: { data: null, ts: 0 }, // cache for /all
+    byMenu: new Map(), // key: menuName -> { data, ts }
+    clear() {
+      this.all = { data: null, ts: 0 };
+      this.byMenu.clear();
+    }
+  };
+
+  async function getContentScreens(menuName) {
+    const now = Date.now();
+    try {
+      if (!menuName) {
+        // use /api/content/all
+        if (contentCache.all.data && (now - contentCache.all.ts) < contentCache.ttl) {
+          return contentCache.all.data;
+        }
+        const resp = await fetchWithTimeout('/api/content/all', { credentials: 'same-origin' }, 10000);
+        if (!resp || !resp.ok) return [];
+        const data = await resp.json();
+        contentCache.all = { data, ts: now };
+        return data;
+      } else {
+        const key = String(menuName);
+        const hit = contentCache.byMenu.get(key);
+        if (hit && (now - hit.ts) < contentCache.ttl) {
+          return hit.data;
+        }
+        const resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(key), { credentials: 'same-origin' }, 10000);
+        if (!resp || !resp.ok) return [];
+        const data = await resp.json();
+        contentCache.byMenu.set(key, { data, ts: now });
+        return data;
+      }
+    } catch (_) {
+      return [];
+    }
+  }
+
   // runWhenIdle: ページがアイドルになったら初期化処理を実行するヘルパ
   const runWhenIdle = (fn) => {
     if ('requestIdleCallback' in window) {
@@ -91,9 +132,7 @@
         // do not inject or modify manage page sidebar (manage page has its own sidebar content)
         if (path === '/manage' || path.startsWith('/manage')) return;
 
-        const resp = await fetch('/api/content/all');
-        if (!resp.ok) return; // fail silently
-        const screens = await resp.json();
+        const screens = await getContentScreens('');
         if (!Array.isArray(screens)) return;
 
         // derive unique menu names from screens' menuName
@@ -140,33 +179,28 @@
               // fetch filtered screens from server for the selected menu
               (async function () {
                 try {
-                  const resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(label), { credentials: 'same-origin' }, 10000);
-                  if (resp && resp.ok) {
-                    const filteredScreens = await resp.json();
+                  const filteredScreens = await getContentScreens(label);
+                  if (Array.isArray(filteredScreens) && filteredScreens.length) {
                     populateContentModal(selectedSidebarMenu, filteredScreens);
                   } else {
-                    // fallback to using previously fetched screens if server call fails
                     populateContentModal(selectedSidebarMenu, screens);
                   }
-                } catch (e) {
-                  populateContentModal(selectedSidebarMenu, screens);
-                }
-              })();
+                } catch (e) { populateContentModal(selectedSidebarMenu, screens); }
+               })();
                const inst = bootstrap.Modal.getOrCreateInstance(modalEl);
                inst.show();
              } else {
                // fallback: populate only
               (async function () {
                 try {
-                  const resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(label), { credentials: 'same-origin' }, 10000);
-                  if (resp && resp.ok) {
-                    const filteredScreens = await resp.json();
+                  const filteredScreens = await getContentScreens(label);
+                  if (Array.isArray(filteredScreens) && filteredScreens.length) {
                     populateContentModal(selectedSidebarMenu, filteredScreens);
                     return;
                   }
                 } catch (e) { /* ignore */ }
                 populateContentModal(selectedSidebarMenu, screens);
-              })();
+               })();
              }
            });
 
@@ -185,6 +219,11 @@
       try {
         const modal = document.getElementById('scrollableModal');
         if (!modal) return;
+        // Update modal header's small label to show current menu name
+        try {
+          const sidebarLabelEl = modal.querySelector('#modalSidebarName');
+          if (sidebarLabelEl) sidebarLabelEl.textContent = menuName ? String(menuName) : '（全て）';
+        } catch (_) { /* ignore */ }
         const listGroup = modal.querySelector('.modal-body .list-group');
         if (!listGroup) return;
         // clear existing
@@ -236,15 +275,8 @@
         const headerName = (headerLabel && headerLabel !== '画面を選択' && headerLabel !== 'メニューを選択') ? headerLabel : '';
         const menuToUse = selectedSidebarMenu || headerName || '';
         try {
-          let resp;
-          if (menuToUse) {
-            resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(menuToUse), { credentials: 'same-origin' }, 10000);
-          } else {
-            resp = await fetchWithTimeout('/api/content/all', { credentials: 'same-origin' }, 10000);
-          }
-          if (!resp || !resp.ok) return;
-          const screens = await resp.json();
-          populateContentModal(menuToUse, screens);
+          const screens = await getContentScreens(menuToUse);
+           populateContentModal(menuToUse, screens);
         } catch (e) { /* ignore */ }
       });
     }
@@ -255,7 +287,10 @@
         const bch = new BroadcastChannel('menus-channel');
         bch.addEventListener('message', function (ev) {
           if (!ev) return;
-          if (ev.data === 'menus-updated') loadAndRenderSidebarMenus();
+          if (ev.data === 'menus-updated') {
+            contentCache.clear();
+            loadAndRenderSidebarMenus();
+          }
         });
       } catch (err) {
         // ignore
@@ -266,6 +301,7 @@
     window.addEventListener('storage', function (e) {
       if (!e) return;
       if (e.key === 'menus-updated') {
+        contentCache.clear();
         loadAndRenderSidebarMenus();
       }
     });
@@ -316,6 +352,11 @@
       if (b.length) b[b.length - 1].classList.add('backdrop-select');
     });
 
+    // Invalidate caches when menus are updated or modal is hidden (optional)
+    if (scrollableModal) scrollableModal.addEventListener('hidden.bs.modal', () => {
+      // keep selection, but we could clear selection if desired
+    });
+
     // モーダル内のアイテム選択で /content をAJAX遷移（失敗時は通常遷移）。fetchWithTimeout を使いタイムアウトをつける
     on('.content-item', 'click', function (e) {
       e.preventDefault();
@@ -363,8 +404,9 @@
                   setTimeout(() => { try { if (typeof initPwgen === 'function') initPwgen(); } catch (_) {} }, 350);
                 } catch (err) { /* initPwgen failed (silently) */ }
               })();
-              history.pushState({ screenName }, '', url.toString());
-              return;
+              // Keep menuName in history state so popstate can restore header label correctly
+              history.pushState({ screenName, menuName: clickedMenuName }, '', url.toString());
+               return;
             }
           } catch (err) {
             // パース失敗時はフル遷移
@@ -380,6 +422,7 @@
     window.addEventListener('popstate', function (event) {
       const state = event.state || {};
       const screenName = state.screenName || null;
+      const stateMenuName = state.menuName || null;
       if (!screenName) return;
       const url = new URL(window.location.href);
       url.pathname = '/content';
@@ -395,7 +438,7 @@
             const oldMain = document.querySelector('main.main-content');
             if (oldMain) oldMain.replaceWith(newMain);
             const selectedEl = document.getElementById('selectedItemName');
-            if (selectedEl) selectedEl.textContent = newSelectedName;
+            if (selectedEl) selectedEl.textContent = (stateMenuName || newSelectedName);
             // Load fragment scripts, wait for pwgen elements, then initialize
             (async function () {
               await loadAndRunScriptsFromFragment(newMain);
