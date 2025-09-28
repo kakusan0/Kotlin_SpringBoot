@@ -115,8 +115,11 @@
         uniqueMenuNames.forEach(menuName => {
           const label = String(menuName).trim();
           if (!label) return;
-          // avoid duplicates
-          if (ul.querySelector('a[data-menu-name="' + CSS.escape(label) + '"]')) return;
+          // avoid duplicates: check for either server-rendered or previously injected items
+          const existsByMenuAttr = ul.querySelector('a[data-menu-name="' + CSS.escape(label) + '"]');
+          const existsByScreenAttr = ul.querySelector('a[data-screen-name="' + CSS.escape(label) + '"]');
+          const existsByText = Array.from(ul.querySelectorAll('a')).some(a => (a.textContent || '').trim() === label);
+          if (existsByMenuAttr || existsByScreenAttr || existsByText) return;
 
           const li = document.createElement('li');
           li.className = 'nav-item';
