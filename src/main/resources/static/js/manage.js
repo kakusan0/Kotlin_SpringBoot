@@ -75,10 +75,25 @@
     statusTd.appendChild(statusSelect);
 
     const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-primary';
+    editBtn.className = 'btn btn-sm btn-outline-primary me-2';
     editBtn.textContent = '名称編集';
     editBtn.addEventListener('click', () => onEditPath(path));
     actionsTd.appendChild(editBtn);
+
+    // 削除 / 復元 ボタンを追加
+    if (path.deleted) {
+      const restoreBtn = document.createElement('button');
+      restoreBtn.className = 'btn btn-sm btn-outline-success ms-2';
+      restoreBtn.textContent = '復元';
+      restoreBtn.addEventListener('click', () => onRestorePath(path));
+      actionsTd.appendChild(restoreBtn);
+    } else {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-sm btn-outline-danger ms-2';
+      delBtn.textContent = '削除';
+      delBtn.addEventListener('click', () => onDeletePath(path));
+      actionsTd.appendChild(delBtn);
+    }
 
     tr.appendChild(idTd);
     tr.appendChild(nameTd);
@@ -448,7 +463,11 @@
         tbody.innerHTML = '<tr><td colspan="4">パスがありません</td></tr>';
         return pathsCache;
       }
-      all.forEach(p => tbody.appendChild(renderPathRow(p)));
+      {
+        const frag = document.createDocumentFragment();
+        all.forEach(p => frag.appendChild(renderPathRow(p)));
+        tbody.appendChild(frag);
+      }
       return pathsCache;
     } catch (e) {
       if (isPathsPage) tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
@@ -492,7 +511,7 @@
             refreshMenuSelects();
             return [];
           }
-          // Render derived menu rows with a note and an import button
+          const frag = document.createDocumentFragment();
           menuNames.forEach((name) => {
             const tr = document.createElement('tr');
             const idTd = document.createElement('td'); idTd.textContent = '';
@@ -522,11 +541,12 @@
             tr.appendChild(idTd);
             tr.appendChild(nameTd);
             tr.appendChild(actionsTd);
-            tbody.appendChild(tr);
+            frag.appendChild(tr);
           });
-          // ensure selects are refreshed
-          refreshMenuSelects();
-          return menuNames;
+          tbody.appendChild(frag);
+           // ensure selects are refreshed
+           refreshMenuSelects();
+           return menuNames;
         } catch (e) {
           tbody.innerHTML = '<tr><td colspan="3">メニューがありません</td></tr>';
           // still refresh selects to show empty options
@@ -534,10 +554,14 @@
           return [];
         }
       }
-      menusCache.forEach(m => tbody.appendChild(renderMenuRow(m)));
-      // update any existing select elements in screens
-      refreshMenuSelects();
-      return menusCache;
+      {
+        const frag = document.createDocumentFragment();
+        menusCache.forEach(m => frag.appendChild(renderMenuRow(m)));
+        tbody.appendChild(frag);
+      }
+       // update any existing select elements in screens
+       refreshMenuSelects();
+       return menusCache;
     } catch (e) {
       tbody.innerHTML = '<tr><td colspan="3">読み込みに失敗しました</td></tr>';
       return [];
@@ -569,8 +593,12 @@
         tbody.innerHTML = '<tr><td colspan="5">項目がありません</td></tr>';
         return [];
       }
-      items.forEach(it => tbody.appendChild(renderScreenRow(it)));
-      return items;
+      {
+        const frag = document.createDocumentFragment();
+        items.forEach(it => frag.appendChild(renderScreenRow(it)));
+        tbody.appendChild(frag);
+      }
+       return items;
     } catch (e) {
       tbody.innerHTML = '<tr><td colspan="5">読み込みに失敗しました</td></tr>';
       return [];
@@ -774,5 +802,8 @@
     // 少し遅延してDOM構築完了を待つ
     setTimeout(initManagePage, 0);
   }
+
+  // expose for debugging/static-analysis to avoid 'unused function' warnings
+  try { if (typeof window !== 'undefined') { window.__manage_onDeletePath = onDeletePath; window.__manage_onRestorePath = onRestorePath; } } catch(_) {}
 
 })();

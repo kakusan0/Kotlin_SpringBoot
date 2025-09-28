@@ -16,8 +16,9 @@ class ContentItemService(
     fun getAll(): List<ContentItem> = contentItemMapper.selectAll()
 
     // 追加: menuName でフィルタした一覧取得
-    // Mapper 側の selectByMenuName が環境によって未解決になることがあるため、安全のため selectAll をフィルタして返す実装にする
-    fun getByMenuName(menuName: String): List<ContentItem> = contentItemMapper.selectAll().filter { it.menuName == menuName }
+    // Mapper 側に selectByMenuName があるため、DB側で絞る方が効率的
+    @Cacheable(cacheNames = ["contentItemsByMenu"], key = "#menuName")
+    fun getByMenuName(menuName: String): List<ContentItem> = contentItemMapper.selectByMenuName(menuName)
 
     private fun normalizePathName(record: ContentItem) {
         record.pathName = record.pathName?.trim()?.takeIf { it.isNotEmpty() }
