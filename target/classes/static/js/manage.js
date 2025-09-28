@@ -1,20 +1,28 @@
+// 管理画面用クライアントスクリプト（manage.js）
+// - 役割: コンテンツ項目とメニューの一覧取得、追加・編集・削除を行う
+// - 非同期通信は fetch を使用し、簡易なプロンプトUIで動作します
+// - エラー時はユーザーへ alert を表示してフォールバックします
+
 // Simple manage.js: fetch list of content items and provide add/edit/delete using prompt dialogs
 (function () {
   'use strict';
 
+  // API エンドポイントの定義
   const apiContent = '/api/content';
   const apiMenus = '/api/menus';
 
+  // DOM ヘルパ関数
   function qs(sel) { return document.querySelector(sel); }
   function qsa(sel) { return Array.from(document.querySelectorAll(sel)); }
 
-  // cache menus so we can populate selects quickly
+  // キャッシュ: メニュー一覧を保持して選択肢を高速に構築
   let menusCache = [];
 
-  // BroadcastChannel for notifying other pages/tabs (fallback to null if not supported)
+  // BroadcastChannel を使って同一ブラウザ内のタブ間で更新を通知する
   const menusBroadcast = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('menus-channel') : null;
 
-  // --- Renderers ---
+  // --- レンダリング用関数 ---
+  // テーブル行を作成するユーティリティ
   function renderMenuRow(menu) {
     const tr = document.createElement('tr');
     const idTd = document.createElement('td'); idTd.textContent = menu.id || '';
@@ -40,6 +48,7 @@
     return tr;
   }
 
+  // セレクト要素を作成して現在値を反映する
   function buildMenuSelect(currentValue, item) {
     const select = document.createElement('select');
     select.className = 'form-select form-select-sm menu-select';
@@ -83,6 +92,7 @@
     return select;
   }
 
+  // 画面項目の行レンダリング
   function renderScreenRow(item) {
     const tr = document.createElement('tr');
     const idTd = document.createElement('td'); idTd.textContent = item.id || '';
@@ -114,12 +124,11 @@
     return tr;
   }
 
-  // --- Helpers ---
-  // refresh all existing select elements when menusCache changes
+  // --- ヘルパ ---
+  // メニューキャッシュが更新された際に、既存のセレクト要素を再構築する
   function refreshMenuSelects() {
     const selects = qsa('.menu-select');
     selects.forEach(sel => {
-      const itemId = sel.getAttribute('data-item-id');
       const currentVal = sel.value || '';
       // try to preserve selection
       // rebuild options
@@ -145,7 +154,7 @@
     });
   }
 
-  // called when a select value changes for a screen item
+  // 内容のメニュー変更をサーバへ送信するハンドラ
   async function onChangeMenuForItem(item, newMenuName, selectElem) {
     if (!item || item.id == null) return;
     const prev = item.menuName || null;
@@ -154,7 +163,12 @@
     const payload = Object.assign({}, item, { menuName: newMenuName });
     try {
       const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        // サーバエラー: ユーザーへ通知して選択を元に戻す
+        alert('メニューの更新に失敗しました');
+        try { selectElem.value = prev || ''; } catch (_) {}
+        return;
+      }
       // update local item and UI
       item.menuName = newMenuName;
       // optional: show tiny feedback (could be improved)
@@ -162,29 +176,88 @@
       selectElem.classList.add('is-valid');
       setTimeout(() => selectElem.classList.remove('is-valid'), 800);
     } catch (e) {
-      console.error('update content menu failed', e);
       alert('メニューの更新に失敗しました');
       // revert selection
       try { selectElem.value = prev || ''; } catch (_) { }
     }
   }
 
-  // --- Loaders ---
+  // --- データロード ---
+  // メニュー一覧を読み込みテーブルを更新
   async function loadMenus() {
     const tbody = qs('#menuTable tbody');
     if (!tbody) return [];
     tbody.innerHTML = '<tr><td colspan="3">読み込み中...</td></tr>';
     try {
       const resp = await fetch(apiMenus + '/all');
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        tbody.innerHTML = '<tr><td colspan="3">読み込みに失敗しました</td></tr>';
+        return [];
+      }
       const menus = await resp.json();
       menusCache = menus || [];
       tbody.innerHTML = '';
       if (!menusCache || !menusCache.length) {
-        tbody.innerHTML = '<tr><td colspan="3">メニューがありません</td></tr>';
-        // still refresh selects to show empty options
-        refreshMenuSelects();
-        return [];
+        // If there are no menus defined in menu management, try to show menuNames derived from screens
+        // This avoids confusing mismatch where home shows menus (from screens) but admin shows none.
+        // Load screens and extract unique menuName values.
+        try {
+          const r = await fetch(apiContent + '/all');
+          if (!r.ok) {
+            tbody.innerHTML = '<tr><td colspan="3">メニューがありません</td></tr>';
+            // still refresh selects to show empty options
+            refreshMenuSelects();
+            return [];
+          }
+          const items = await r.json();
+          const menuNames = Array.from(new Set((items || []).map(it => it.menuName).filter(Boolean)));
+          if (!menuNames.length) {
+            tbody.innerHTML = '<tr><td colspan="3">メニューがありません</td></tr>';
+            // still refresh selects to show empty options
+            refreshMenuSelects();
+            return [];
+          }
+          // Render derived menu rows with a note and an import button
+          menuNames.forEach((name) => {
+            const tr = document.createElement('tr');
+            const idTd = document.createElement('td'); idTd.textContent = '';
+            const nameTd = document.createElement('td'); nameTd.textContent = name + ' (画面管理由来)';
+            const actionsTd = document.createElement('td');
+
+            const importBtn = document.createElement('button');
+            importBtn.className = 'btn btn-sm btn-outline-success me-2';
+            importBtn.textContent = 'インポート';
+            importBtn.addEventListener('click', async () => {
+              // create menu via API
+              try {
+                const resp2 = await fetch(apiMenus, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+                if (!resp2.ok) {
+                  alert('インポートに失敗しました');
+                  return;
+                }
+                // reload official menus
+                await loadMenus();
+                await loadScreens();
+              } catch (e) {
+                alert('インポートに失敗しました');
+              }
+            });
+
+            actionsTd.appendChild(importBtn);
+            tr.appendChild(idTd);
+            tr.appendChild(nameTd);
+            tr.appendChild(actionsTd);
+            tbody.appendChild(tr);
+          });
+          // ensure selects are refreshed
+          refreshMenuSelects();
+          return menuNames;
+        } catch (e) {
+          tbody.innerHTML = '<tr><td colspan="3">メニューがありません</td></tr>';
+          // still refresh selects to show empty options
+          refreshMenuSelects();
+          return [];
+        }
       }
       menusCache.forEach(m => tbody.appendChild(renderMenuRow(m)));
       // update any existing select elements in screens
@@ -192,11 +265,11 @@
       return menusCache;
     } catch (e) {
       tbody.innerHTML = '<tr><td colspan="3">読み込みに失敗しました</td></tr>';
-      console.error('loadMenus failed', e);
       return [];
     }
   }
 
+  // 画面項目一覧を読み込みテーブルを更新
   async function loadScreens() {
     const tbody = qs('#manageTable tbody');
     if (!tbody) return [];
@@ -207,7 +280,10 @@
         await loadMenus();
       }
       const resp = await fetch(apiContent + '/all');
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
+        return [];
+      }
       const items = await resp.json();
       tbody.innerHTML = '';
       if (!items || !items.length) {
@@ -218,19 +294,22 @@
       return items;
     } catch (e) {
       tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
-      console.error('loadScreens failed', e);
       return [];
     }
   }
 
-  // --- Menu actions ---
+  // --- メニュー操作 ---
+  // 追加・編集・削除の各操作（ユーザー確認/プロンプトを含む）
   async function onAddMenu() {
     const name = window.prompt('追加するメニュー名を入力してください', '新しいメニュー');
     if (!name) return;
     const payload = { name };
     try {
       const resp = await fetch(apiMenus, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        alert('メニュー作成に失敗しました');
+        return;
+      }
       await loadMenus();
       // refresh menu dropdowns for adding screens
       await loadScreens();
@@ -238,7 +317,6 @@
       try { localStorage.setItem('menus-updated', String(Date.now())); } catch (_) { }
       try { if (menusBroadcast) menusBroadcast.postMessage('menus-updated'); } catch (_) { }
     } catch (e) {
-      console.error('create menu failed', e);
       alert('メニュー作成に失敗しました');
     }
   }
@@ -249,13 +327,15 @@
     const payload = Object.assign({}, menu, { name });
     try {
       const resp = await fetch(apiMenus, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        alert('更新に失敗しました');
+        return;
+      }
       await loadMenus();
       await loadScreens();
       try { localStorage.setItem('menus-updated', String(Date.now())); } catch (_) { }
       try { if (menusBroadcast) menusBroadcast.postMessage('menus-updated'); } catch (_) { }
     } catch (e) {
-      console.error('update menu failed', e);
       alert('更新に失敗しました');
     }
   }
@@ -264,18 +344,20 @@
     if (!window.confirm('このメニューを削除してよいですか?（メニューに紐づく画面がある場合、連鎖的な整合性は考慮していません）')) return;
     try {
       const resp = await fetch(apiMenus + '/' + menu.id, { method: 'DELETE' });
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        alert('削除に失敗しました');
+        return;
+      }
       await loadMenus();
       await loadScreens();
       try { localStorage.setItem('menus-updated', String(Date.now())); } catch (_) { }
       try { if (menusBroadcast) menusBroadcast.postMessage('menus-updated'); } catch (_) { }
     } catch (e) {
-      console.error('delete menu failed', e);
       alert('削除に失敗しました');
     }
   }
 
-  // --- Screen actions ---
+  // --- 画面項目操作 ---
   async function onAddScreen() {
     const name = window.prompt('追加する画面名を入力してください', '新しい画面');
     if (!name) return;
@@ -296,10 +378,12 @@
     const payload = { itemName: name, menuName };
     try {
       const resp = await fetch(apiContent, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        alert('作成に失敗しました');
+        return;
+      }
       await loadScreens();
     } catch (e) {
-      console.error('create screen failed', e);
       alert('作成に失敗しました');
     }
   }
@@ -311,10 +395,12 @@
     const payload = Object.assign({}, item, { itemName: name });
     try {
       const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        alert('更新に失敗しました');
+        return;
+      }
       await loadScreens();
     } catch (e) {
-      console.error('update screen failed', e);
       alert('更新に失敗しました');
     }
   }
@@ -323,20 +409,23 @@
     if (!window.confirm('削除してよいですか?')) return;
     try {
       const resp = await fetch(apiContent + '/' + item.id, { method: 'DELETE' });
-      if (!resp.ok) throw new Error('network');
+      if (!resp.ok) {
+        alert('削除に失敗しました');
+        return;
+      }
       await loadScreens();
     } catch (e) {
-      console.error('delete screen failed', e);
       alert('削除に失敗しました');
     }
   }
 
+  // 初期化: DOMContentLoaded 時にイベントリスナを登録しデータをロード
   document.addEventListener('DOMContentLoaded', function () {
     const addMenuBtn = qs('#addMenuBtn');
     if (addMenuBtn) addMenuBtn.addEventListener('click', onAddMenu);
     const addScreenBtn = qs('#addScreenBtn');
     if (addScreenBtn) addScreenBtn.addEventListener('click', onAddScreen);
-    // initial load both lists (menus first to populate selects)
+    // 初回ロードでメニュー→画面の順で読み込み
     loadMenus().then(() => loadScreens());
   });
 

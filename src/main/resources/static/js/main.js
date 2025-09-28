@@ -1,5 +1,7 @@
-// filepath: c:\Users\gmaki\Downloads\demo (1)\demo\src\main\resources\static\js\main.js
-// メインクライアントスクリプト（初期化はアイドル時またはDOMContentLoaded後に実行）
+// アプリ共通のメインクライアントスクリプト（main.js）
+// - 目的: ページ初期化・イベント委譲・サイドバーのメニュー注入・フラグメントのスクリプト読み込み・pwgenの初期化など
+// - パフォーマンス配慮: requestIdleCallback を利用してアイドル時に初期化を行い、ユーザー体験を向上します
+// - フォールバック: DOMContentLoaded / load / setTimeout / MutationObserver により動的挿入や遅延読み込みに対応します
 
 (function () {
   'use strict';
@@ -29,6 +31,7 @@
     return fetch(resource, Object.assign({}, options, { signal })).finally(() => clearTimeout(id));
   };
 
+  // runWhenIdle: ページがアイドルになったら初期化処理を実行するヘルパ
   const runWhenIdle = (fn) => {
     if ('requestIdleCallback' in window) {
       requestIdleCallback(fn, { timeout: 200 });
@@ -78,18 +81,25 @@
       bootstrap.Offcanvas.getOrCreateInstance(sidebarEl);
     }
 
-    // サイドバーにサーバー上のメニューを表示する
+    // 追加: 選択中のサイドバーメニュー名（画面管理で登録した menuName）
+    let selectedSidebarMenu = null;
+
+    // サイドバーにサーバー上のメニュー（画面管理で登録された menuName の集合）を表示する
     async function loadAndRenderSidebarMenus() {
-      // do not inject menus into the manage page sidebar
       try {
         const path = window.location && window.location.pathname ? window.location.pathname : '';
+        // do not inject or modify manage page sidebar (manage page has its own sidebar content)
         if (path === '/manage' || path.startsWith('/manage')) return;
-      } catch (_) { /* safe fallback */ }
-      try {
-        const resp = await fetch('/api/menus/all');
-        if (!resp.ok) throw new Error('network');
-        const menus = await resp.json();
-        if (!Array.isArray(menus)) return;
+
+        const resp = await fetch('/api/content/all');
+        if (!resp.ok) return; // fail silently
+        const screens = await resp.json();
+        if (!Array.isArray(screens)) return;
+
+        // derive unique menu names from screens' menuName
+        const menuNames = screens.map(s => s.menuName).filter(Boolean);
+        const uniqueMenuNames = Array.from(new Set(menuNames));
+
         const ul = document.querySelector('#sidebarMenu .offcanvas-body ul.nav');
         if (!ul) return;
 
@@ -102,34 +112,102 @@
           return a && a.getAttribute('href') === '/manage';
         });
 
-        // Create li items for each menu
-        menus.forEach(menu => {
-          const screenName = (menu && menu.name) ? String(menu.name).trim() : '';
-          // skip empty names
-          if (!screenName) return;
-          // if an element with same data-screen-name already exists, skip to avoid duplicate
-          if (ul.querySelector('a[data-screen-name="' + CSS.escape(screenName) + '"]')) return;
+        uniqueMenuNames.forEach(menuName => {
+          const label = String(menuName).trim();
+          if (!label) return;
+          // avoid duplicates
+          if (ul.querySelector('a[data-menu-name="' + CSS.escape(label) + '"]')) return;
 
           const li = document.createElement('li');
           li.className = 'nav-item';
           li.setAttribute('data-injected', 'true');
           const a = document.createElement('a');
-          a.className = 'nav-link text-dark content-item';
+          a.className = 'nav-link text-dark sidebar-menu-link';
           a.href = '#';
-          a.setAttribute('data-screen-name', screenName);
-          a.innerHTML = '<i class="bi bi-folder"></i> <span>' + screenName + '</span>';
-          li.appendChild(a);
+          a.setAttribute('data-menu-name', label);
+          a.innerHTML = '<i class="bi bi-folder"></i> <span>' + label + '</span>';
+          // clicking a sidebar menu will set it as selected and open the content selection modal
+          a.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            selectedSidebarMenu = label;
+            // open modal
+            const modalEl = document.getElementById('scrollableModal');
+            if (modalEl && window.bootstrap && bootstrap.Modal) {
+              // populate modal body before showing
+              populateContentModal(selectedSidebarMenu, screens);
+              const inst = bootstrap.Modal.getOrCreateInstance(modalEl);
+              inst.show();
+            } else {
+              // fallback: populate only
+              populateContentModal(selectedSidebarMenu, screens);
+            }
+          });
+
           if (manageLi) ul.insertBefore(li, manageLi);
           else ul.appendChild(li);
+          li.appendChild(a);
         });
+
       } catch (e) {
-        // silently fail — menu injection is progressive enhancement
-        console.error('loadAndRenderSidebarMenus failed', e);
+        // silent fail
       }
+    }
+
+    // Populate the content selection modal list-group with screens filtered by menuName
+    function populateContentModal(menuName, screens) {
+      try {
+        const modal = document.getElementById('scrollableModal');
+        if (!modal) return;
+        const listGroup = modal.querySelector('.modal-body .list-group');
+        if (!listGroup) return;
+        // clear existing
+        listGroup.innerHTML = '';
+        let items = screens || [];
+        // If no menu selected, prompt user to select a menu from the sidebar
+        if (!menuName) {
+          const el = document.createElement('div');
+          el.className = 'list-group-item text-muted';
+          el.textContent = 'サイドバーのメニューを選択してください';
+          listGroup.appendChild(el);
+          return;
+        }
+        if (menuName) {
+          items = items.filter(s => s.menuName === menuName);
+        }
+        if (!items.length) {
+          const el = document.createElement('div');
+          el.className = 'list-group-item text-muted';
+          el.textContent = '該当する画面がありません';
+          listGroup.appendChild(el);
+          return;
+        }
+        items.forEach(s => {
+          const a = document.createElement('a');
+          a.className = 'list-group-item list-group-item-action text-start content-item';
+          a.href = '#';
+          a.setAttribute('data-screen-name', s.itemName);
+          a.textContent = s.itemName || '(無題)';
+          listGroup.appendChild(a);
+        });
+      } catch (e) { /* ignore */ }
     }
 
     // 初回ロードでメニューを描画
     loadAndRenderSidebarMenus();
+
+    // When header's select button opens modal, populate it using currently cached screens
+    const itemSelectButton = document.getElementById('itemSelectButton');
+    if (itemSelectButton) {
+      itemSelectButton.addEventListener('click', async function () {
+        // fetch screens and populate modal, filter by selectedSidebarMenu if set
+        try {
+          const resp = await fetch('/api/content/all');
+          if (!resp.ok) return;
+          const screens = await resp.json();
+          populateContentModal(selectedSidebarMenu, screens);
+        } catch (e) { /* ignore */ }
+      });
+    }
 
     // BroadcastChannel で同一ブラウザ内のタブからの通知を受け取る（フォールバックで storage もある）
     if (typeof BroadcastChannel !== 'undefined') {
@@ -209,7 +287,10 @@
 
       fetchWithTimeout(url.toString(), { credentials: 'same-origin' }, 10000)
         .then(resp => {
-          if (!resp.ok) throw new Error('network');
+          if (!resp.ok) {
+            // レスポンスが正常でない場合はフルナビゲーションへフォールバック
+            return Promise.reject('network');
+          }
           return resp.text();
         })
         .then(responseText => {
@@ -236,7 +317,7 @@
                   try { if (typeof initPwgen === 'function') initPwgen(); } catch (_) {}
                   setTimeout(() => { try { if (typeof initPwgen === 'function') initPwgen(); } catch (_) {} }, 120);
                   setTimeout(() => { try { if (typeof initPwgen === 'function') initPwgen(); } catch (_) {} }, 350);
-                } catch (err) { console.error('initPwgen failed', err); }
+                } catch (err) { /* initPwgen failed (silently) */ }
               })();
               history.pushState({ screenName }, '', url.toString());
               return;
@@ -278,7 +359,7 @@
                 try { if (typeof initPwgen === 'function') initPwgen(); } catch (_) {}
                 setTimeout(() => { try { if (typeof initPwgen === 'function') initPwgen(); } catch (_) {} }, 120);
                 setTimeout(() => { try { if (typeof initPwgen === 'function') initPwgen(); } catch (_) {} }, 350);
-              } catch (err) { console.error('initPwgen failed', err); }
+              } catch (err) { /* initPwgen failed (silently) */ }
             })();
           }
         })
@@ -302,7 +383,7 @@
                 sc.src = abs;
                 sc.async = false; // preserve execution order
                 sc.onload = () => res();
-                sc.onerror = () => { console.error('failed to load script', abs); res(); };
+                sc.onerror = () => { /* failed to load script (silently) */ res(); };
                 document.head.appendChild(sc);
               }));
             }
@@ -322,28 +403,6 @@
       }
     }
 
-    // helper: wait until pwgen-related elements exist, with timeout
-    function ensurePwgenReady(timeout = 2000) {
-      return new Promise((resolve) => {
-        const check = () => {
-          const hasEl = !!(document.getElementById('generate-btn') || document.getElementById('length'));
-          const hasFn = typeof window.initPwgen === 'function';
-          return hasEl && hasFn;
-        };
-        if (check()) return resolve(true);
-        const start = Date.now();
-        const iv = setInterval(() => {
-          if (check()) {
-            clearInterval(iv);
-            return resolve(true);
-          }
-          if (Date.now() - start > timeout) {
-            clearInterval(iv);
-            return resolve(false);
-          }
-        }, 80);
-      });
-    }
 
   });
 

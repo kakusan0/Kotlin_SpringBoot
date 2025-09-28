@@ -2,7 +2,7 @@
   --header-height: 60px;
   --sidebar-width-expanded: 160px;
   /* 広げた時の幅 */
-  --sidebar-width-collapsed: 120px;
+  --sidebar-width-collapsed: 90px;
   /* 畳んだ時の幅を少し広げる */
   /* JSが失敗した場合の予備として100vhを設定 */
   --app-height: 100vh;

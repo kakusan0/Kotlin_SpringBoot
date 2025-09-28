@@ -1,53 +1,43 @@
-// pwgen.js - externalized Vanilla JS for password generator
-// This file contains the optimized JS previously embedded in the dashboard fragment.
+// パスワード生成ユーティリティ（pwgen.js）
+// - 目的: パスワード生成UIの初期化、イベント委譲、生成・コピー・表示切替等の操作を提供します。
+// - 特長: フラグメント差し替えや動的挿入に対しても安全に動作するよう、idempotent な初期化と MutationObserver/フォールバック初期化を備えます。
+// - 実装方針: グローバル名前空間の衝突を避けるために window.__pwgen を使い、重複バインドや短時間の再初期化を防止します。
 
 // global guard to prevent duplicate attachment across multiple init calls
 if (!window.__pwgen) window.__pwgen = { listenersAttached: false };
 
 function initPwgen() {
-  console.log('pwgen.js: initPwgen start');
-  // prevent tight re-entry: ignore repeated inits within short window
+  // 初期化のデバウンス（短い間隔での重複実行を抑制）
   try {
     var now = Date.now();
     // ensure shared lastInit exists
     if (typeof window.__pwgen.lastInit !== 'number') window.__pwgen.lastInit = 0;
     if (window.__pwgen.lastInit && now - window.__pwgen.lastInit < 250) {
-      console.log('pwgen.js: init suppressed (debounced)');
       return;
     }
     window.__pwgen.lastInit = now;
   } catch (_) {}
 
-  // element refs (use let so we can replace nodes safely)
+  // DOM 要素の参照（必要なものだけを初期に取得し、その他は都度取得して stale 参照を回避）
   let lengthEl = document.getElementById('length');
   let lengthValueEl = document.getElementById('length-value');
-  let useLower = document.getElementById('use-lower');
-  let useUpper = document.getElementById('use-upper');
-  let useNum = document.getElementById('use-num');
-  let useSymbol = document.getElementById('use-symbol');
   let generateBtn = document.getElementById('generate-btn');
   let copyBtn = document.getElementById('copy-btn');
   let showHideBtn = document.getElementById('show-hide-btn');
 
-  console.log('pwgen.js: elements', {
-    lengthEl: !!lengthEl,
-    useLower: !!useLower,
-    useUpper: !!useUpper,
-    useNum: !!useNum,
-    useSymbol: !!useSymbol,
-    generateBtn: !!generateBtn
-  });
-
+  // パスワード表示状態
   let pwVisible = false;
 
-  // helper: toggle ids
+  // トグル要素の id リスト（必要時に都度取得して使う）
   const toggleIds = ['use-lower', 'use-upper', 'use-num', 'use-symbol'];
+
+  // 以下、補助関数群: DOM 操作やトグル状態更新、生成ロジックなど
 
   function getToggleEl(id) {
     return document.getElementById(id);
   }
 
-  // utility to replace an element with its clone to remove old listeners, returns new element
+  // 要素のクローン差し替えで旧リスナを除去するユーティリティ
   function cloneReplace(el) {
     if (!el || !el.parentNode) return el;
     try {
@@ -59,16 +49,15 @@ function initPwgen() {
     }
   }
 
-  // length input
+  // length input の初期化（スライダー/数値入力）
   if (lengthEl && lengthValueEl) {
-    // ensure previous listeners removed by cloning
     lengthEl = cloneReplace(lengthEl);
     lengthEl.addEventListener('input', () => {
       lengthValueEl.textContent = lengthEl.value;
     });
   }
 
-  // wheel handling with minor throttle
+  // ホイールでの増減処理（軽いスロットルあり）
   let wheelQueued = false;
   if (lengthEl) {
     lengthEl.addEventListener('wheel', (e) => {
@@ -93,7 +82,7 @@ function initPwgen() {
     }, {passive: false});
   }
 
-  // toggle helpers
+  // トグル状態の視覚更新
   function setToggleState(el, on) {
     if (!el) return;
     el.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -116,7 +105,6 @@ function initPwgen() {
   }
 
   function resetPasswordDisplay() {
-    // always read fresh elements to avoid stale references
     try {
       const _generatedPassword = document.getElementById('generated-password');
       if (_generatedPassword) _generatedPassword.value = '';
@@ -148,10 +136,9 @@ function initPwgen() {
     }
   }
 
-  // generate logic (was missing after refactor)
+  // パスワード生成のコア処理
   function doGenerate() {
-    console.log('pwgen.js: doGenerate called, anyToggleOn=', anyToggleOn());
-    // query fresh elements to avoid stale references after fragment replacement
+    // 必要な要素は都度参照して stale を回避
     const _lengthEl = document.getElementById('length');
     const _useLower = document.getElementById('use-lower');
     const _useUpper = document.getElementById('use-upper');
@@ -171,7 +158,6 @@ function initPwgen() {
         (_useSymbol && _useSymbol.dataset && _useSymbol.dataset.checked === 'ON')
     );
 
-    // show result when at least one toggle is ON; deselection of any toggle will later hide via handlers
     if (anyToggleOn()) {
       if (_generatedPassword) {
         _generatedPassword.value = pw;
@@ -187,13 +173,12 @@ function initPwgen() {
     if (_pwStrengthLabel) _pwStrengthLabel.textContent = info.label;
   }
 
-  // Initialize toggle visuals from DOM (if present)
+  // 初期化: トグルの見た目を DOM から初期化
   toggleIds.forEach(id => {
     const el = getToggleEl(id);
     if (el) {
       const init = el.dataset.checked === 'ON';
       setToggleState(el, init);
-      console.log('pwgen.js: initialized toggle', id, '->', init);
     }
   });
 
@@ -226,11 +211,10 @@ function initPwgen() {
       const g = e.target.closest('#generate-btn');
       if (!g) return;
       e.preventDefault();
-      console.log('pwgen.js: delegated generate click');
       try {
         doGenerate();
       } catch (err) {
-        console.error('doGenerate error', err);
+        // silently ignore
       }
     });
     // pointerdown delegated as fallback (some devices trigger pointer events instead)
@@ -238,11 +222,10 @@ function initPwgen() {
       const g = e.target.closest('#generate-btn');
       if (!g) return;
       e.preventDefault();
-      console.log('pwgen.js: delegated generate pointerdown');
       try {
         doGenerate();
       } catch (err) {
-        console.error('doGenerate error', err);
+        // silently ignore
       }
     });
 
@@ -252,7 +235,6 @@ function initPwgen() {
       const id = btn.id;
       if (!toggleIds.includes(id)) return;
       e.preventDefault();
-      console.log('pwgen.js: delegated pointerdown toggle for', id);
       handleDelegatedToggle(id);
     });
 
@@ -262,7 +244,6 @@ function initPwgen() {
       if (!btn) return;
       const id = btn.id;
       if (!toggleIds.includes(id)) return;
-      console.log('pwgen.js: delegated click toggle for', id);
       handleDelegatedToggle(id);
     });
 
@@ -298,11 +279,13 @@ function initPwgen() {
         const newBtn = cloneReplace(generateBtn) || generateBtn;
         newBtn.addEventListener('click', (e) => {
           e.preventDefault();
-          console.log('pwgen.js: generate clicked');
-          doGenerate();
+          try {
+            doGenerate();
+          } catch (err) {
+            // silently ignore
+          }
         });
         newBtn.dataset.pwgenBound = '1';
-        console.log('pwgen.js: attached generate handler');
       }
     } catch (_) {
     }
@@ -327,7 +310,6 @@ function initPwgen() {
           newCopy.addEventListener('click', () => {
             const val = (document.getElementById('generated-password') || {}).value || '';
             if (!val) return;
-            console.log('pwgen.js: copy clicked');
             navigator.clipboard.writeText(val).then(() => {
               const tmp = document.createElement('div');
               tmp.className = 'pw-toast';
@@ -341,7 +323,6 @@ function initPwgen() {
             });
           });
           newCopy.dataset.pwgenBound = '1';
-          console.log('pwgen.js: attached copy handler');
         }
       } catch (_) {
       }
@@ -353,13 +334,11 @@ function initPwgen() {
             const newShow = cloneReplace(showHideBtn) || showHideBtn;
             newShow.addEventListener('click', () => {
               pwVisible = !pwVisible;
-              console.log('pwgen.js: showHide clicked ->', pwVisible);
               newShow.textContent = pwVisible ? '非表示' : '表示';
               const gen = document.getElementById('generated-password');
               if (gen) gen.type = pwVisible ? 'text' : 'password';
             });
             newShow.dataset.pwgenBound = '1';
-            console.log('pwgen.js: attached show/hide handler');
           }
         } catch (_) {
         }

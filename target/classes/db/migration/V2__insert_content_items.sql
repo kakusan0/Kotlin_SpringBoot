@@ -3,5 +3,5 @@
 INSERT INTO content_items (item_name)
 VALUES
   ('ホーム'),
-  ('ダッシュボード'),
+  ('パスワード生成'),
   ('設定');

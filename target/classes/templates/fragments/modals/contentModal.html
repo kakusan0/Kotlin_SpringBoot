@@ -14,8 +14,7 @@
         </div>
         <div class="modal-body">
           <div class="list-group">
-            <a th:each="screen : ${screens}" class="list-group-item list-group-item-action text-start content-item"
-              th:text="${screen.itemName}" th:attr="data-screen-name=${screen.itemName}" href="#"></a>
+            <!-- クライアントサイドの JS で populateContentModal により項目を動的に追加します -->
           </div>
         </div>
       </div>
