@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2ec078ba-5ddb-4fac-bc5e-11d17bed784b" name="変更" comment="a">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="2ec078ba-5ddb-4fac-bc5e-11d17bed784b" name="変更" comment="a" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -146,7 +142,7 @@
       <workItem from="1759085785326" duration="78000" />
       <workItem from="1759085873106" duration="2000" />
       <workItem from="1759085912391" duration="34000" />
-      <workItem from="1759085953626" duration="94000" />
+      <workItem from="1759085953626" duration="215000" />
     </task>
     <task id="LOCAL-00001" summary="Remove HELP.md and README_MYBATISGENERATOR_REMOVED.txt files">
       <option name="closed" value="true" />
@@ -372,7 +368,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759085820815</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary="a">
+      <option name="closed" value="true" />
+      <created>1759086068368</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1759086068368</updated>
+    </task>
+    <option name="localTasksCounter" value="30" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
