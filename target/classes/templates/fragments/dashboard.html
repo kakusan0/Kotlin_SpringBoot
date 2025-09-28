@@ -1,14 +1,254 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
 
 <body>
+  <!-- compact パスワード生成ツール -->
+  <div th:fragment="content" style="display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;">
+    <!-- compact layout -->
+    <div class="compact-pwgen" style="width:360px;max-width:95vw;">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <strong style="font-size:0.95rem">パスワード</strong>
+        <div style="font-size:0.85rem;color:#6c757d">長さ: <span id="length-value">12</span></div>
+      </div>
 
-  <!-- ダッシュボード用フラグメント -->
-  <div th:fragment="content">
-    <h1>ダッシュボード</h1>
-    <p>ここはダッシュボードのコンテンツです。</p>
+      <input type="range" min="4" max="64" id="length" name="length" value="12" class="form-range mb-2" aria-label="パスワード長" title="パスワード長">
+
+      <div class="d-flex align-items-center gap-2 mb-2" style="font-size:0.85rem;flex-wrap:wrap">
+        <button type="button" id="use-lower" class="opt-btn" aria-pressed="true" data-checked="ON">小文字</button>
+        <button type="button" id="use-upper" class="opt-btn" aria-pressed="true" data-checked="ON">大文字</button>
+        <button type="button" id="use-num" class="opt-btn" aria-pressed="true" data-checked="ON">数字</button>
+        <button type="button" id="use-symbol" class="opt-btn" aria-pressed="true" data-checked="ON">記号</button>
+      </div>
+
+      <div class="d-flex gap-2 mb-2">
+        <button id="generate-btn" class="btn btn-sm btn-primary flex-grow-1">生成</button>
+      </div>
+
+      <div id="pwgen-result" style="display:none;">
+        <div class="d-flex align-items-start">
+          <input type="password" id="generated-password" class="form-control" readonly style="flex:1;font-size:0.95rem;padding:6px" aria-label="生成されたパスワード" title="生成されたパスワード">
+          <div class="d-flex flex-column ms-2" style="gap:6px;">
+            <button id="copy-btn" class="btn btn-sm btn-outline-secondary" type="button" aria-label="コピー" style="white-space:nowrap;">コピー</button>
+            <button id="show-hide-btn" class="btn btn-sm btn-outline-secondary" type="button" aria-label="表示切替">表示</button>
+          </div>
+        </div>
+        <div class="d-flex align-items-center mt-2" style="gap:8px">
+          <div class="progress flex-grow-1" style="height:8px;">
+            <div id="pw-strength" class="progress-bar" role="progressbar" style="width:0"></div>
+          </div>
+          <div id="pw-strength-label" style="font-size:0.85rem;width:86px;text-align:right;color:#6c757d"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Vanilla JS implementation to avoid external jQuery dependency
+      document.addEventListener('DOMContentLoaded', function() {
+        const lengthEl = document.getElementById('length');
+        const lengthValueEl = document.getElementById('length-value');
+        const useLower = document.getElementById('use-lower');
+        const useUpper = document.getElementById('use-upper');
+        const useNum = document.getElementById('use-num');
+        const useSymbol = document.getElementById('use-symbol');
+        const generateBtn = document.getElementById('generate-btn');
+        const pwgenResult = document.getElementById('pwgen-result');
+        const generatedPassword = document.getElementById('generated-password');
+        const copyBtn = document.getElementById('copy-btn');
+        const showHideBtn = document.getElementById('show-hide-btn');
+        const pwStrength = document.getElementById('pw-strength');
+        const pwStrengthLabel = document.getElementById('pw-strength-label');
+
+        let pwVisible = false;
+
+        lengthEl.addEventListener('input', function() {
+          lengthValueEl.textContent = this.value;
+        });
+
+        // スライダー (#length) 上でのホイール操作のみを扱う（パネル全体ではページスクロールに干渉しない）
+        lengthEl.addEventListener('wheel', function(e) {
+          // ここではスライダー値を変えた場合だけページスクロールを抑制する
+          const min = Number(this.min || 4);
+          const max = Number(this.max || 64);
+          const step = e.shiftKey ? 5 : 1;
+          let val = Number(this.value);
+          if (e.deltaY < 0) {
+            val = Math.min(max, val + step);
+          } else {
+            val = Math.max(min, val - step);
+          }
+          if (val !== Number(this.value)) {
+            e.preventDefault();
+            this.value = val;
+            const ev = new Event('input', { bubbles: true });
+            this.dispatchEvent(ev);
+          }
+        }, { passive: false });
+
+        function updateGenerateBtnState() {
+          const ok = [useLower, useUpper, useNum, useSymbol].some(btn => btn.getAttribute('data-checked') === 'ON');
+          generateBtn.disabled = !ok;
+        }
+
+        // ボタン型のトグルに変更: 状態管理ユーティリティ
+        const toggleButtons = [useLower, useUpper, useNum, useSymbol];
+
+        function setToggleState(btn, on) {
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          btn.setAttribute('data-checked', on ? 'ON' : 'OFF');
+          if (on) {
+            btn.classList.add('opt-on');
+          } else {
+            btn.classList.remove('opt-on');
+          }
+        }
+
+        function allTogglesOn() {
+          return toggleButtons.every(b => b.getAttribute('data-checked') === 'ON');
+        }
+
+        function anyToggleOn() {
+          return toggleButtons.some(b => b.getAttribute('data-checked') === 'ON');
+        }
+
+        function resetPasswordDisplay() {
+          // 隠してパスワードをクリア
+          generatedPassword.value = '';
+          pwStrength.style.width = '0%';
+          pwStrengthLabel.textContent = '';
+          pwgenResult.style.display = 'none';
+        }
+
+        // 初期化（既定は ON）
+        toggleButtons.forEach(btn => {
+          const init = btn.getAttribute('data-checked') === 'ON';
+          setToggleState(btn, init);
+          btn.addEventListener('click', function() {
+            const current = btn.getAttribute('data-checked') === 'ON';
+            setToggleState(btn, !current);
+            updateGenerateBtnState();
+            // いずれかがOFFなら表示をリセット
+            if (!allTogglesOn()) {
+              resetPasswordDisplay();
+            }
+          });
+        });
+
+        // 初期化後に生成ボタン状態を反映
+        updateGenerateBtnState();
+
+        // キーボードショートカット: 数字キー 1,2,3,4 をそれぞれ小文字/大文字/数字/記号のトグルにバインド
+        document.addEventListener('keydown', function(e) {
+          // 修飾キーが押されている場合は無視
+          if (e.altKey || e.ctrlKey || e.metaKey) return;
+          // 入力中は干渉しない（フォーム要素や編集可能要素）
+          const active = document.activeElement;
+          if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+
+          const key = e.key;
+          const mapping = {
+            '1': useLower,
+            '2': useUpper,
+            '3': useNum,
+            '4': useSymbol
+          };
+
+          const target = mapping[key];
+          if (target) {
+            e.preventDefault();
+            // 切替して表示同期
+            const cur = target.getAttribute('data-checked') === 'ON';
+            setToggleState(target, !cur);
+            updateGenerateBtnState();
+            if (!allTogglesOn()) resetPasswordDisplay();
+             try { target.focus(); } catch (err) { /* ignore */ }
+           }
+         });
+
+        function doGenerate() {
+          const len = Math.max(4, Math.min(64, parseInt(lengthEl.value) || 12));
+          const pw = generatePassword(
+            len,
+            useLower.getAttribute('data-checked') === 'ON',
+            useUpper.getAttribute('data-checked') === 'ON',
+            useNum.getAttribute('data-checked') === 'ON',
+            useSymbol.getAttribute('data-checked') === 'ON'
+          );
+          // いずれかのオプションがONであれば表示（ただし、トグルが変更されたときはリセット動作が優先される）
+          if (anyToggleOn()) {
+            generatedPassword.value = pw;
+            generatedPassword.type = pwVisible ? 'text' : 'password';
+            pwgenResult.style.display = 'block';
+          } else {
+            // 条件満たさない場合はリセット
+            resetPasswordDisplay();
+          }
+
+          const score = calcStrength(pw);
+          const info = strengthLabel(score);
+          pwStrength.style.width = (score * 20) + '%';
+          pwStrengthLabel.textContent = info.label;
+        }
+
+        generateBtn.addEventListener('click', function(e) { e.preventDefault(); doGenerate(); });
+
+        copyBtn.addEventListener('click', function() {
+          const val = generatedPassword.value;
+          if (!val) return;
+          navigator.clipboard.writeText(val).then(() => {
+            const tmp = document.createElement('div');
+            tmp.textContent = 'コピーしました';
+            Object.assign(tmp.style, {position:'fixed',right:'10px',bottom:'10px',background:'#28a745',color:'#fff',padding:'6px 10px',borderRadius:'4px',zIndex:9999});
+            document.body.appendChild(tmp);
+            setTimeout(() => { tmp.style.transition = 'opacity 0.3s'; tmp.style.opacity = '0'; setTimeout(() => tmp.remove(), 300); }, 1000);
+          });
+        });
+
+        showHideBtn.addEventListener('click', function() {
+          pwVisible = !pwVisible;
+          showHideBtn.textContent = pwVisible ? '非表示' : '表示';
+          generatedPassword.type = pwVisible ? 'text' : 'password';
+        });
+
+        lengthEl.focus();
+      });
+
+      function generatePassword(length, useLower, useUpper, useNum, useSymbol) {
+        let chars = '';
+        if (useLower) chars += 'abcdefghijklmnopqrstuvwxyz';
+        if (useUpper) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        if (useNum) chars += '0123456789';
+        if (useSymbol) chars += '!@#$%^&*()';
+        if (!chars) return '';
+        let password = '';
+        for (let i = 0; i < length; i++) {
+          password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+      }
+
+      function calcStrength(pw) {
+        let score = 0;
+        if (pw.length >= 8) score++;
+        if (/[a-z]/.test(pw)) score++;
+        if (/[A-Z]/.test(pw)) score++;
+        if (/[0-9]/.test(pw)) score++;
+        if (/[!@#$%^&*()]/.test(pw)) score++;
+        return score;
+      }
+
+      function strengthLabel(score) {
+        switch(score) {
+          case 5: return {label:'非常に強い'};
+          case 4: return {label:'強い'};
+          case 3: return {label:'普通'};
+          case 2: return {label:'弱い'};
+          default: return {label:'とても弱い'};
+        }
+      }
+    </script>
+
+    <!-- スタイルは src/main/resources/static/css/style.css に移動しました -->
   </div>
-
 </body>
 
 </html>
