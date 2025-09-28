@@ -4,6 +4,7 @@ import com.example.demo.model.ContentItem
 import com.example.demo.service.ContentItemService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import jakarta.validation.Valid
 
 @RestController
 @RequestMapping("/api/content")
@@ -20,13 +21,13 @@ class ApiContentItemController(
     }
 
     @PostMapping
-    fun create(@RequestBody item: ContentItem): ResponseEntity<ContentItem> {
+    fun create(@Valid @RequestBody item: ContentItem): ResponseEntity<ContentItem> {
         contentItemService.insert(item)
         return ResponseEntity.ok(item)
     }
 
     @PutMapping
-    fun update(@RequestBody item: ContentItem): ResponseEntity<ContentItem> {
+    fun update(@Valid @RequestBody item: ContentItem): ResponseEntity<ContentItem> {
         if (item.id == null) return ResponseEntity.badRequest().build()
         contentItemService.update(item)
         return ResponseEntity.ok(item)

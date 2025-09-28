@@ -15,20 +15,13 @@ class ContentItemService(
     @Cacheable(cacheNames = ["contentItems"]) // 引数なし: SimpleKey.EMPTY がキー
     fun getAll(): List<ContentItem> = contentItemMapper.selectAll()
 
-    @Cacheable(cacheNames = ["contentItemById"], key = "#id")
-    fun getById(id: Long): ContentItem? = contentItemMapper.selectByPrimaryKey(id)
-
     // 追加: menuName でフィルタした一覧取得
     // Mapper 側の selectByMenuName が環境によって未解決になることがあるため、安全のため selectAll をフィルタして返す実装にする
     fun getByMenuName(menuName: String): List<ContentItem> = contentItemMapper.selectAll().filter { it.menuName == menuName }
 
-    @Caching(
-        evict = [
-            CacheEvict(cacheNames = ["contentItems"], allEntries = true),
-            CacheEvict(cacheNames = ["contentItemById"], key = "#record.id", condition = "#record.id != null")
-        ]
-    )
-    fun insert(record: ContentItem): Int = contentItemMapper.insert(record)
+    private fun normalizePathName(record: ContentItem) {
+        record.pathName = record.pathName?.trim()?.takeIf { it.isNotEmpty() }
+    }
 
     @Caching(
         evict = [
@@ -36,7 +29,21 @@ class ContentItemService(
             CacheEvict(cacheNames = ["contentItemById"], key = "#record.id", condition = "#record.id != null")
         ]
     )
-    fun update(record: ContentItem): Int = contentItemMapper.updateByPrimaryKey(record)
+    fun insert(record: ContentItem): Int {
+        normalizePathName(record)
+        return contentItemMapper.insert(record)
+    }
+
+    @Caching(
+        evict = [
+            CacheEvict(cacheNames = ["contentItems"], allEntries = true),
+            CacheEvict(cacheNames = ["contentItemById"], key = "#record.id", condition = "#record.id != null")
+        ]
+    )
+    fun update(record: ContentItem): Int {
+        normalizePathName(record)
+        return contentItemMapper.updateByPrimaryKey(record)
+    }
 
     @Caching(
         evict = [

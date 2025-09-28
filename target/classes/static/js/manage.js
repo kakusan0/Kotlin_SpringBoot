@@ -98,6 +98,7 @@
     const idTd = document.createElement('td'); idTd.textContent = item.id || '';
     const menuTd = document.createElement('td');
     const nameTd = document.createElement('td'); nameTd.textContent = item.itemName || '';
+    const pathTd = document.createElement('td');
     const actionsTd = document.createElement('td');
 
     const editBtn = document.createElement('button');
@@ -117,9 +118,29 @@
     const select = buildMenuSelect(item.menuName, item);
     menuTd.appendChild(select);
 
+    // create input for pathName (editable inline)
+    const pathInput = document.createElement('input');
+    pathInput.type = 'text';
+    pathInput.className = 'form-control form-control-sm path-input';
+    pathInput.value = item.pathName || '';
+    if (item && item.id) pathInput.setAttribute('data-item-id', item.id);
+    // save on blur or Enter
+    pathInput.addEventListener('blur', function (ev) {
+      const newVal = ev.target.value || null;
+      onChangePathForItem(item, newVal, ev.target);
+    });
+    pathInput.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        ev.target.blur();
+      }
+    });
+    pathTd.appendChild(pathInput);
+
     tr.appendChild(idTd);
     tr.appendChild(menuTd);
     tr.appendChild(nameTd);
+    tr.appendChild(pathTd);
     tr.appendChild(actionsTd);
     return tr;
   }
@@ -179,6 +200,32 @@
       alert('メニューの更新に失敗しました');
       // revert selection
       try { selectElem.value = prev || ''; } catch (_) { }
+    }
+  }
+
+  // 内容のパス名変更をサーバへ送信するハンドラ
+  async function onChangePathForItem(item, newPathName, inputElem) {
+    if (!item || item.id == null) return;
+    const prev = item.pathName || null;
+    // normalize empty string to null
+    const normalized = (newPathName == null || newPathName === '') ? null : String(newPathName).trim();
+    if (normalized === prev) return; // nothing to do
+
+    const payload = Object.assign({}, item, { pathName: normalized });
+    try {
+      const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp.ok) {
+        alert('パス名の更新に失敗しました');
+        try { inputElem.value = prev || ''; } catch (_) {}
+        return;
+      }
+      // update local item and UI
+      item.pathName = normalized;
+      inputElem.classList.add('is-valid');
+      setTimeout(() => inputElem.classList.remove('is-valid'), 800);
+    } catch (e) {
+      alert('パス名の更新に失敗しました');
+      try { inputElem.value = prev || ''; } catch (_) { }
     }
   }
 
@@ -375,7 +422,9 @@
     const idx = parseInt(sel) - 1;
     if (isNaN(idx) || idx < 0 || idx >= menus.length) { alert('不正な選択'); return; }
     const menuName = menus[idx].name;
-    const payload = { itemName: name, menuName };
+    // optional pathName input
+    const pathName = window.prompt('この画面のパス名を入力してください（例: passwordGeneration）。空欄でも可', '');
+    const payload = { itemName: name, menuName, pathName: (pathName ? pathName.trim() : null) };
     try {
       const resp = await fetch(apiContent, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!resp.ok) {

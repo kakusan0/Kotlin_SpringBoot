@@ -35,8 +35,8 @@
     tabindex="-1">
     <div class="offcanvas-body p-0">
       <ul class="nav flex-column">
-        <!-- サーバー側で渡された menus を表示 -->
-        <li th:each="m : ${menus}" class="nav-item">
+        <!-- サーバー側で渡された visibleMenus を表示（Homeでは画面に割り当てられているメニューのみ） -->
+        <li th:each="m : ${visibleMenus}" class="nav-item">
           <a class="nav-link text-dark content-item" href="#" th:attr="data-screen-name=${m.name}">
             <i class="bi bi-folder"></i>
             <span th:text="${m.name}">Menu</span>
@@ -56,19 +56,14 @@
   <!-- メインコンテンツ（currentScreen に応じて切替） -->
   <main class="main-content p-4 is-collapsed">
     <div class="container-fluid">
-      <div th:switch="${currentScreen}">
-        <div th:case="'ホーム'">
-          <div th:replace="~{fragments/home :: content}"></div>
-        </div>
-        <div th:case="'パスワード生成'">
-          <div th:replace="~{fragments/passwordGeneration :: content}"></div>
-        </div>
-        <div th:case="'設定'">
-          <div th:replace="~{fragments/settings :: content}"></div>
-        </div>
-        <div th:case="*">
-          <p>メニューを選択してください。</p>
-        </div>
+      <div th:if="${errorMessage != null and errorMessage != ''}" class="mb-3">
+        <div class="alert alert-danger" th:text="${errorMessage}"></div>
+      </div>
+      <div th:if="${currentScreenPath != null and currentScreenPath != ''}">
+        <div th:replace="~{${'fragments/' + currentScreenPath} :: content}"></div>
+      </div>
+      <div th:unless="${errorMessage != null and errorMessage != ''}">
+        <p>メニュー選択ボタンから選択してください。</p>
       </div>
     </div>
   </main>

@@ -227,17 +227,22 @@
     if (itemSelectButton) {
       itemSelectButton.addEventListener('click', async function () {
         // fetch screens and populate modal, filter by selectedSidebarMenu if set
-        const selectedSidebarMenu = itemSelectButton.innerText;
+        // Prefer the sidebar-selection variable if it's been set; otherwise use the header label
+        const headerLabelEl = document.getElementById('selectedItemName');
+        const headerLabel = headerLabelEl ? (headerLabelEl.textContent || '').trim() : '';
+        // ignore placeholder texts
+        const headerName = (headerLabel && headerLabel !== '画面を選択' && headerLabel !== 'メニューを選択') ? headerLabel : '';
+        const menuToUse = selectedSidebarMenu || headerName || '';
         try {
           let resp;
-          if (selectedSidebarMenu) {
-            resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(selectedSidebarMenu), { credentials: 'same-origin' }, 10000);
+          if (menuToUse) {
+            resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(menuToUse), { credentials: 'same-origin' }, 10000);
           } else {
             resp = await fetchWithTimeout('/api/content/all', { credentials: 'same-origin' }, 10000);
           }
           if (!resp || !resp.ok) return;
           const screens = await resp.json();
-          populateContentModal(selectedSidebarMenu, screens);
+          populateContentModal(menuToUse, screens);
         } catch (e) { /* ignore */ }
       });
     }
