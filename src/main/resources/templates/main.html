@@ -62,7 +62,8 @@
       <div th:if="${currentScreenPath != null and currentScreenPath != ''}">
         <div th:replace="~{${'fragments/' + currentScreenPath} :: content}"></div>
       </div>
-      <div th:unless="${errorMessage != null and errorMessage != ''}">
+      <!-- フォールバック表示: エラーが無く、かつコンテンツが指定されていないときだけ表示 -->
+      <div th:if="${(errorMessage == null or errorMessage == '') and (currentScreenPath == null or currentScreenPath == '')}">
         <p>メニュー選択ボタンから選択してください。</p>
       </div>
     </div>

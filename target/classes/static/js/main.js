@@ -213,6 +213,8 @@
           a.className = 'list-group-item list-group-item-action text-start content-item';
           a.href = '#';
           a.setAttribute('data-screen-name', s.itemName);
+          // Preserve the menuName on each item so the click handler can update the header to show menuName
+          if (menuName) a.setAttribute('data-menu-name', menuName);
           a.textContent = s.itemName || '(無題)';
           listGroup.appendChild(a);
         });
@@ -227,17 +229,22 @@
     if (itemSelectButton) {
       itemSelectButton.addEventListener('click', async function () {
         // fetch screens and populate modal, filter by selectedSidebarMenu if set
-        const selectedSidebarMenu = itemSelectButton.innerText;
+        // Prefer the sidebar-selection variable if it's been set; otherwise use the header label
+        const headerLabelEl = document.getElementById('selectedItemName');
+        const headerLabel = headerLabelEl ? (headerLabelEl.textContent || '').trim() : '';
+        // ignore placeholder texts
+        const headerName = (headerLabel && headerLabel !== '画面を選択' && headerLabel !== 'メニューを選択') ? headerLabel : '';
+        const menuToUse = selectedSidebarMenu || headerName || '';
         try {
           let resp;
-          if (selectedSidebarMenu) {
-            resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(selectedSidebarMenu), { credentials: 'same-origin' }, 10000);
+          if (menuToUse) {
+            resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(menuToUse), { credentials: 'same-origin' }, 10000);
           } else {
             resp = await fetchWithTimeout('/api/content/all', { credentials: 'same-origin' }, 10000);
           }
           if (!resp || !resp.ok) return;
           const screens = await resp.json();
-          populateContentModal(selectedSidebarMenu, screens);
+          populateContentModal(menuToUse, screens);
         } catch (e) { /* ignore */ }
       });
     }
@@ -313,6 +320,7 @@
     on('.content-item', 'click', function (e) {
       e.preventDefault();
       const screenName = this.dataset.screenName;
+      const clickedMenuName = (this.dataset && this.dataset.menuName) ? this.dataset.menuName : (selectedSidebarMenu || '');
       if (!screenName) return;
       const url = new URL(window.location.href);
       url.pathname = '/content';
@@ -336,7 +344,10 @@
               const oldMain = document.querySelector('main.main-content');
               if (oldMain) oldMain.replaceWith(newMain);
               const selectedEl = document.getElementById('selectedItemName');
-              if (selectedEl) selectedEl.textContent = newSelectedName;
+              if (selectedEl) {
+                // Prefer the clicked menuName (if available) to show menu name in the header; otherwise use server-provided value
+                selectedEl.textContent = clickedMenuName || newSelectedName;
+              }
               const modalEl = document.getElementById('scrollableModal');
               if (modalEl && window.bootstrap && bootstrap.Modal) {
                 const modalInst = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
