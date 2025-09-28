@@ -135,8 +135,15 @@
         const screens = await getContentScreens('');
         if (!Array.isArray(screens)) return;
 
+        // exclude screens without a valid pathName (empty/null/"null")
+        const hasValidPath = (s) => {
+          const pn = (s && s.pathName != null) ? String(s.pathName).trim() : '';
+          return pn && pn.toLowerCase() !== 'null';
+        };
+        const validScreens = screens.filter(hasValidPath);
+
         // derive unique menu names from screens' menuName
-        const menuNames = screens.map(s => s.menuName).filter(Boolean);
+        const menuNames = validScreens.map(s => s.menuName).filter(Boolean);
         const uniqueMenuNames = Array.from(new Set(menuNames));
 
         const ul = document.querySelector('#sidebarMenu .offcanvas-body ul.nav');
@@ -180,12 +187,14 @@
               (async function () {
                 try {
                   const filteredScreens = await getContentScreens(label);
-                  if (Array.isArray(filteredScreens) && filteredScreens.length) {
-                    populateContentModal(selectedSidebarMenu, filteredScreens);
+                  // apply same pathName filter on modal items
+                  const filteredValid = Array.isArray(filteredScreens) ? filteredScreens.filter(hasValidPath) : [];
+                  if (filteredValid.length) {
+                    populateContentModal(selectedSidebarMenu, filteredValid);
                   } else {
-                    populateContentModal(selectedSidebarMenu, screens);
+                    populateContentModal(selectedSidebarMenu, validScreens);
                   }
-                } catch (e) { populateContentModal(selectedSidebarMenu, screens); }
+                } catch (e) { populateContentModal(selectedSidebarMenu, validScreens); }
                })();
                const inst = bootstrap.Modal.getOrCreateInstance(modalEl);
                inst.show();
@@ -194,12 +203,13 @@
               (async function () {
                 try {
                   const filteredScreens = await getContentScreens(label);
-                  if (Array.isArray(filteredScreens) && filteredScreens.length) {
-                    populateContentModal(selectedSidebarMenu, filteredScreens);
+                  const filteredValid = Array.isArray(filteredScreens) ? filteredScreens.filter(hasValidPath) : [];
+                  if (filteredValid.length) {
+                    populateContentModal(selectedSidebarMenu, filteredValid);
                     return;
                   }
                 } catch (e) { /* ignore */ }
-                populateContentModal(selectedSidebarMenu, screens);
+                populateContentModal(selectedSidebarMenu, validScreens);
                })();
              }
            });
@@ -219,7 +229,7 @@
       try {
         const modal = document.getElementById('scrollableModal');
         if (!modal) return;
-        // Update modal header's small label to show current menu name
+        // Update the small label in the modal header to show which sidebar/menu is being displayed
         try {
           const sidebarLabelEl = modal.querySelector('#modalSidebarName');
           if (sidebarLabelEl) sidebarLabelEl.textContent = menuName ? String(menuName) : '（全て）';
@@ -240,6 +250,11 @@
         if (menuName) {
           items = items.filter(s => s.menuName === menuName);
         }
+        // exclude items without valid pathName
+        items = items.filter(s => {
+          const pn = (s && s.pathName != null) ? String(s.pathName).trim() : '';
+          return pn && pn.toLowerCase() !== 'null';
+        });
         if (!items.length) {
           const el = document.createElement('div');
           el.className = 'list-group-item text-muted';

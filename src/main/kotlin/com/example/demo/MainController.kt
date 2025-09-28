@@ -23,10 +23,17 @@ class MainController(
         model.addAttribute("screens", screens)
         val menus = menuService.getAll()
         model.addAttribute("menus", menus)
-        // visibleMenus: Home 画面などで表示するメニューは、画面管理で割り当てられている menuName のみ
-        val assignedMenuNames = screens.mapNotNull { it.menuName }.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        // visibleMenus: Home 画面のサイドバーには「pathName が有効」な画面に割り当てられている menuName のみを対象にする
+        val assignedMenuNames = screens
+            .filter { s ->
+                val pn = s.pathName?.trim()
+                !pn.isNullOrEmpty() && !pn.equals("null", ignoreCase = true)
+            }
+            .mapNotNull { it.menuName }
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
         val visibleMenus = if (assignedMenuNames.isEmpty()) {
-            // none assigned -> empty list (do not show menus on Home)
             emptyList<com.example.demo.model.Menu>()
         } else {
             menus.filter { it.name != null && assignedMenuNames.contains(it.name!!.trim()) }

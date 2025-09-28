@@ -10,6 +10,7 @@
   // API エンドポイントの定義
   const apiContent = '/api/content';
   const apiMenus = '/api/menus';
+  const apiPaths = '/api/paths';
 
   // DOM ヘルパ関数
   function qs(sel) { return document.querySelector(sel); }
@@ -17,6 +18,8 @@
 
   // キャッシュ: メニュー一覧を保持して選択肢を高速に構築
   let menusCache = [];
+  // キャッシュ: パス一覧（有効のみ）を保持
+  let pathsCache = [];
 
   // BroadcastChannel を使って同一ブラウザ内のタブ間で更新を通知する
   const menusBroadcast = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('menus-channel') : null;
@@ -44,6 +47,34 @@
 
     tr.appendChild(idTd);
     tr.appendChild(nameTd);
+    tr.appendChild(actionsTd);
+    return tr;
+  }
+
+  // パス管理用テーブル行を作成するユーティリティ
+  function renderPathRow(path) {
+    const tr = document.createElement('tr');
+    const idTd = document.createElement('td'); idTd.textContent = path.id || '';
+    const nameTd = document.createElement('td'); nameTd.textContent = path.name || '';
+    const statusTd = document.createElement('td'); statusTd.textContent = (path.deleted ? '削除済' : '有効');
+    const actionsTd = document.createElement('td');
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-sm btn-outline-primary me-2';
+    editBtn.textContent = '編集';
+    editBtn.addEventListener('click', () => onEditPath(path));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-sm ' + (path.deleted ? 'btn-outline-success' : 'btn-outline-danger');
+    delBtn.textContent = path.deleted ? '復元' : '削除';
+    delBtn.addEventListener('click', () => path.deleted ? onRestorePath(path) : onDeletePath(path));
+
+    actionsTd.appendChild(editBtn);
+    actionsTd.appendChild(delBtn);
+
+    tr.appendChild(idTd);
+    tr.appendChild(nameTd);
+    tr.appendChild(statusTd);
     tr.appendChild(actionsTd);
     return tr;
   }
@@ -92,6 +123,47 @@
     return select;
   }
 
+  // パス名用のセレクトを構築
+  function buildPathSelect(currentValue, item) {
+    const select = document.createElement('select');
+    select.className = 'form-select form-select-sm path-select';
+    if (item && item.id) select.setAttribute('data-item-id', item.id);
+
+    const hasCurrent = pathsCache.some(p => p.name === currentValue);
+
+    // 空（未選択）
+    const emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.textContent = '未選択';
+    select.appendChild(emptyOpt);
+
+    // 有効なパス
+    pathsCache.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+
+    // 現在値が（削除等で）有効リストにない場合は表示用に追加
+    if (currentValue && !hasCurrent) {
+      const opt = document.createElement('option');
+      opt.value = currentValue;
+      opt.textContent = currentValue + ' (削除済み)';
+      select.insertBefore(opt, select.children[1] || null);
+    }
+
+    select.value = currentValue || '';
+
+    // 変更ハンドラ
+    select.addEventListener('change', async function (ev) {
+      const newVal = ev.target.value || null;
+      await onChangePathForItem(item, newVal, ev.target);
+    });
+
+    return select;
+  }
+
   // 画面項目の行レンダリング
   function renderScreenRow(item) {
     const tr = document.createElement('tr');
@@ -118,24 +190,9 @@
     const select = buildMenuSelect(item.menuName, item);
     menuTd.appendChild(select);
 
-    // create input for pathName (editable inline)
-    const pathInput = document.createElement('input');
-    pathInput.type = 'text';
-    pathInput.className = 'form-control form-control-sm path-input';
-    pathInput.value = item.pathName || '';
-    if (item && item.id) pathInput.setAttribute('data-item-id', item.id);
-    // save on blur or Enter
-    pathInput.addEventListener('blur', function (ev) {
-      const newVal = ev.target.value || null;
-      onChangePathForItem(item, newVal, ev.target);
-    });
-    pathInput.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter') {
-        ev.preventDefault();
-        ev.target.blur();
-      }
-    });
-    pathTd.appendChild(pathInput);
+    // create select for pathName sourced from path master
+    const pathSelect = buildPathSelect(item.pathName, item);
+    pathTd.appendChild(pathSelect);
 
     tr.appendChild(idTd);
     tr.appendChild(menuTd);
@@ -166,6 +223,32 @@
         sel.appendChild(opt);
       });
       if (currentVal && !menusCache.some(m => m.name === currentVal)) {
+        const opt = document.createElement('option');
+        opt.value = currentVal;
+        opt.textContent = currentVal + ' (削除済み)';
+        sel.insertBefore(opt, sel.children[1] || null);
+      }
+      sel.value = currentVal;
+    });
+  }
+
+  // パスキャッシュが更新された際に、既存のパスセレクトを再構築
+  function refreshPathSelects() {
+    const selects = qsa('.path-select');
+    selects.forEach(sel => {
+      const currentVal = sel.value || '';
+      while (sel.firstChild) sel.removeChild(sel.firstChild);
+      const emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = '未選択';
+      sel.appendChild(emptyOpt);
+      pathsCache.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        sel.appendChild(opt);
+      });
+      if (currentVal && !pathsCache.some(p => p.name === currentVal)) {
         const opt = document.createElement('option');
         opt.value = currentVal;
         opt.textContent = currentVal + ' (削除済み)';
@@ -216,20 +299,64 @@
       const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!resp.ok) {
         alert('パス名の更新に失敗しました');
-        try { inputElem.value = prev || ''; } catch (_) {}
+        try { if (inputElem) inputElem.value = prev || ''; if (inputElem) inputElem.classList.add('is-invalid'); } catch (_) {}
         return;
       }
       // update local item and UI
       item.pathName = normalized;
-      inputElem.classList.add('is-valid');
-      setTimeout(() => inputElem.classList.remove('is-valid'), 800);
+      if (inputElem) {
+        inputElem.classList.add('is-valid');
+        setTimeout(() => inputElem.classList.remove('is-valid'), 800);
+      }
     } catch (e) {
       alert('パス名の更新に失敗しました');
-      try { inputElem.value = prev || ''; } catch (_) { }
+      try { if (inputElem) inputElem.value = prev || ''; } catch (_) { }
     }
   }
 
   // --- データロード ---
+  // パス一覧（有効のみ）を読み込みテーブルを更新
+  async function loadPaths() {
+    const tbody = qs('#pathTable tbody');
+    // パス管理タブ用テーブルがないページではスキップ
+    const isPathsPage = !!tbody;
+    if (isPathsPage) tbody.innerHTML = '<tr><td colspan="4">読み込み中...</td></tr>';
+    try {
+      // 有効のみ（プルダウン用）
+      const resp = await fetch(apiPaths + '/all');
+      if (!resp.ok) {
+        if (isPathsPage) tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
+        pathsCache = [];
+        refreshPathSelects();
+        return [];
+      }
+      pathsCache = await resp.json() || [];
+      refreshPathSelects();
+
+      if (!isPathsPage) return pathsCache;
+
+      // パス管理タブには削除含む一覧を表示
+      const resp2 = await fetch(apiPaths + '/allIncludingDeleted');
+      if (!resp2.ok) {
+        tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
+        return pathsCache;
+      }
+      const all = await resp2.json();
+      tbody.innerHTML = '';
+      if (!all || !all.length) {
+        tbody.innerHTML = '<tr><td colspan="4">パスがありません</td></tr>';
+        return pathsCache;
+      }
+      all.forEach(p => tbody.appendChild(renderPathRow(p)));
+      return pathsCache;
+    } catch (e) {
+      if (isPathsPage) tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
+      pathsCache = [];
+      refreshPathSelects();
+      return [];
+    }
+  }
+
   // メニュー一覧を読み込みテーブルを更新
   async function loadMenus() {
     const tbody = qs('#menuTable tbody');
@@ -320,27 +447,31 @@
   async function loadScreens() {
     const tbody = qs('#manageTable tbody');
     if (!tbody) return [];
-    tbody.innerHTML = '<tr><td colspan="4">読み込み中...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5">読み込み中...</td></tr>';
     try {
       // ensure menusCache is populated so selects can be built properly
       if (!menusCache || !menusCache.length) {
         await loadMenus();
       }
+      // ensure pathsCache is populated so path selects can be built properly
+      if (!pathsCache || !pathsCache.length) {
+        await loadPaths();
+      }
       const resp = await fetch(apiContent + '/all');
       if (!resp.ok) {
-        tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">読み込みに失敗しました</td></tr>';
         return [];
       }
       const items = await resp.json();
       tbody.innerHTML = '';
       if (!items || !items.length) {
-        tbody.innerHTML = '<tr><td colspan="4">項目がありません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">項目がありません</td></tr>';
         return [];
       }
       items.forEach(it => tbody.appendChild(renderScreenRow(it)));
       return items;
     } catch (e) {
-      tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5">読み込みに失敗しました</td></tr>';
       return [];
     }
   }
@@ -402,6 +533,50 @@
     } catch (e) {
       alert('削除に失敗しました');
     }
+  }
+
+  // --- パス操作 ---
+  async function onAddPath() {
+    const name = window.prompt('追加するパス名を入力してください（例: passwordGeneration）', '');
+    if (!name) return;
+    const payload = { name };
+    try {
+      const resp = await fetch(apiPaths, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp.ok) { alert('パス作成に失敗しました'); return; }
+      await loadPaths();
+      await loadScreens();
+    } catch (_) { alert('パス作成に失敗しました'); }
+  }
+
+  async function onEditPath(path) {
+    const name = window.prompt('パス名を編集してください', path.name || '');
+    if (name == null) return;
+    const payload = Object.assign({}, path, { name });
+    try {
+      const resp = await fetch(apiPaths, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp.ok) { alert('更新に失敗しました'); return; }
+      await loadPaths();
+      await loadScreens();
+    } catch (_) { alert('更新に失敗しました'); }
+  }
+
+  async function onDeletePath(path) {
+    if (!window.confirm('このパスを論理削除します。よろしいですか？')) return;
+    try {
+      const resp = await fetch(apiPaths + '/' + path.id, { method: 'DELETE' });
+      if (!resp.ok) { alert('削除に失敗しました'); return; }
+      await loadPaths();
+      await loadScreens();
+    } catch (_) { alert('削除に失敗しました'); }
+  }
+
+  async function onRestorePath(path) {
+    try {
+      const resp = await fetch(apiPaths + '/' + path.id + '/restore', { method: 'POST' });
+      if (!resp.ok) { alert('復元に失敗しました'); return; }
+      await loadPaths();
+      await loadScreens();
+    } catch (_) { alert('復元に失敗しました'); }
   }
 
   // --- 画面項目操作 ---
@@ -468,14 +643,35 @@
     }
   }
 
-  // 初期化: DOMContentLoaded 時にイベントリスナを登録しデータをロード
-  document.addEventListener('DOMContentLoaded', function () {
-    const addMenuBtn = qs('#addMenuBtn');
-    if (addMenuBtn) addMenuBtn.addEventListener('click', onAddMenu);
-    const addScreenBtn = qs('#addScreenBtn');
-    if (addScreenBtn) addScreenBtn.addEventListener('click', onAddScreen);
-    // 初回ロードでメニュー→画面の順で読み込み
-    loadMenus().then(() => loadScreens());
-  });
+  // 初期化: イベントリスナ登録とデータロード
+  function initManagePage() {
+    try {
+      const addMenuBtn = qs('#addMenuBtn');
+      if (addMenuBtn && !addMenuBtn.__bound) {
+        addMenuBtn.addEventListener('click', onAddMenu);
+        addMenuBtn.__bound = true;
+      }
+      const addScreenBtn = qs('#addScreenBtn');
+      if (addScreenBtn && !addScreenBtn.__bound) {
+        addScreenBtn.addEventListener('click', onAddScreen);
+        addScreenBtn.__bound = true;
+      }
+      const addPathBtn = qs('#addPathBtn');
+      if (addPathBtn && !addPathBtn.__bound) {
+        addPathBtn.addEventListener('click', onAddPath);
+        addPathBtn.__bound = true;
+      }
+      // 初回ロード順序
+      loadMenus().then(() => loadPaths()).then(() => loadScreens());
+    } catch (_) { /* ignore */ }
+  }
+
+  // DOMContentLoaded で初期化
+  document.addEventListener('DOMContentLoaded', initManagePage);
+  // 既に読み込み済みなら即時初期化（フォールバック）
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    // 少し遅延してDOM構築完了を待つ
+    setTimeout(initManagePage, 0);
+  }
 
 })();
