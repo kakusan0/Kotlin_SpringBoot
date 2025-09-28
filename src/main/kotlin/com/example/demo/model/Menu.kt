@@ -2,10 +2,10 @@ package com.example.demo.model
 
 import java.time.LocalDateTime
 
-data class ContentItem(
+data class Menu(
     var id: Long? = null,
-    var itemName: String? = null,
-    var menuName: String? = null,
+    var name: String? = null,
     var createdAt: LocalDateTime? = null,
     var updatedAt: LocalDateTime? = null
 )
+

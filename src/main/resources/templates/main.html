@@ -35,22 +35,18 @@
     tabindex="-1">
     <div class="offcanvas-body p-0">
       <ul class="nav flex-column">
-        <li class="nav-item">
-          <a class="nav-link text-dark" href="/">
-            <i class="bi bi-house-door-fill"></i>
-            <span>Home</span>
+        <!-- サーバー側で渡された menus を表示 -->
+        <li th:each="m : ${menus}" class="nav-item">
+          <a class="nav-link text-dark content-item" href="#" th:attr="data-screen-name=${m.name}">
+            <i class="bi bi-folder"></i>
+            <span th:text="${m.name}">Menu</span>
           </a>
         </li>
+
         <li class="nav-item">
-          <a class="nav-link text-dark" href="#">
-            <i class="bi bi-speedometer2"></i>
-            <span>Dashboard</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link text-dark" href="#">
-            <i class="bi bi-gear-fill"></i>
-            <span>Settings</span>
+          <a class="nav-link text-dark" href="/manage">
+            <i class="bi bi-tools"></i>
+            <span>管理</span>
           </a>
         </li>
       </ul>
