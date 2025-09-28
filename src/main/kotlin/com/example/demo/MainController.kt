@@ -16,12 +16,17 @@ class MainController(
     private val contentItemService: ContentItemService,
     private val menuService: MenuService
 ) {
-    @GetMapping(ApplicationConstants.ROOT)
-    fun root(model: Model): String {
+    // 共通のモデル属性をセットするヘルパ
+    private fun addCommonAttributes(model: Model) {
         val screens = contentItemService.getAll()
         model.addAttribute("screens", screens)
         val menus = menuService.getAll()
         model.addAttribute("menus", menus)
+    }
+
+    @GetMapping(ApplicationConstants.ROOT)
+    fun root(model: Model): String {
+        addCommonAttributes(model)
         return "main"
     }
 
@@ -31,13 +36,16 @@ class MainController(
         model: Model
     ): String {
         model.addAttribute("errorMessage", null)
-        val screens = contentItemService.getAll()
-        model.addAttribute("screens", screens)
-        val menus = menuService.getAll()
-        model.addAttribute("menus", menus)
+        addCommonAttributes(model)
+
+        // currentScreen は未選択なら空文字、それ以外はクエリ値をそのまま使う
         val current = if (screenName == "未選択") "" else screenName
         model.addAttribute("currentScreen", current)
-        model.addAttribute("selectedScreenName", if (screenName == "未選択") "メニューを選択" else menus[0].name)
+
+        // selectedScreenName は未選択のときはプレースホルダ。screenName が与えられていればそれを優先して表示。
+        val selected = if (screenName == "未選択") "メニューを選択" else screenName
+        model.addAttribute("selectedScreenName", selected)
+
         return "main"
     }
 }
