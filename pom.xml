@@ -8,11 +8,11 @@
         <version>3.5.6</version>
         <relativePath/>
     </parent>
-    <groupId>com.example</groupId>
-    <artifactId>demo</artifactId>
+    <groupId>com.jp.demo</groupId>
+    <artifactId>app</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>demo</name>
+    <name>app</name>
     <description>Demo project for Spring Boot with Kotlin and MyBatis</description>
 
     <properties>
