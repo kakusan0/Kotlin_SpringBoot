@@ -19,6 +19,7 @@
   // キャッシュ: メニュー一覧を保持して選択肢を高速に構築
   let menusCache = [];
   // キャッシュ: パス一覧（有効のみ）を保持
+  // 削除（無効）含む全件を保持し、UIで disabled 表示を行う
   let pathsCache = [];
 
   // BroadcastChannel を使って同一ブラウザ内のタブ間で更新を通知する
@@ -56,21 +57,28 @@
     const tr = document.createElement('tr');
     const idTd = document.createElement('td'); idTd.textContent = path.id || '';
     const nameTd = document.createElement('td'); nameTd.textContent = path.name || '';
-    const statusTd = document.createElement('td'); statusTd.textContent = (path.deleted ? '削除済' : '有効');
+    const statusTd = document.createElement('td');
     const actionsTd = document.createElement('td');
 
+    // 状態プルダウン（有効/無効）
+    const statusSelect = document.createElement('select');
+    statusSelect.className = 'form-select form-select-sm';
+    const optEnabled = document.createElement('option'); optEnabled.value = 'enabled'; optEnabled.textContent = '有効';
+    const optDisabled = document.createElement('option'); optDisabled.value = 'disabled'; optDisabled.textContent = '無効';
+    statusSelect.appendChild(optEnabled);
+    statusSelect.appendChild(optDisabled);
+    statusSelect.value = (path.deleted ? 'disabled' : 'enabled');
+    statusSelect.addEventListener('change', async () => {
+      const willDisable = statusSelect.value === 'disabled';
+      await onChangePathStatus(path, willDisable, statusSelect);
+    });
+    statusTd.appendChild(statusSelect);
+
     const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-primary me-2';
-    editBtn.textContent = '編集';
+    editBtn.className = 'btn btn-sm btn-outline-primary';
+    editBtn.textContent = '名称編集';
     editBtn.addEventListener('click', () => onEditPath(path));
-
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-sm ' + (path.deleted ? 'btn-outline-success' : 'btn-outline-danger');
-    delBtn.textContent = path.deleted ? '復元' : '削除';
-    delBtn.addEventListener('click', () => path.deleted ? onRestorePath(path) : onDeletePath(path));
-
     actionsTd.appendChild(editBtn);
-    actionsTd.appendChild(delBtn);
 
     tr.appendChild(idTd);
     tr.appendChild(nameTd);
@@ -137,11 +145,12 @@
     emptyOpt.textContent = '未選択';
     select.appendChild(emptyOpt);
 
-    // 有効なパス
+    // 有効/無効を含む全パス（無効は選択不可）
     pathsCache.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.name;
-      opt.textContent = p.name;
+      opt.textContent = p.name + (p.deleted ? '（無効）' : '');
+      if (p.deleted) opt.disabled = true;
       select.appendChild(opt);
     });
 
@@ -149,7 +158,8 @@
     if (currentValue && !hasCurrent) {
       const opt = document.createElement('option');
       opt.value = currentValue;
-      opt.textContent = currentValue + ' (削除済み)';
+      opt.textContent = currentValue + '（無効）';
+      opt.disabled = true;
       select.insertBefore(opt, select.children[1] || null);
     }
 
@@ -164,12 +174,49 @@
     return select;
   }
 
+  // 画面名用の入力欄を構築（インライン編集）
+  function buildItemNameInput(currentValue, item) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm name-input';
+    if (item && item.id) input.setAttribute('data-item-id', item.id);
+    input.value = currentValue || '';
+
+    let prev = input.value;
+
+    const commit = async () => {
+      const newVal = (input.value != null) ? String(input.value).trim() : '';
+      if (newVal === prev) return; // no change
+      await onChangeItemName(item, newVal, input);
+      // on success, prev is updated inside handler
+    };
+
+    input.addEventListener('change', commit);
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        input.blur(); // triggers commit
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        try { input.value = prev || ''; } catch (_) {}
+        input.blur();
+      }
+    });
+
+    // 外部から元値を更新できるようにヘルパ保管
+    input.__getPrev = () => prev;
+    input.__setPrev = (v) => { prev = v; };
+
+    return input;
+  }
+
   // 画面項目の行レンダリング
   function renderScreenRow(item) {
     const tr = document.createElement('tr');
     const idTd = document.createElement('td'); idTd.textContent = item.id || '';
     const menuTd = document.createElement('td');
-    const nameTd = document.createElement('td'); nameTd.textContent = item.itemName || '';
+    const nameTd = document.createElement('td');
     const pathTd = document.createElement('td');
     const actionsTd = document.createElement('td');
 
@@ -189,6 +236,10 @@
     // create select for menu name
     const select = buildMenuSelect(item.menuName, item);
     menuTd.appendChild(select);
+
+    // create input for item name (inline editable)
+    const nameInput = buildItemNameInput(item.itemName, item);
+    nameTd.appendChild(nameInput);
 
     // create select for pathName sourced from path master
     const pathSelect = buildPathSelect(item.pathName, item);
@@ -245,13 +296,15 @@
       pathsCache.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.name;
-        opt.textContent = p.name;
+        opt.textContent = p.name + (p.deleted ? '（無効）' : '');
+        if (p.deleted) opt.disabled = true;
         sel.appendChild(opt);
       });
       if (currentVal && !pathsCache.some(p => p.name === currentVal)) {
         const opt = document.createElement('option');
         opt.value = currentVal;
-        opt.textContent = currentVal + ' (削除済み)';
+        opt.textContent = currentVal + '（無効）';
+        opt.disabled = true;
         sel.insertBefore(opt, sel.children[1] || null);
       }
       sel.value = currentVal;
@@ -314,6 +367,63 @@
     }
   }
 
+  // 画面名変更をサーバへ送信するハンドラ（インライン）
+  async function onChangeItemName(item, newName, inputElem) {
+    if (!item || item.id == null) return;
+    const prev = item.itemName || '';
+    // newName は空文字も許容（サーバ側に任せる）。正規化: trim のみ
+    const normalized = (newName == null) ? '' : String(newName).trim();
+    if (normalized === prev) return;
+
+    const payload = Object.assign({}, item, { itemName: normalized });
+    try {
+      const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp.ok) {
+        alert('画面名の更新に失敗しました');
+        try {
+          if (inputElem) {
+            inputElem.value = prev || '';
+            inputElem.classList.add('is-invalid');
+            setTimeout(() => inputElem.classList.remove('is-invalid'), 1000);
+          }
+        } catch (_) {}
+        return;
+      }
+      // update local item and UI
+      item.itemName = normalized;
+      if (inputElem) {
+        if (typeof inputElem.__setPrev === 'function') inputElem.__setPrev(normalized);
+        inputElem.classList.add('is-valid');
+        setTimeout(() => inputElem.classList.remove('is-valid'), 800);
+      }
+    } catch (e) {
+      alert('画面名の更新に失敗しました');
+      try { if (inputElem) inputElem.value = prev || ''; } catch (_) { }
+    }
+  }
+
+  // パスの状態変更（有効/無効）をPUT更新
+  async function onChangePathStatus(path, willDisable, selectElem) {
+    const prev = !!path.deleted;
+    if (prev === willDisable) return;
+    const payload = Object.assign({}, path, { deleted: willDisable });
+    try {
+      const resp = await fetch(apiPaths, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp.ok) {
+        alert('状態の更新に失敗しました');
+        try { selectElem.value = prev ? 'disabled' : 'enabled'; } catch(_){}
+        return;
+      }
+      path.deleted = willDisable;
+      // パスの有効/無効に応じて画面管理のプルダウンを更新
+      await loadPaths();
+      await loadScreens();
+    } catch (e) {
+      alert('状態の更新に失敗しました');
+      try { selectElem.value = prev ? 'disabled' : 'enabled'; } catch(_){}
+    }
+  }
+
   // --- データロード ---
   // パス一覧（有効のみ）を読み込みテーブルを更新
   async function loadPaths() {
@@ -322,26 +432,17 @@
     const isPathsPage = !!tbody;
     if (isPathsPage) tbody.innerHTML = '<tr><td colspan="4">読み込み中...</td></tr>';
     try {
-      // 有効のみ（プルダウン用）
-      const resp = await fetch(apiPaths + '/all');
+      // 削除（無効）含む一覧を1回で取得し、キャッシュ・UI双方で利用
+      const resp = await fetch(apiPaths + '/allIncludingDeleted');
       if (!resp.ok) {
         if (isPathsPage) tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
         pathsCache = [];
         refreshPathSelects();
         return [];
       }
-      pathsCache = await resp.json() || [];
+      const all = await resp.json();
+      pathsCache = all || [];
       refreshPathSelects();
-
-      if (!isPathsPage) return pathsCache;
-
-      // パス管理タブには削除含む一覧を表示
-      const resp2 = await fetch(apiPaths + '/allIncludingDeleted');
-      if (!resp2.ok) {
-        tbody.innerHTML = '<tr><td colspan="4">読み込みに失敗しました</td></tr>';
-        return pathsCache;
-      }
-      const all = await resp2.json();
       tbody.innerHTML = '';
       if (!all || !all.length) {
         tbody.innerHTML = '<tr><td colspan="4">パスがありません</td></tr>';

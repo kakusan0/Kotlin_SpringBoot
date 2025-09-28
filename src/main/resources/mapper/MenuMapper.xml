@@ -5,8 +5,8 @@
   <resultMap id="BaseResultMap" type="com.example.demo.model.Menu">
     <id column="id" jdbcType="BIGINT" property="id" />
     <result column="name" jdbcType="VARCHAR" property="name" />
-    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
-    <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" />
+    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" javaType="java.time.OffsetDateTime" />
+    <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" javaType="java.time.OffsetDateTime" />
   </resultMap>
 
   <sql id="Base_Column_List">id, name, created_at, updated_at</sql>
@@ -25,14 +25,18 @@
 
   <insert id="insert" parameterType="com.example.demo.model.Menu" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO menus (name, created_at, updated_at)
-    VALUES (#{name,jdbcType=VARCHAR}, #{createdAt,jdbcType=TIMESTAMP}, #{updatedAt,jdbcType=TIMESTAMP})
+    VALUES (
+      #{name,jdbcType=VARCHAR},
+      #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
+      #{updatedAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}
+    )
   </insert>
 
   <update id="updateByPrimaryKey" parameterType="com.example.demo.model.Menu">
     UPDATE menus
     SET name = #{name,jdbcType=VARCHAR},
-        created_at = #{createdAt,jdbcType=TIMESTAMP},
-        updated_at = #{updatedAt,jdbcType=TIMESTAMP}
+        created_at = #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
+        updated_at = #{updatedAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}
     WHERE id = #{id,jdbcType=BIGINT}
   </update>
 
@@ -41,4 +45,3 @@
   </delete>
 
 </mapper>
-

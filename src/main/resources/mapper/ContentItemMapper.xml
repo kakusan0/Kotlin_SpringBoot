@@ -7,8 +7,8 @@
     <result column="item_name" jdbcType="VARCHAR" property="itemName" />
     <result column="menu_name" jdbcType="VARCHAR" property="menuName" />
     <result column="path_name" jdbcType="VARCHAR" property="pathName" />
-    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
-    <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" />
+    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" javaType="java.time.OffsetDateTime" />
+    <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" javaType="java.time.OffsetDateTime" />
   </resultMap>
 
   <sql id="Base_Column_List">id, item_name, menu_name, path_name, created_at, updated_at</sql>
@@ -34,7 +34,13 @@
 
   <insert id="insert" parameterType="com.example.demo.model.ContentItem" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO content_items (item_name, menu_name, path_name, created_at, updated_at)
-    VALUES (#{itemName,jdbcType=VARCHAR}, #{menuName,jdbcType=VARCHAR}, #{pathName,jdbcType=VARCHAR}, #{createdAt,jdbcType=TIMESTAMP}, #{updatedAt,jdbcType=TIMESTAMP})
+    VALUES (
+      #{itemName,jdbcType=VARCHAR},
+      #{menuName,jdbcType=VARCHAR},
+      #{pathName,jdbcType=VARCHAR},
+      #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
+      #{updatedAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}
+    )
   </insert>
 
   <update id="updateByPrimaryKey" parameterType="com.example.demo.model.ContentItem">
@@ -42,8 +48,8 @@
     SET item_name = #{itemName,jdbcType=VARCHAR},
         menu_name = #{menuName,jdbcType=VARCHAR},
         path_name = #{pathName,jdbcType=VARCHAR},
-        created_at = #{createdAt,jdbcType=TIMESTAMP},
-        updated_at = #{updatedAt,jdbcType=TIMESTAMP}
+        created_at = #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
+        updated_at = #{updatedAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}
     WHERE id = #{id,jdbcType=BIGINT}
   </update>
 

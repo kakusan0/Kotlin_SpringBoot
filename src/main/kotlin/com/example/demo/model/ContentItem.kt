@@ -1,6 +1,6 @@
 package com.example.demo.model
 
-import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 
@@ -11,6 +11,6 @@ data class ContentItem(
     @field:Size(max = 100, message = "pathName は最大100文字までです")
     @field:Pattern(regexp = "^[A-Za-z0-9_-]*$", message = "pathName は英数字、アンダースコア、ハイフンのみ使用できます")
     var pathName: String? = null,
-    var createdAt: LocalDateTime? = null,
-    var updatedAt: LocalDateTime? = null
+    var createdAt: OffsetDateTime? = null,
+    var updatedAt: OffsetDateTime? = null
 )
