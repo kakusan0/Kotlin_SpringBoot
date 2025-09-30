@@ -4,17 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2ec078ba-5ddb-4fac-bc5e-11d17bed784b" name="変更" comment="a">
-      <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/static/css/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/css/style.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/static/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/js/main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/static/js/manage.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/js/manage.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/templates/manage.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/templates/manage.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/static/css/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/css/style.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/static/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/js/main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/static/js/manage.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/js/manage.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/templates/manage.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/manage.html" afterDir="false" />
+    <list default="true" id="2ec078ba-5ddb-4fac-bc5e-11d17bed784b" name="変更" comment="Add notification system and improve UI feedback for menu and path updates">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -155,7 +146,7 @@
       <workItem from="1759085912391" duration="34000" />
       <workItem from="1759085953626" duration="215000" />
       <workItem from="1759095651439" duration="1249000" />
-      <workItem from="1759235646683" duration="9122000" />
+      <workItem from="1759235646683" duration="9291000" />
     </task>
     <task id="LOCAL-00001" summary="Remove HELP.md and README_MYBATISGENERATOR_REMOVED.txt files">
       <option name="closed" value="true" />
@@ -405,7 +396,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759248271966</updated>
     </task>
-    <option name="localTasksCounter" value="32" />
+    <task id="LOCAL-00032" summary="Add notification system and improve UI feedback for menu and path updates">
+      <option name="closed" value="true" />
+      <created>1759251612083</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1759251612083</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -423,7 +422,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Refactor main.js to simplify DOM manipulation and remove unnecessary variables" />
     <MESSAGE value="Remove ContentItemRequest DTO and UndertowWebSocketConfig class&#10;&#10;Deleted `ContentItemRequest` as it is no longer used and removed the placeholder `UndertowWebSocketConfig` class after Undertow was eliminated." />
     <MESSAGE value="Remove Quartz starter dependency from pom.xml" />
     <MESSAGE value="Add compact password generator tool to dashboard and update styles" />
@@ -448,7 +446,8 @@
     <MESSAGE value="Refactor content item handling to include path filtering and update date-time fields to use OffsetDateTime" />
     <MESSAGE value="Optimize content item retrieval and enhance path management UI with delete/restore functionality" />
     <MESSAGE value="a" />
-    <option name="LAST_COMMIT_MESSAGE" value="a" />
+    <MESSAGE value="Add notification system and improve UI feedback for menu and path updates" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add notification system and improve UI feedback for menu and path updates" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
