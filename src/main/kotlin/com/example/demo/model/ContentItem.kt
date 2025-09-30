@@ -1,8 +1,8 @@
 package com.example.demo.model
 
-import java.time.OffsetDateTime
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
+import java.time.OffsetDateTime
 
 data class ContentItem(
     var id: Long? = null,

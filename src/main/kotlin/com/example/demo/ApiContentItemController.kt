@@ -3,9 +3,9 @@ package com.example.demo
 import com.example.demo.model.ContentItem
 import com.example.demo.service.ContentItemService
 import com.example.demo.service.PathService
+import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import jakarta.validation.Valid
 
 @RestController
 @RequestMapping("/api/content")

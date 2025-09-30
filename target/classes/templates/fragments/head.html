@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!-- 共通 head フラグメント: 各ページの head 部分をここで管理 -->
+
+<head th:fragment="commonHead(title)">
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <meta charset="UTF-8" />
+    <!-- SEO: ページごとの説明を設定可能。コントローラで model.addAttribute("description", "...") を渡すと上書きされます -->
+    <meta name="description"
+        th:attr="content=${description != null ? description : 'シンプルな管理用ダッシュボード。ツールの選択とコンテンツ表示を提供します。'}" />
+    <!-- Critical CSS moved to /css/style.css for maintainability and caching -->
+
+    <!-- Stylesheets: preload を使って非同期にロード（onload で stylesheet に切り替え） -->
+    <link rel="preload" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}" as="style"
+        onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" th:href="@{/webjars/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css}" as="style"
+        onload="this.onload=null;this.rel='stylesheet'">
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+    <noscript>
+        <link th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}" rel="stylesheet" />
+        <link th:href="@{/webjars/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css}" rel="stylesheet" />
+        <link th:href="@{/css/style.css}" rel="stylesheet" />
+    </noscript>
+
+    <!-- Preload important icon font to avoid blocking font fetch later -->
+    <script defer th:src="@{/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js}"></script>
+    <script defer th:src="@{/js/pwgen.js}"></script>
+    <script defer th:src="@{/js/main.js}"></script>
+    <!-- pageshow (bfcache 復帰時のリロード) は外部スクリプト /js/main.js に移しました -->
+
+    <title th:text="${title}">アプリケーション</title>
+</head>
