@@ -363,3 +363,197 @@ body.header-bottom .header .position-absolute.top-50.start-50.translate-middle {
   transform: none;
   margin: 0;
 }
+
+/* 管理画面のメニュー選択プルダウンの幅を柔軟に調整 */
+.menu-select {
+  min-width: 120px !important;
+  width: auto !important;
+  max-width: 250px !important;
+  transition: all 0.2s ease;
+}
+
+/* メニュー選択プルダウンにチェックが表示されても横に広がらないよう制御 */
+.menu-select.is-valid {
+  min-width: 120px !important;
+  width: auto !important;
+  max-width: 250px !important;
+  border-color: #198754 !important;
+  padding-right: 2.5rem !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23198754' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.5rem center !important;
+  background-size: 1rem 1rem !important;
+}
+
+/* パス選択プルダウンの幅を柔軟に調整 */
+.path-select {
+  min-width: 120px !important;
+  width: auto !important;
+  max-width: 250px !important;
+  transition: all 0.2s ease;
+}
+
+/* 画面名入力欄の幅を柔軟に調整 */
+.name-input {
+  min-width: 120px !important;
+  width: auto !important;
+  max-width: 300px !important;
+  transition: all 0.2s ease;
+}
+
+/* 管理画面テーブルの列幅を柔軟に最適化 */
+#manageTable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+#manageTable th:nth-child(1),
+#manageTable td:nth-child(1) {
+  width: 8%;  /* ID列 */
+}
+
+#manageTable th:nth-child(2),
+#manageTable td:nth-child(2) {
+  width: 25%; /* メニュー名列 */
+}
+
+#manageTable th:nth-child(3),
+#manageTable td:nth-child(3) {
+  width: 25%; /* 画面名列 */
+}
+
+#manageTable th:nth-child(4),
+#manageTable td:nth-child(4) {
+  width: 25%; /* パス名列 */
+}
+
+#manageTable th:nth-child(5),
+#manageTable td:nth-child(5) {
+  width: 17%; /* 操作列 */
+}
+
+/* メニュー管理テーブルの列幅調整 */
+#menuTable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+#menuTable th:nth-child(1),
+#menuTable td:nth-child(1) {
+  width: 15%; /* ID列 */
+}
+
+#menuTable th:nth-child(2),
+#menuTable td:nth-child(2) {
+  width: 65%; /* メニュー名列 */
+}
+
+#menuTable th:nth-child(3),
+#menuTable td:nth-child(3) {
+  width: 20%; /* 操作列 */
+}
+
+/* パス管理テーブルの列幅調整 */
+#pathTable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+#pathTable th:nth-child(1),
+#pathTable td:nth-child(1) {
+  width: 15%; /* ID列 */
+}
+
+#pathTable th:nth-child(2),
+#pathTable td:nth-child(2) {
+  width: 45%; /* パス名列 */
+}
+
+#pathTable th:nth-child(3),
+#pathTable td:nth-child(3) {
+  width: 20%; /* 状態列 */
+}
+
+#pathTable th:nth-child(4),
+#pathTable td:nth-child(4) {
+  width: 20%; /* 操作列 */
+}
+
+/* テーブル内の入力要素の横幅調整 */
+#manageTable select,
+#manageTable input {
+  width: 100%;
+  min-width: 120px;
+}
+
+#menuTable input {
+  width: 100%;
+  min-width: 150px;
+}
+
+#pathTable input,
+#pathTable select {
+  width: 100%;
+  min-width: 120px;
+}
+
+/* テーブルセルの文字の折り返し設定 */
+#manageTable td,
+#menuTable td,
+#pathTable td {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* 操作ボタンのスタイル改善 */
+#manageTable .btn-sm {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* 通知トーストのスタイル改善 */
+#updateNotification {
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* レスポンシブ対応でもある程度の幅を確保 */
+@media (max-width: 768px) {
+  #manageTable {
+    min-width: 600px;
+  }
+
+  .menu-select,
+  .path-select {
+    min-width: 100px !important;
+    max-width: 180px !important;
+  }
+
+  .name-input {
+    min-width: 100px !important;
+    max-width: 200px !important;
+  }
+
+  #manageTable th,
+  #manageTable td {
+    padding: 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  #manageTable .btn-sm {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+}
+
+/* 横スクロール対応 */
+.table-responsive {
+  overflow-x: auto;
+}
+
+#manageArea,
+#menuArea,
+#pathArea {
+  overflow-x: auto;
+}

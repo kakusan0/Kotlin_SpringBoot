@@ -25,6 +25,62 @@
   // BroadcastChannel を使って同一ブラウザ内のタブ間で更新を通知する
   const menusBroadcast = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('menus-channel') : null;
 
+  // --- 通知システム ---
+  // 画面下部中央の通知を表示する関数
+  function showNotification(type, message, isMenuUpdate = false) {
+    const toast = document.getElementById('updateNotification');
+    const icon = document.getElementById('notificationIcon');
+    const messageEl = document.getElementById('notificationMessage');
+
+    if (!toast || !icon || !messageEl) return;
+
+    // 通知タイプに応じてスタイルとアイコンを設定
+    switch (type) {
+      case 'success':
+        toast.className = 'toast align-items-center text-white bg-success border-0';
+        icon.className = 'bi bi-check-circle-fill me-2';
+        break;
+      case 'error':
+        toast.className = 'toast align-items-center text-white bg-danger border-0';
+        icon.className = 'bi bi-exclamation-triangle-fill me-2';
+        break;
+      case 'info':
+        toast.className = 'toast align-items-center text-white bg-info border-0';
+        icon.className = 'bi bi-info-circle-fill me-2';
+        break;
+      default:
+        toast.className = 'toast align-items-center text-white bg-primary border-0';
+        icon.className = 'bi bi-check-circle-fill me-2';
+    }
+
+    messageEl.textContent = message;
+
+    // メニュー更新の場合は従来通りのチェックボックス表示も併用
+    if (isMenuUpdate) {
+      // 該当する要素にis-validクラスを追加（短時間表示）
+      const menuSelects = document.querySelectorAll('.menu-select');
+      menuSelects.forEach(select => {
+        select.classList.add('is-valid');
+        setTimeout(() => select.classList.remove('is-valid'), 800);
+      });
+    }
+
+    // 通知トーストを表示
+    toast.style.display = 'block';
+    if (window.bootstrap && bootstrap.Toast) {
+      const bsToast = new bootstrap.Toast(toast, {
+        delay: 3000,
+        autohide: true
+      });
+      bsToast.show();
+    } else {
+      // Bootstrap未読み込みの場合のフォールバック
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
+    }
+  }
+
   // --- レンダリング用関数 ---
   // テーブル行を作成するユーティリティ
   function renderMenuRow(menu) {
@@ -337,18 +393,22 @@
       const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!resp.ok) {
         // サーバエラー: ユーザーへ通知して選択を元に戻す
-        alert('メニューの更新に失敗しました');
+        showNotification('error', 'メニューの更新に失敗しました');
         try { selectElem.value = prev || ''; } catch (_) {}
         return;
       }
       // update local item and UI
       item.menuName = newMenuName;
-      // optional: show tiny feedback (could be improved)
-      // e.g., briefly flash background
+
+      // プルダウン内にチェックアイコンを表示（幅を固定しているので横に広がらない）
       selectElem.classList.add('is-valid');
-      setTimeout(() => selectElem.classList.remove('is-valid'), 800);
+
+      // 3秒後にチェックアイコンを削除
+      setTimeout(() => {
+        selectElem.classList.remove('is-valid');
+      }, 3000);
     } catch (e) {
-      alert('メニューの更新に失敗しました');
+      showNotification('error', 'メニューの更新に失敗しました');
       // revert selection
       try { selectElem.value = prev || ''; } catch (_) { }
     }
@@ -366,18 +426,18 @@
     try {
       const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!resp.ok) {
-        alert('パス名の更新に失敗しました');
-        try { if (inputElem) inputElem.value = prev || ''; if (inputElem) inputElem.classList.add('is-invalid'); } catch (_) {}
+        showNotification('error', 'パス名の更新に失敗しました');
+        try { if (inputElem) inputElem.value = prev || ''; } catch (_) {}
         return;
       }
       // update local item and UI
       item.pathName = normalized;
-      if (inputElem) {
-        inputElem.classList.add('is-valid');
-        setTimeout(() => inputElem.classList.remove('is-valid'), 800);
-      }
+      // 画面名・パス名変更時は詳細な通知を表示
+      const menuName = item.menuName || '未設定';
+      const pathName = normalized || '未設定';
+      showNotification('success', `メニュー「${menuName}」のパス名を「${pathName}」に更新しました`);
     } catch (e) {
-      alert('パス名の更新に失敗しました');
+      showNotification('error', 'パス名の更新に失敗しました');
       try { if (inputElem) inputElem.value = prev || ''; } catch (_) { }
     }
   }
@@ -394,12 +454,10 @@
     try {
       const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!resp.ok) {
-        alert('画面名の更新に失敗しました');
+        showNotification('error', '画面名の更新に失敗しました');
         try {
           if (inputElem) {
             inputElem.value = prev || '';
-            inputElem.classList.add('is-invalid');
-            setTimeout(() => inputElem.classList.remove('is-invalid'), 1000);
           }
         } catch (_) {}
         return;
@@ -408,11 +466,13 @@
       item.itemName = normalized;
       if (inputElem) {
         if (typeof inputElem.__setPrev === 'function') inputElem.__setPrev(normalized);
-        inputElem.classList.add('is-valid');
-        setTimeout(() => inputElem.classList.remove('is-valid'), 800);
       }
+      // 画面名・パス名変更時は詳細な通知を表示
+      const menuName = item.menuName || '未設定';
+      const screenName = normalized || '未設定';
+      showNotification('success', `メニュー「${menuName}」の画面名を「${screenName}」に更新しました`);
     } catch (e) {
-      alert('画面名の更新に失敗しました');
+      showNotification('error', '画面名の更新に失敗しました');
       try { if (inputElem) inputElem.value = prev || ''; } catch (_) { }
     }
   }
@@ -623,6 +683,8 @@
       // notify other tabs/pages to refresh sidebar menus
       try { localStorage.setItem('menus-updated', String(Date.now())); } catch (_) { }
       try { if (menusBroadcast) menusBroadcast.postMessage('menus-updated'); } catch (_) { }
+      // show notification
+      showNotification('success', 'メニューが追加されました', true);
     } catch (e) {
       alert('メニュー作成に失敗しました');
     }
@@ -642,6 +704,8 @@
       await loadScreens();
       try { localStorage.setItem('menus-updated', String(Date.now())); } catch (_) { }
       try { if (menusBroadcast) menusBroadcast.postMessage('menus-updated'); } catch (_) { }
+      // show notification
+      showNotification('success', 'メニューが更新されました', true);
     } catch (e) {
       alert('更新に失敗しました');
     }
@@ -659,6 +723,8 @@
       await loadScreens();
       try { localStorage.setItem('menus-updated', String(Date.now())); } catch (_) { }
       try { if (menusBroadcast) menusBroadcast.postMessage('menus-updated'); } catch (_) { }
+      // show notification
+      showNotification('success', 'メニューが削除されました', true);
     } catch (e) {
       alert('削除に失敗しました');
     }
@@ -674,6 +740,8 @@
       if (!resp.ok) { alert('パス作成に失敗しました'); return; }
       await loadPaths();
       await loadScreens();
+      // show notification
+      showNotification('success', 'パスが追加されました');
     } catch (_) { alert('パス作成に失敗しました'); }
   }
 
@@ -686,6 +754,8 @@
       if (!resp.ok) { alert('更新に失敗しました'); return; }
       await loadPaths();
       await loadScreens();
+      // show notification
+      showNotification('success', 'パスが更新されました');
     } catch (_) { alert('更新に失敗しました'); }
   }
 
@@ -696,6 +766,8 @@
       if (!resp.ok) { alert('削除に失敗しました'); return; }
       await loadPaths();
       await loadScreens();
+      // show notification
+      showNotification('success', 'パスが削除されました');
     } catch (_) { alert('削除に失敗しました'); }
   }
 
@@ -705,6 +777,8 @@
       if (!resp.ok) { alert('復元に失敗しました'); return; }
       await loadPaths();
       await loadScreens();
+      // show notification
+      showNotification('success', 'パスが復元されました');
     } catch (_) { alert('復元に失敗しました'); }
   }
 
@@ -736,6 +810,8 @@
         return;
       }
       await loadScreens();
+      // show notification
+      showNotification('success', '画面が追加されました');
     } catch (e) {
       alert('作成に失敗しました');
     }
@@ -753,6 +829,8 @@
         return;
       }
       await loadScreens();
+      // show notification
+      showNotification('success', '画面が更新されました');
     } catch (e) {
       alert('更新に失敗しました');
     }
@@ -767,6 +845,8 @@
         return;
       }
       await loadScreens();
+      // show notification
+      showNotification('success', '画面が削除されました');
     } catch (e) {
       alert('削除に失敗しました');
     }

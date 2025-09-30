@@ -56,16 +56,24 @@
         contentCache.all = { data, ts: now };
         return data;
       } else {
-        const key = String(menuName);
-        const hit = contentCache.byMenu.get(key);
-        if (hit && (now - hit.ts) < contentCache.ttl) {
-          return hit.data;
+        // メニュー名が指定されている場合は、常に全データを取得してクライアントサイドでフィルタリング
+        // これにより、サーバーサイドのフィルタリングの問題を回避
+        if (contentCache.all.data && (now - contentCache.all.ts) < contentCache.ttl) {
+          const allData = contentCache.all.data;
+          return Array.isArray(allData) ? allData.filter(item =>
+            item && item.menuName && String(item.menuName).trim() === String(menuName).trim()
+          ) : [];
         }
-        const resp = await fetchWithTimeout('/api/content?menuName=' + encodeURIComponent(key), { credentials: 'same-origin' }, 10000);
+
+        const resp = await fetchWithTimeout('/api/content/all', { credentials: 'same-origin' }, 10000);
         if (!resp || !resp.ok) return [];
         const data = await resp.json();
-        contentCache.byMenu.set(key, { data, ts: now });
-        return data;
+        contentCache.all = { data, ts: now };
+
+        // クライアントサイドで厳密にフィルタリング
+        return Array.isArray(data) ? data.filter(item =>
+          item && item.menuName && String(item.menuName).trim() === String(menuName).trim()
+        ) : [];
       }
     } catch (_) {
       return [];
@@ -132,6 +140,18 @@
         // do not inject or modify manage page sidebar (manage page has its own sidebar content)
         if (path === '/manage' || path.startsWith('/manage')) return;
 
+        // まず有効なメニュー一覧を取得
+        let validMenuNames = [];
+        try {
+          const menusResp = await fetchWithTimeout('/api/menus/all', { credentials: 'same-origin' }, 10000);
+          if (menusResp && menusResp.ok) {
+            const menus = await menusResp.json();
+            validMenuNames = Array.isArray(menus) ? menus.map(m => m.name).filter(Boolean) : [];
+          }
+        } catch (e) {
+          console.warn('Failed to fetch valid menus:', e);
+        }
+
         const screens = await getContentScreens('');
         if (!Array.isArray(screens)) return;
 
@@ -149,11 +169,14 @@
           const menuNameValue = (s && s.menuName != null) ? String(s.menuName).trim() : '';
           const hasValidMenuName = menuNameValue && menuNameValue.length > 0;
 
-          return hasValidPath && hasValidItemName && hasValidMenuName;
+          // 削除されたメニューを除外：メニューマスターに存在するもののみ有効とする
+          const isValidMenu = validMenuNames.length === 0 || validMenuNames.includes(menuNameValue);
+
+          return hasValidPath && hasValidItemName && hasValidMenuName && isValidMenu;
         };
         const validScreens = screens.filter(hasValidData);
 
-        // derive unique menu names from screens' menuName (only from screens with valid data)
+        // derive unique menu names from screens' menuName (only from screens with valid data and valid menus)
         const menuNames = validScreens.map(s => s.menuName).filter(Boolean);
         const uniqueMenuNames = Array.from(new Set(menuNames));
 
@@ -250,6 +273,10 @@
         // clear existing
         listGroup.innerHTML = '';
         let items = screens || [];
+
+        // デバッグ情報：受信したデータをログ出力
+        console.debug('populateContentModal called with:', { menuName, itemCount: items.length });
+
         // If no menu selected, prompt user to select a menu from the sidebar
         if (!menuName) {
           const el = document.createElement('div');
@@ -258,9 +285,23 @@
           listGroup.appendChild(el);
           return;
         }
+
+        // 厳密なメニュー名フィルタリング：完全一致のみ
         if (menuName) {
-          items = items.filter(s => s.menuName === menuName);
+          const originalCount = items.length;
+          items = items.filter(s => {
+            const itemMenuName = s && s.menuName ? String(s.menuName).trim() : '';
+            const targetMenuName = String(menuName).trim();
+            return itemMenuName === targetMenuName;
+          });
+          console.debug('Menu filter applied:', {
+            menuName,
+            originalCount,
+            filteredCount: items.length,
+            filteredItems: items.map(s => ({ id: s.id, menuName: s.menuName, itemName: s.itemName, pathName: s.pathName }))
+          });
         }
+
         // exclude items without valid pathName AND valid itemName - use same validation as sidebar menu loading
         items = items.filter(s => {
           // Check pathName validity
@@ -277,6 +318,12 @@
 
           return hasValidPath && hasValidItemName && hasValidMenuName;
         });
+
+        console.debug('Final validation applied:', {
+          finalCount: items.length,
+          finalItems: items.map(s => ({ id: s.id, menuName: s.menuName, itemName: s.itemName, pathName: s.pathName }))
+        });
+
         if (!items.length) {
           const el = document.createElement('div');
           el.className = 'list-group-item text-muted';
@@ -288,13 +335,31 @@
           const a = document.createElement('a');
           a.className = 'list-group-item list-group-item-action text-start content-item';
           a.href = '#';
+
+          // 一意性を確保するために、IDまたは画面名+パス名の組み合わせを使用
+          const uniqueKey = s.id ? String(s.id) : `${s.itemName}_${s.pathName}`;
+          a.setAttribute('data-screen-id', uniqueKey);
           a.setAttribute('data-screen-name', s.itemName);
+          a.setAttribute('data-path-name', s.pathName || '');
+
           // Preserve the menuName on each item so the click handler can update the header to show menuName
           if (menuName) a.setAttribute('data-menu-name', menuName);
-          a.textContent = s.itemName || '(無題)';
+
+          // 表示内容を改善：画面名とパス名を両方表示して区別しやすくする
+          const displayName = s.itemName || '(無題)';
+          const pathInfo = s.pathName ? ` (${s.pathName})` : '';
+          a.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold">${displayName}</span>
+              <small class="text-muted">${pathInfo}</small>
+            </div>
+          `;
+
           listGroup.appendChild(a);
         });
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        console.error('Error in populateContentModal:', e);
+      }
     }
 
     // 初回ロードでメニューを描画

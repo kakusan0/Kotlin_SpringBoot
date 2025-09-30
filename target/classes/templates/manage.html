@@ -148,6 +148,20 @@
     </div>
   </main>
 
+  <!-- 画面下部中央の通知エリア -->
+  <div id="notificationArea" class="position-fixed bottom-0 start-50 translate-middle-x mb-3" style="z-index: 1050;">
+    <!-- 通知トースト -->
+    <div id="updateNotification" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="display: none;">
+      <div class="d-flex">
+        <div class="toast-body d-flex align-items-center">
+          <i id="notificationIcon" class="bi me-2"></i>
+          <span id="notificationMessage"></span>
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
   <script th:src="@{/js/manage.js}" defer></script>
 </body>
 
