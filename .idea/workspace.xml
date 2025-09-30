@@ -5,16 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2ec078ba-5ddb-4fac-bc5e-11d17bed784b" name="変更" comment="a">
-      <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/static/css/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/css/style.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/static/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/js/main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/static/js/manage.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/js/manage.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/templates/manage.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/templates/manage.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/static/css/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/css/style.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/static/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/js/main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/static/js/manage.js" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/js/manage.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/templates/manage.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/manage.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,12 +27,12 @@
     &quot;assignee&quot;: &quot;kakusan0&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/kakusan0/Kotlin_SpringBoot.git",
-    "accountId": "c6080bb0-1631-4352-8bc1-a6c6c594ad51"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/kakusan0/Kotlin_SpringBoot.git&quot;,
+    &quot;accountId&quot;: &quot;c6080bb0-1631-4352-8bc1-a6c6c594ad51&quot;
   }
-}]]></component>
+}</component>
   <component name="KubernetesApiPersistence">{}</component>
   <component name="KubernetesApiProvider">{
   &quot;isMigrated&quot;: true
@@ -85,8 +77,8 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.restore.workspace.module": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Spring Boot.DemoApplication.executor": "Debug",
-    "git-widget-placeholder": "main",
+    "Spring Boot.DemoApplication.executor": "Run",
+    "git-widget-placeholder": "test",
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "C:/Users/gmaki/Downloads/demo (1)/demo/pom.xml",
     "node.js.detected.package.eslint": "true",
@@ -122,7 +114,7 @@
   <component name="RunManager">
     <configuration name="DemoApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
-      <module name="demo" />
+      <module name="app" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.demo.DemoApplication" />
       <method v="2">
         <option name="Make" enabled="true" />
@@ -416,7 +408,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="test" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
