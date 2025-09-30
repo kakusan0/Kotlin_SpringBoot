@@ -135,14 +135,25 @@
         const screens = await getContentScreens('');
         if (!Array.isArray(screens)) return;
 
-        // exclude screens without a valid pathName (empty/null/"null")
-        const hasValidPath = (s) => {
+        // exclude screens without a valid pathName, itemName, and menuName
+        const hasValidData = (s) => {
+          // Check pathName validity
           const pn = (s && s.pathName != null) ? String(s.pathName).trim() : '';
-          return pn && pn.toLowerCase() !== 'null';
-        };
-        const validScreens = screens.filter(hasValidPath);
+          const hasValidPath = pn && pn.toLowerCase() !== 'null' && pn.length > 0;
 
-        // derive unique menu names from screens' menuName
+          // Check itemName validity (screen name must be set in management screen)
+          const itemName = (s && s.itemName != null) ? String(s.itemName).trim() : '';
+          const hasValidItemName = itemName && itemName.length > 0;
+
+          // Check menuName validity
+          const menuNameValue = (s && s.menuName != null) ? String(s.menuName).trim() : '';
+          const hasValidMenuName = menuNameValue && menuNameValue.length > 0;
+
+          return hasValidPath && hasValidItemName && hasValidMenuName;
+        };
+        const validScreens = screens.filter(hasValidData);
+
+        // derive unique menu names from screens' menuName (only from screens with valid data)
         const menuNames = validScreens.map(s => s.menuName).filter(Boolean);
         const uniqueMenuNames = Array.from(new Set(menuNames));
 
@@ -187,8 +198,8 @@
               (async function () {
                 try {
                   const filteredScreens = await getContentScreens(label);
-                  // apply same pathName filter on modal items
-                  const filteredValid = Array.isArray(filteredScreens) ? filteredScreens.filter(hasValidPath) : [];
+                  // apply same data validation filter on modal items
+                  const filteredValid = Array.isArray(filteredScreens) ? filteredScreens.filter(hasValidData) : [];
                   if (filteredValid.length) {
                     populateContentModal(selectedSidebarMenu, filteredValid);
                   } else {
@@ -203,7 +214,7 @@
               (async function () {
                 try {
                   const filteredScreens = await getContentScreens(label);
-                  const filteredValid = Array.isArray(filteredScreens) ? filteredScreens.filter(hasValidPath) : [];
+                  const filteredValid = Array.isArray(filteredScreens) ? filteredScreens.filter(hasValidData) : [];
                   if (filteredValid.length) {
                     populateContentModal(selectedSidebarMenu, filteredValid);
                     return;
@@ -250,10 +261,21 @@
         if (menuName) {
           items = items.filter(s => s.menuName === menuName);
         }
-        // exclude items without valid pathName
+        // exclude items without valid pathName AND valid itemName - use same validation as sidebar menu loading
         items = items.filter(s => {
+          // Check pathName validity
           const pn = (s && s.pathName != null) ? String(s.pathName).trim() : '';
-          return pn && pn.toLowerCase() !== 'null';
+          const hasValidPath = pn && pn.toLowerCase() !== 'null' && pn.length > 0;
+
+          // Check itemName validity (screen name must be set in management screen)
+          const itemName = (s && s.itemName != null) ? String(s.itemName).trim() : '';
+          const hasValidItemName = itemName && itemName.length > 0;
+
+          // Check menuName validity
+          const menuNameValue = (s && s.menuName != null) ? String(s.menuName).trim() : '';
+          const hasValidMenuName = menuNameValue && menuNameValue.length > 0;
+
+          return hasValidPath && hasValidItemName && hasValidMenuName;
         });
         if (!items.length) {
           const el = document.createElement('div');

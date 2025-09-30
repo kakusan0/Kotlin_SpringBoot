@@ -23,11 +23,23 @@ class MainController(
         model.addAttribute("screens", screens)
         val menus = menuService.getAll()
         model.addAttribute("menus", menus)
-        // visibleMenus: Home 画面のサイドバーには「pathName が有効」な画面に割り当てられている menuName のみを対象にする
+        // visibleMenus: Home 画面のサイドバーには「pathName が有効」かつ「itemName が有効」な画面に割り当てられている menuName のみを対象にする
         val assignedMenuNames = screens
             .filter { s ->
+                // pathName の有効性をチェック
                 val pn = s.pathName?.trim()
-                !pn.isNullOrEmpty() && !pn.equals("null", ignoreCase = true)
+                val hasValidPath = !pn.isNullOrEmpty() && !pn.equals("null", ignoreCase = true)
+
+                // itemName（画面名）の有効性をチェック
+                val itemName = s.itemName?.trim()
+                val hasValidItemName = !itemName.isNullOrEmpty()
+
+                // menuName の有効性をチェック
+                val menuName = s.menuName?.trim()
+                val hasValidMenuName = !menuName.isNullOrEmpty()
+
+                // 3つすべてが有効な場合のみ対象とする
+                hasValidPath && hasValidItemName && hasValidMenuName
             }
             .mapNotNull { it.menuName }
             .map { it.trim() }

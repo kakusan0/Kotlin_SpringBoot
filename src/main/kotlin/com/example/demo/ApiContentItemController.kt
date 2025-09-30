@@ -48,13 +48,23 @@ class ApiContentItemController(
             .mapNotNull { it.name?.trim() }
             .filter { it.isNotEmpty() }
             .toSet()
-        if (activePathNames.isEmpty()) {
-            // パスマスタ未定義または全て無効の場合、すべての pathName を null 扱いで返す
-            return items.map { it.copy(pathName = null) }
-        }
-        return items.map { item ->
-            val pn = item.pathName?.trim().orEmpty()
-            if (pn.isEmpty() || !activePathNames.contains(pn)) item.copy(pathName = null) else item
+
+        return items.filter { item ->
+            // pathName の有効性をチェック
+            val pn = item.pathName?.trim()
+            val hasValidPath = !pn.isNullOrEmpty() && !pn.equals("null", ignoreCase = true) &&
+                              (activePathNames.isEmpty() || activePathNames.contains(pn))
+
+            // itemName（画面名）の有効性をチェック
+            val itemName = item.itemName?.trim()
+            val hasValidItemName = !itemName.isNullOrEmpty()
+
+            // menuName の有効性をチェック
+            val menuName = item.menuName?.trim()
+            val hasValidMenuName = !menuName.isNullOrEmpty()
+
+            // 3つすべてが有効な場合のみ結果に含める
+            hasValidPath && hasValidItemName && hasValidMenuName
         }
     }
 }
