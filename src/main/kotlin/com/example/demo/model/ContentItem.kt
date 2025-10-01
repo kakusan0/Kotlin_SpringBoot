@@ -12,5 +12,6 @@ data class ContentItem(
     @field:Pattern(regexp = "^[A-Za-z0-9_-]*$", message = "pathName は英数字、アンダースコア、ハイフンのみ使用できます")
     var pathName: String? = null,
     var createdAt: OffsetDateTime? = null,
-    var updatedAt: OffsetDateTime? = null
+    var updatedAt: OffsetDateTime? = null,
+    var enabled: Boolean = true
 )

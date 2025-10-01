@@ -5,8 +5,11 @@ DROP TABLE IF EXISTS content_items;
 CREATE TABLE content_items (
   id BIGSERIAL PRIMARY KEY,
   item_name VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  menu_name VARCHAR(255) NOT NULL,
+  path_name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE
 );
 CREATE INDEX idx_item_name ON content_items(item_name);
 

@@ -319,6 +319,9 @@
           return hasValidPath && hasValidItemName && hasValidMenuName;
         });
 
+        // enabled=true のものだけ表示
+        items = items.filter(s => s.enabled === true);
+
         console.debug('Final validation applied:', {
           finalCount: items.length,
           finalItems: items.map(s => ({ id: s.id, menuName: s.menuName, itemName: s.itemName, pathName: s.pathName }))
