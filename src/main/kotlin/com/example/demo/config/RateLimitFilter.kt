@@ -1,8 +1,6 @@
 package com.example.demo.config
 
-import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
-import io.github.bucket4j.Refill
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -58,12 +56,12 @@ class RateLimitFilter : OncePerRequestFilter() {
      * 設定: 1分間に60リクエスト（1秒間に1リクエスト）
      */
     private fun newBucket(): Bucket {
-        val bandwidth = Bandwidth.classic(
-            60, // 容量
-            Refill.intervally(60, Duration.ofMinutes(1)) // 1分間に60トークン補充
-        )
+        // Bucket4j 8.x の新しいAPIを使用
         return Bucket.builder()
-            .addLimit(bandwidth)
+            .addLimit { limit ->
+                limit.capacity(60)
+                    .refillGreedy(60, Duration.ofMinutes(1))
+            }
             .build()
     }
 
@@ -84,4 +82,3 @@ class RateLimitFilter : OncePerRequestFilter() {
 
     override fun shouldNotFilterErrorDispatch(): Boolean = false
 }
-

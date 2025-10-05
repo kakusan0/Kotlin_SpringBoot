@@ -16,9 +16,11 @@ data class ContentItem(
     @field:Size(max = 255, message = "メニュー名は最大255文字までです")
     var menuName: String? = null,
 
-    @field:NotBlank(message = "パス名は必須です")
     @field:Size(max = 100, message = "pathName は最大100文字までです")
-    @field:Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "pathName は英数字、アンダースコア、ハイフンのみ使用できます")
+    @field:Pattern(
+        regexp = "^$|^[A-Za-z0-9_-]+$",
+        message = "pathName は英数字、アンダースコア、ハイフンのみ使用できます"
+    )
     var pathName: String? = null,
 
     var createdAt: OffsetDateTime? = null,

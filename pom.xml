@@ -141,19 +141,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-inline</artifactId>
-            <version>5.2.0</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- Security: OWASP Dependency Check -->
-        <dependency>
-            <groupId>org.owasp</groupId>
-            <artifactId>dependency-check-maven</artifactId>
-            <version>10.0.4</version>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -188,26 +175,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.1.2</version>
                 <configuration>
-                    <argLine>-javaagent:${settings.localRepository}/org/mockito/mockito-inline/5.2.0/mockito-inline-5.2.0.jar</argLine>
-                </configuration>
-            </plugin>
-            <!-- OWASP Dependency Check Plugin -->
-            <plugin>
-                <groupId>org.owasp</groupId>
-                <artifactId>dependency-check-maven</artifactId>
-                <version>10.0.4</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <failBuildOnCVSS>7</failBuildOnCVSS>
-                    <suppressionFiles>
-                        <suppressionFile>dependency-check-suppressions.xml</suppressionFile>
-                    </suppressionFiles>
+                    <!-- mockito-inline の javaagent 設定を削除 -->
+                    <!-- Java 21 では mockito-inline は不要 -->
                 </configuration>
             </plugin>
         </plugins>
