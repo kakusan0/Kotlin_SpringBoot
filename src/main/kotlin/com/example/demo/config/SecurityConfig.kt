@@ -86,6 +86,7 @@ class SecurityConfig {
             // フォームログインは現時点では無効化（必要に応じて有効化）
             .formLogin { it.disable() }
             .httpBasic { it.disable() }
+            .logout { it.disable() }
 
         return http.build()
     }

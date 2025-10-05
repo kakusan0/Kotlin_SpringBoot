@@ -46,11 +46,11 @@
     const now = Date.now();
     try {
       if (!menuName) {
-        // ホームページ用APIを使用
+          // ホームページ用APIを使用
         if (contentCache.all.data && (now - contentCache.all.ts) < contentCache.ttl) {
           return contentCache.all.data;
         }
-        const resp = await fetchWithTimeout('/api/content/all-for-home', { credentials: 'same-origin' }, 10000);
+          const resp = await fetchWithTimeout('/api/content/all-for-home', {credentials: 'same-origin'}, 10000);
         if (!resp || !resp.ok) return [];
         const data = await resp.json();
         contentCache.all = { data, ts: now };
@@ -65,7 +65,7 @@
           ) : [];
         }
 
-        const resp = await fetchWithTimeout('/api/content/all-for-home', { credentials: 'same-origin' }, 10000);
+          const resp = await fetchWithTimeout('/api/content/all-for-home', {credentials: 'same-origin'}, 10000);
         if (!resp || !resp.ok) return [];
         const data = await resp.json();
         contentCache.all = { data, ts: now };

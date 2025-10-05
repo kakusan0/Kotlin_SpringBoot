@@ -5,21 +5,22 @@
   <resultMap id="BaseResultMap" type="com.example.demo.model.Menu">
     <id column="id" jdbcType="BIGINT" property="id" />
     <result column="name" jdbcType="VARCHAR" property="name" />
-    <result column="deleted" jdbcType="BOOLEAN" property="deleted" />
+      <result column="deleted" jdbcType="BOOLEAN" property="deleted"/>
     <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" javaType="java.time.OffsetDateTime" />
     <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" javaType="java.time.OffsetDateTime" />
   </resultMap>
 
-  <sql id="Base_Column_List">id, name, deleted, created_at, updated_at</sql>
+    <sql id="Base_Column_List">id, name, deleted, created_at, updated_at</sql>
 
   <select id="selectAll" resultMap="BaseResultMap">
-    SELECT <include refid="Base_Column_List" />
-    FROM menus
-    WHERE deleted = false
-    ORDER BY id
+      SELECT
+      <include refid="Base_Column_List"/>
+      FROM menus
+      WHERE deleted = false
+      ORDER BY id
   </select>
 
-  <select id="selectAllIncludingDeleted" resultMap="BaseResultMap">
+    <select id="selectAllIncludingDeleted" resultMap="BaseResultMap">
     SELECT <include refid="Base_Column_List" />
     FROM menus
     ORDER BY id
@@ -32,10 +33,10 @@
   </select>
 
   <insert id="insert" parameterType="com.example.demo.model.Menu" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO menus (name, deleted, created_at, updated_at)
+      INSERT INTO
+          menus (name, deleted, created_at, updated_at)
     VALUES (
-      #{name,jdbcType=VARCHAR},
-      #{deleted,jdbcType=BOOLEAN},
+      #{name,jdbcType=VARCHAR}, #{deleted,jdbcType=BOOLEAN},
       #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
       #{updatedAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}
     )
@@ -43,8 +44,8 @@
 
   <update id="updateByPrimaryKey" parameterType="com.example.demo.model.Menu">
     UPDATE menus
-    SET name = #{name,jdbcType=VARCHAR},
-        deleted = #{deleted,jdbcType=BOOLEAN},
+    SET name = #{name,jdbcType=VARCHAR}, deleted = #{deleted,jdbcType=BOOLEAN}
+        ,
         created_at = #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
         updated_at = #{updatedAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}
     WHERE id = #{id,jdbcType=BIGINT}
@@ -54,11 +55,13 @@
     DELETE FROM menus WHERE id = #{id}
   </delete>
 
-  <update id="logicalDeleteByPrimaryKey" parameterType="long">
-    UPDATE menus
-    SET deleted = true,
-        updated_at = now()
-    WHERE id = #{id}
-  </update>
+    <update id="logicalDeleteByPrimaryKey" parameterType="long">
+        UPDATE menus
+        SET
+            deleted      = true
+            , updated_at = now()
+        WHERE
+            id = #{id}
+    </update>
 
 </mapper>

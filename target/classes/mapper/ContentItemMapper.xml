@@ -12,37 +12,41 @@
     <result column="enabled" jdbcType="BOOLEAN" property="enabled" />
   </resultMap>
 
-  <sql id="Base_Column_List">ci.id as id, ci.item_name as item_name, ci.menu_name as menu_name, ci.path_name as path_name, ci.created_at as created_at, ci.updated_at as updated_at, ci.enabled as enabled</sql>
-  <sql id="Base_Column_List_Simple">id, item_name, menu_name, path_name, created_at, updated_at, enabled</sql>
+    <sql id="Base_Column_List">ci.id as id, ci.item_name as item_name, ci.menu_name as menu_name, ci.path_name as path_name, ci.created_at as created_at, ci.updated_at as updated_at, ci.enabled as enabled</sql>
+    <sql id="Base_Column_List_Simple">id, item_name, menu_name, path_name, created_at, updated_at, enabled</sql>
 
-  <!-- 管理画面用：削除済みメニュー/パスも含めてすべて取得 -->
+    <!-- 管理画面用：削除済みメニュー/パスも含めてすべて取得 -->
   <select id="selectAll" resultMap="BaseResultMap">
-    SELECT <include refid="Base_Column_List_Simple" />
+      SELECT
+      <include refid="Base_Column_List_Simple"/>
     FROM content_items
     WHERE enabled = TRUE
     ORDER BY id
   </select>
 
-  <!-- ホームページ用：削除されていないメニュー/パスのみ取得 -->
-  <select id="selectAllForHome" resultMap="BaseResultMap">
-    SELECT <include refid="Base_Column_List" />
-    FROM content_items ci
-    LEFT JOIN menus m ON ci.menu_name = m.name AND m.deleted = FALSE
-    LEFT JOIN paths p ON ci.path_name = p.name AND p.deleted = FALSE
-    WHERE ci.enabled = TRUE
-      AND (ci.menu_name IS NULL OR ci.menu_name = '' OR m.id IS NOT NULL)
-      AND (ci.path_name IS NULL OR ci.path_name = '' OR p.id IS NOT NULL)
-    ORDER BY ci.id
-  </select>
+    <!-- ホームページ用：削除されていないメニュー/パスのみ取得 -->
+    <select id="selectAllForHome" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM content_items ci
+        LEFT JOIN menus m ON ci.menu_name = m.name AND m.deleted = FALSE
+        LEFT JOIN paths p ON ci.path_name = p.name AND p.deleted = FALSE
+        WHERE ci.enabled = TRUE
+        AND (ci.menu_name IS NULL OR ci.menu_name = '' OR m.id IS NOT NULL)
+        AND (ci.path_name IS NULL OR ci.path_name = '' OR p.id IS NOT NULL)
+        ORDER BY ci.id
+    </select>
 
-  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
-    SELECT <include refid="Base_Column_List_Simple" />
+    <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List_Simple"/>
     FROM content_items
     WHERE id = #{id} AND enabled = TRUE
   </select>
 
   <select id="selectByMenuName" parameterType="java.lang.String" resultMap="BaseResultMap">
-    SELECT <include refid="Base_Column_List_Simple" />
+      SELECT
+      <include refid="Base_Column_List_Simple"/>
     FROM content_items
     WHERE menu_name = #{menuName} AND enabled = TRUE
     ORDER BY id
