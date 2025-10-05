@@ -78,7 +78,7 @@ class MainController(
         // --- 変更: selectedScreenName は画面名ではなく menuName を優先して表示する ---
         // Find the ContentItem once and reuse. Use trimmed comparison to be tolerant of whitespace.
         val requestedName = if (screenName == "未選択") null else screenName.trim()
-        val found = if (requestedName == null) null else contentItemService.getAll().firstOrNull {
+        val found = if (requestedName == null) null else contentItemService.getAllForHome().firstOrNull {
             val itemName = it.itemName?.trim()
             if (itemName == null) false else itemName == requestedName
         }
