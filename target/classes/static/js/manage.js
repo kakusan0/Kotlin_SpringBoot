@@ -208,8 +208,8 @@
     pathsCache.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.name;
-      // IDを含めた表示形式: "ID: パス名" または "ID: パス名（無効）"
-      opt.textContent = `${p.id}: ${p.name}${p.deleted ? '（無効）' : ''}`;
+        // IDを含めた表示形式: "ID: パス名" または "ID: パス名（無効）"
+        opt.textContent = `${p.id}: ${p.name}${p.deleted ? '（無効）' : ''}`;
       if (p.deleted) opt.disabled = true;
       select.appendChild(opt);
     });
@@ -220,7 +220,7 @@
       opt.value = currentValue;
       opt.textContent = currentValue + '（無効）';
       opt.disabled = true;
-      select.insertBefore(opt, select.children[0] || null);
+        select.insertBefore(opt, select.children[0] || null);
     }
 
     select.value = currentValue || '';
@@ -352,8 +352,8 @@
       pathsCache.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.name;
-        // IDを含めた表示形式: "ID: パス名" または "ID: パス名（無効）"
-        opt.textContent = `${p.id}: ${p.name}${p.deleted ? '（無効）' : ''}`;
+          // IDを含めた表示形式: "ID: パス名" または "ID: パス名（無効）"
+          opt.textContent = `${p.id}: ${p.name}${p.deleted ? '（無効）' : ''}`;
         if (p.deleted) opt.disabled = true;
         sel.appendChild(opt);
       });
@@ -362,7 +362,7 @@
         opt.value = currentVal;
         opt.textContent = currentVal + '（無効）';
         opt.disabled = true;
-        sel.insertBefore(opt, sel.children[0] || null);
+          sel.insertBefore(opt, sel.children[0] || null);
       }
       sel.value = currentVal;
     });
