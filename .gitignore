@@ -72,3 +72,5 @@ credentials/
 ### Logs
 logs/
 *.log
+
+target/
