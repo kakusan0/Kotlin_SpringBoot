@@ -69,19 +69,6 @@ class MainController(
             contentItemService.getAllForHome().find { it.itemName?.trim() == name }
         }
 
-        if (found == null && requestedName != null) {
-            model.apply {
-                addAttribute("currentScreen", "")
-                addAttribute("selectedScreenName", "メニューを選択")
-                addAttribute("currentScreenPath", "")
-                addAttribute(
-                    "errorMessage",
-                    "指定された画面は表示できません（削除されたメニューまたはパスに紐づいている可能性があります）"
-                )
-            }
-            return "main"
-        }
-
         val currentScreen = requestedName ?: ""
         val selectedName = when {
             requestedName == null -> "メニューを選択"
