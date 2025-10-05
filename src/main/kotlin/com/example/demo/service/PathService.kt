@@ -6,8 +6,10 @@ import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.cache.annotation.Caching
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
+@Transactional(readOnly = true)
 class PathService(
     private val pathMapper: PathMapper
 ) {
@@ -20,6 +22,7 @@ class PathService(
     @Cacheable(cacheNames = ["pathById"], key = "#id")
     fun getById(id: Long): Path? = pathMapper.selectByPrimaryKey(id)
 
+    @Transactional
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["pathsActive", "pathsAll"], allEntries = true),
@@ -28,6 +31,7 @@ class PathService(
     )
     fun insert(record: Path): Int = pathMapper.insert(record)
 
+    @Transactional
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["pathsActive", "pathsAll"], allEntries = true),
@@ -36,6 +40,7 @@ class PathService(
     )
     fun update(record: Path): Int = pathMapper.updateByPrimaryKey(record)
 
+    @Transactional
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["pathsActive", "pathsAll"], allEntries = true),
@@ -44,6 +49,7 @@ class PathService(
     )
     fun logicalDelete(id: Long): Int = pathMapper.logicalDelete(id)
 
+    @Transactional
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["pathsActive", "pathsAll"], allEntries = true),
@@ -52,4 +58,3 @@ class PathService(
     )
     fun restore(id: Long): Int = pathMapper.restore(id)
 }
-

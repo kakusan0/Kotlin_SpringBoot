@@ -4,6 +4,7 @@ import com.example.demo.constants.ApplicationConstants
 import com.example.demo.service.ContentItemService
 import com.example.demo.service.MenuService
 import jakarta.validation.constraints.Size
+import org.slf4j.LoggerFactory
 import org.springframework.core.io.ClassPathResource
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -17,46 +18,36 @@ class MainController(
     private val contentItemService: ContentItemService,
     private val menuService: MenuService
 ) {
-    // 共通のモデル属性をセットするヘルパ
+    companion object {
+        private val logger = LoggerFactory.getLogger(MainController::class.java)
+    }
+
     private fun addCommonAttributes(model: Model) {
         val screens = contentItemService.getAllForHome()
-        model.addAttribute("screens", screens)
         val menus = menuService.getAll()
+
+        model.addAttribute("screens", screens)
         model.addAttribute("menus", menus)
-        // visibleMenus: Home 画面のサイドバーには「pathName が有効」かつ「itemName が有効」な画面に割り当てられている menuName のみを対象にする
-        val assignedMenuNames = screens
-            .filter { s ->
-                // pathName の有効性をチェック
-                val pn = s.pathName?.trim()
-                val hasValidPath = !pn.isNullOrEmpty() && !pn.equals("null", ignoreCase = true)
 
-                // itemName（画面名）の有効性をチェック
-                val itemName = s.itemName?.trim()
-                val hasValidItemName = !itemName.isNullOrEmpty()
-
-                // menuName の有効性をチェック
-                val menuName = s.menuName?.trim()
-                val hasValidMenuName = !menuName.isNullOrEmpty()
-
-                // 3つすべてが有効な場合のみ対象とする
-                hasValidPath && hasValidItemName && hasValidMenuName
+        val visibleMenus = screens
+            .filter { screen ->
+                screen.pathName?.trim()?.takeIf { it.isNotEmpty() && it != "null" } != null &&
+                        screen.itemName?.trim()?.isNotEmpty() == true &&
+                        screen.menuName?.trim()?.isNotEmpty() == true
             }
-            .mapNotNull { it.menuName }
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
+            .mapNotNull { it.menuName?.trim() }
             .toSet()
-        val visibleMenus = if (assignedMenuNames.isEmpty()) {
-            emptyList<com.example.demo.model.Menu>()
-        } else {
-            menus.filter { it.name != null && assignedMenuNames.contains(it.name!!.trim()) }
-        }
+            .let { assignedNames ->
+                if (assignedNames.isEmpty()) emptyList()
+                else menus.filter { it.name?.trim() in assignedNames }
+            }
+
         model.addAttribute("visibleMenus", visibleMenus)
     }
 
     @GetMapping(ApplicationConstants.ROOT)
     fun root(model: Model): String {
         addCommonAttributes(model)
-        // ensure template has these attributes to avoid Thymeleaf evaluating a null fragment name
         model.addAttribute("currentScreen", "")
         model.addAttribute("selectedScreenName", "メニューを選択")
         model.addAttribute("currentScreenPath", "")
@@ -65,56 +56,55 @@ class MainController(
 
     @GetMapping(ApplicationConstants.CONTENT)
     fun selectItem(
-        @RequestParam(name = "screenName", defaultValue = "未選択") @Size(max = 255, message = "screenName: 255文字以内で入力してください") screenName: String,
+        @RequestParam(name = "screenName", defaultValue = "未選択")
+        @Size(max = 255, message = "screenName: 255文字以内で入力してください")
+        screenName: String,
         model: Model
     ): String {
         model.addAttribute("errorMessage", null)
         addCommonAttributes(model)
 
-        // currentScreen は未選択なら空文字、それ以外はクエリ値をそのまま使う
-        val current = if (screenName == "未選択") "" else screenName
-        model.addAttribute("currentScreen", current)
-
-        // --- 変更: selectedScreenName は画面名ではなく menuName を優先して表示する ---
-        // Find the ContentItem once and reuse. Use trimmed comparison to be tolerant of whitespace.
-        val requestedName = if (screenName == "未選択") null else screenName.trim()
-        val found = if (requestedName == null) null else contentItemService.getAllForHome().firstOrNull {
-            val itemName = it.itemName?.trim()
-            if (itemName == null) false else itemName == requestedName
+        val requestedName = screenName.takeIf { it != "未選択" }?.trim()
+        val found = requestedName?.let { name ->
+            contentItemService.getAllForHome().find { it.itemName?.trim() == name }
         }
 
-        // If the found item has a non-blank menuName, show that; otherwise fall back to screenName (or placeholder)
-        val selected = when {
+        if (found == null && requestedName != null) {
+            model.apply {
+                addAttribute("currentScreen", "")
+                addAttribute("selectedScreenName", "メニューを選択")
+                addAttribute("currentScreenPath", "")
+                addAttribute(
+                    "errorMessage",
+                    "指定された画面は表示できません（削除されたメニューまたはパスに紐づいている可能性があります）"
+                )
+            }
+            return "main"
+        }
+
+        val currentScreen = requestedName ?: ""
+        val selectedName = when {
             requestedName == null -> "メニューを選択"
             found?.menuName?.trim()?.isNotEmpty() == true -> found.menuName!!.trim()
             else -> requestedName
         }
-        model.addAttribute("selectedScreenName", selected)
 
-        // 追加: 選択された画面名に対応する ContentItem を探して pathName を currentScreenPath としてモデルにセット
-        val currentPath = if (requestedName == null) {
-            ""
-        } else {
-            if (found == null) {
-                ""
-            } else {
-                val pn = found.pathName
-                // defensive: treat literal "null" (from bad DB values) as missing
-                val normalizedPn = pn?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
-                if (normalizedPn.isNullOrBlank()) {
-                    ""
+        val currentPath = found?.pathName?.trim()
+            ?.takeIf { it.isNotEmpty() && it != "null" }
+            ?.let { pathName ->
+                if (ClassPathResource("templates/fragments/$pathName.html").exists()) {
+                    pathName
                 } else {
-                    val candidate = normalizedPn
-                    val resourcePath = "templates/fragments/${candidate}.html"
-                    val res = ClassPathResource(resourcePath)
-                    if (res.exists()) candidate else {
-                        model.addAttribute("errorMessage", "指定された画面（${candidate}）のテンプレートが見つかりません。")
-                        ""
-                    }
+                    model.addAttribute("errorMessage", "指定された画面（$pathName）のテンプレートが見つかりません。")
+                    ""
                 }
-            }
+            } ?: ""
+
+        model.apply {
+            addAttribute("currentScreen", currentScreen)
+            addAttribute("selectedScreenName", selectedName)
+            addAttribute("currentScreenPath", currentPath)
         }
-        model.addAttribute("currentScreenPath", currentPath)
 
         return "main"
     }

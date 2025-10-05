@@ -17,7 +17,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
-    private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
+    companion object {
+        private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
+    }
 
     data class ErrorResponse(
         val message: String,
@@ -35,15 +37,11 @@ class GlobalExceptionHandler {
             fieldName to errorMessage
         }
 
-        val response = ErrorResponse(
-            message = "入力値に問題があります",
-            errors = errors
+        logger.warn("バリデーションエラー: {}", errors)
+
+        return ResponseEntity.badRequest().body(
+            ErrorResponse(message = "入力値に問題があります", errors = errors)
         )
-
-        // バリデーションエラーをログに記録（セキュリティ監査用）
-        logger.warn("Validation error: {}", errors)
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
     }
 
     /**
@@ -55,14 +53,11 @@ class GlobalExceptionHandler {
             violation.propertyPath.toString() to (violation.message ?: "制約違反")
         }
 
-        val response = ErrorResponse(
-            message = "入力値の制約違反があります",
-            errors = errors
+        logger.warn("制約違反: {}", errors)
+
+        return ResponseEntity.badRequest().body(
+            ErrorResponse(message = "入力値の制約違反があります", errors = errors)
         )
-
-        logger.warn("Constraint violation: {}", errors)
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
     }
 
     /**
@@ -70,13 +65,11 @@ class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun handleTypeMismatch(ex: MethodArgumentTypeMismatchException): ResponseEntity<ErrorResponse> {
-        val response = ErrorResponse(
-            message = "パラメータの型が正しくありません: ${ex.name}"
+        logger.warn("型変換エラー: parameter={}, value={}", ex.name, ex.value)
+
+        return ResponseEntity.badRequest().body(
+            ErrorResponse(message = "パラメータの型が正しくありません: ${ex.name}")
         )
-
-        logger.warn("Type mismatch error: parameter={}, value={}", ex.name, ex.value)
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
     }
 
     /**
@@ -84,13 +77,11 @@ class GlobalExceptionHandler {
      */
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ErrorResponse> {
-        val response = ErrorResponse(
-            message = "不正な入力値が検出されました"
+        logger.error("SECURITY_ALERT | 不正な引数検出: {}", ex.message)
+
+        return ResponseEntity.badRequest().body(
+            ErrorResponse(message = "不正な入力値が検出されました")
         )
-
-        logger.error("SECURITY_ALERT | Illegal argument detected: {}", ex.message)
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
     }
 
     /**
@@ -98,14 +89,10 @@ class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception::class)
     fun handleGeneralException(ex: Exception): ResponseEntity<ErrorResponse> {
-        // 本番環境では詳細なエラーメッセージを隠すことを推奨
-        val response = ErrorResponse(
-            message = "サーバーエラーが発生しました"
+        logger.error("予期しないエラーが発生: {}", ex.message, ex)
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+            ErrorResponse(message = "サーバー内部エラーが発生しました")
         )
-
-        // ログには詳細を記録（スタックトレースは本番環境では制御すること）
-        logger.error("Unexpected error occurred", ex)
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response)
     }
 }

@@ -8,15 +8,15 @@ import org.springframework.web.bind.annotation.GetMapping
 
 @Controller
 class AdminController(
-    private val contentItemService: ContentItemService
-    , private val menuService: MenuService
+    private val contentItemService: ContentItemService,
+    private val menuService: MenuService
 ) {
     @GetMapping("/manage")
     fun manage(model: Model): String {
-        val screens = contentItemService.getAll()
-        model.addAttribute("screens", screens)
-        val menus = menuService.getAll()
-        model.addAttribute("menus", menus)
+        model.apply {
+            addAttribute("screens", contentItemService.getAll())
+            addAttribute("menus", menuService.getAll())
+        }
         return "manage"
     }
 }

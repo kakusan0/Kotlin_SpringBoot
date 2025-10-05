@@ -6,8 +6,10 @@ import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.cache.annotation.Caching
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
+@Transactional(readOnly = true)
 class MenuService(
     private val menuMapper: MenuMapper
 ) {
@@ -20,6 +22,7 @@ class MenuService(
     @Cacheable(cacheNames = ["menuById"], key = "#id")
     fun getById(id: Long): Menu? = menuMapper.selectByPrimaryKey(id)
 
+    @Transactional
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["menus"], allEntries = true),
@@ -29,6 +32,7 @@ class MenuService(
     )
     fun insert(record: Menu): Int = menuMapper.insert(record)
 
+    @Transactional
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["menus"], allEntries = true),
@@ -38,6 +42,7 @@ class MenuService(
     )
     fun update(record: Menu): Int = menuMapper.updateByPrimaryKey(record)
 
+    @Transactional
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["menus"], allEntries = true),

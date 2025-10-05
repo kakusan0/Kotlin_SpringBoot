@@ -3,6 +3,7 @@ package com.example.demo
 import com.example.demo.model.Path
 import com.example.demo.service.PathService
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -12,20 +13,20 @@ class ApiPathController(
     private val pathService: PathService
 ) {
     @GetMapping("/all")
-    fun allActive(): List<Path> = pathService.getAllActive()
+    fun allActive(): ResponseEntity<List<Path>> =
+        ResponseEntity.ok(pathService.getAllActive())
 
     @GetMapping("/allIncludingDeleted")
-    fun allIncludingDeleted(): List<Path> = pathService.getAllIncludingDeleted()
+    fun allIncludingDeleted(): ResponseEntity<List<Path>> =
+        ResponseEntity.ok(pathService.getAllIncludingDeleted())
 
     @PostMapping
-    fun create(@Valid @RequestBody path: Path): ResponseEntity<Path> {
-        pathService.insert(path)
-        return ResponseEntity.ok(path)
-    }
+    fun create(@Valid @RequestBody path: Path): ResponseEntity<Path> =
+        ResponseEntity.status(HttpStatus.CREATED).body(path.also { pathService.insert(it) })
 
     @PutMapping
     fun update(@Valid @RequestBody path: Path): ResponseEntity<Path> {
-        if (path.id == null) return ResponseEntity.badRequest().build()
+        require(path.id != null) { "IDは更新時に必須です" }
         pathService.update(path)
         return ResponseEntity.ok(path)
     }
@@ -42,4 +43,3 @@ class ApiPathController(
         return ResponseEntity.noContent().build()
     }
 }
-
