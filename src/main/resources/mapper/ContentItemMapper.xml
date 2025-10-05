@@ -12,13 +12,15 @@
     <result column="enabled" jdbcType="BOOLEAN" property="enabled" />
   </resultMap>
 
-  <sql id="Base_Column_List">id, item_name, menu_name, path_name, created_at, updated_at, enabled</sql>
+    <sql id="Base_Column_List">content_items.id, content_items.item_name, content_items.menu_name, content_items.path_name, content_items.created_at, content_items.updated_at, content_items.enabled</sql>
 
   <select id="selectAll" resultMap="BaseResultMap">
     SELECT <include refid="Base_Column_List" />
-    FROM content_items
-    WHERE enabled = TRUE
-    ORDER BY id
+      FROM content_items
+      left join menus on content_items.menu_name = menus.name
+      left join paths on content_items.path_name = paths.name
+      WHERE content_items.enabled = TRUE and paths.deleted = TRUE
+      ORDER BY content_items.id;
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
