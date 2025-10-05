@@ -19,7 +19,7 @@ class MainController(
 ) {
     // 共通のモデル属性をセットするヘルパ
     private fun addCommonAttributes(model: Model) {
-        val screens = contentItemService.getAll()
+        val screens = contentItemService.getAllForHome()
         model.addAttribute("screens", screens)
         val menus = menuService.getAll()
         model.addAttribute("menus", menus)

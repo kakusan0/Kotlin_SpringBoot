@@ -11,9 +11,12 @@ import org.springframework.stereotype.Service
 class ContentItemService(
     private val contentItemMapper: ContentItemMapper
 ) {
-    // 画面一覧は頻繁に参照されるためキャッシュ
-    @Cacheable(cacheNames = ["contentItems"]) // 引数なし: SimpleKey.EMPTY がキー
+    // 管理画面用：削除済みメニュー/パスも含めてすべて取得
+    @Cacheable(cacheNames = ["contentItems"])
     fun getAll(): List<ContentItem> = contentItemMapper.selectAll()
+
+    // ホームページ用：削除されていないメニュー/パスのみ取得（キャッシュなし）
+    fun getAllForHome(): List<ContentItem> = contentItemMapper.selectAllForHome()
 
     // 追加: menuName でフィルタした一覧取得
     // Mapper 側に selectByMenuName があるため、DB側で絞る方が効率的

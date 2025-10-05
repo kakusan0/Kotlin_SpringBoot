@@ -11,8 +11,11 @@ import org.springframework.stereotype.Service
 class MenuService(
     private val menuMapper: MenuMapper
 ) {
-    @Cacheable(cacheNames = ["menus"])
+    // ホームページ表示用：削除されていないメニューのみ取得（キャッシュなし）
     fun getAll(): List<Menu> = menuMapper.selectAll()
+
+    @Cacheable(cacheNames = ["menusIncludingDeleted"])
+    fun getAllIncludingDeleted(): List<Menu> = menuMapper.selectAllIncludingDeleted()
 
     @Cacheable(cacheNames = ["menuById"], key = "#id")
     fun getById(id: Long): Menu? = menuMapper.selectByPrimaryKey(id)
@@ -20,6 +23,7 @@ class MenuService(
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["menus"], allEntries = true),
+            CacheEvict(cacheNames = ["menusIncludingDeleted"], allEntries = true),
             CacheEvict(cacheNames = ["menuById"], key = "#record.id", condition = "#record.id != null")
         ]
     )
@@ -28,6 +32,7 @@ class MenuService(
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["menus"], allEntries = true),
+            CacheEvict(cacheNames = ["menusIncludingDeleted"], allEntries = true),
             CacheEvict(cacheNames = ["menuById"], key = "#record.id", condition = "#record.id != null")
         ]
     )
@@ -36,9 +41,9 @@ class MenuService(
     @Caching(
         evict = [
             CacheEvict(cacheNames = ["menus"], allEntries = true),
+            CacheEvict(cacheNames = ["menusIncludingDeleted"], allEntries = true),
             CacheEvict(cacheNames = ["menuById"], key = "#id")
         ]
     )
-    fun delete(id: Long): Int = menuMapper.deleteByPrimaryKey(id)
+    fun delete(id: Long): Int = menuMapper.logicalDeleteByPrimaryKey(id)
 }
-

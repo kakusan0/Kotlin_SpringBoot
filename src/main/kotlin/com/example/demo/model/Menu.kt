@@ -11,6 +11,8 @@ data class Menu(
     @field:Size(max = 255, message = "メニュー名は最大255文字までです")
     var name: String? = null,
 
+    var deleted: Boolean = false,
+
     var createdAt: OffsetDateTime? = null,
     var updatedAt: OffsetDateTime? = null
 )

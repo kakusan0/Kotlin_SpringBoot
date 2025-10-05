@@ -14,6 +14,9 @@ class ApiMenuController(
     @GetMapping("/all")
     fun all(): List<Menu> = menuService.getAll()
 
+    @GetMapping("/all-including-deleted")
+    fun allIncludingDeleted(): List<Menu> = menuService.getAllIncludingDeleted()
+
     @GetMapping("/{id}")
     fun getById(@PathVariable id: Long): ResponseEntity<Menu> {
         val menu = menuService.getById(id)

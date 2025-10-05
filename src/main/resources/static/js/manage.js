@@ -129,25 +129,50 @@
   }
 
   // --- レンダリング用関数 ---
-  // テーブル行を作成するユーティリティ
+    // メニュー管理用テーブル行を作成するユーティリティ
   function renderMenuRow(menu) {
     const tr = document.createElement('tr');
-    const idTd = document.createElement('td'); idTd.textContent = menu.id || '';
-    const nameTd = document.createElement('td'); nameTd.textContent = menu.name || '';
+
+      // 削除済みの場合は行をグレーアウト
+      if (menu.deleted) {
+          tr.style.backgroundColor = '#f8f9fa';
+          tr.style.opacity = '0.6';
+      }
+
+      const idTd = document.createElement('td');
+      idTd.textContent = menu.id || '';
+
+      const nameTd = document.createElement('td');
+      // 削除済みの場合は名前に「（削除済み）」を追加
+      nameTd.textContent = menu.name + (menu.deleted ? ' （削除済み）' : '');
+      if (menu.deleted) {
+          nameTd.style.textDecoration = 'line-through';
+          nameTd.style.color = '#6c757d';
+      }
+
     const actionsTd = document.createElement('td');
 
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-primary me-2';
-    editBtn.textContent = '編集';
-    editBtn.addEventListener('click', () => onEditMenu(menu));
+      if (!menu.deleted) {
+          const editBtn = document.createElement('button');
+          editBtn.className = 'btn btn-sm btn-outline-primary me-2';
+          editBtn.textContent = '編集';
+          editBtn.addEventListener('click', () => onEditMenu(menu));
 
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-sm btn-outline-danger';
-    delBtn.textContent = '削除';
-    delBtn.addEventListener('click', () => onDeleteMenu(menu));
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-sm btn-outline-danger';
+          delBtn.textContent = '削除';
+          delBtn.addEventListener('click', () => onDeleteMenu(menu));
 
-    actionsTd.appendChild(editBtn);
-    actionsTd.appendChild(delBtn);
+          actionsTd.appendChild(editBtn);
+          actionsTd.appendChild(delBtn);
+      } else {
+          // 削除済みの場合は復元ボタンを表示
+          const restoreBtn = document.createElement('button');
+          restoreBtn.className = 'btn btn-sm btn-outline-success';
+          restoreBtn.textContent = '復元';
+          restoreBtn.addEventListener('click', () => onRestoreMenu(menu));
+          actionsTd.appendChild(restoreBtn);
+      }
 
     tr.appendChild(idTd);
     tr.appendChild(nameTd);
@@ -576,15 +601,16 @@
     if (!tbody) return [];
     tbody.innerHTML = '<tr><td colspan="3">読み込み中...</td></tr>';
     try {
-      const resp = await fetch(apiMenus + '/all');
+        // 削除済みを含むすべてのメニューを取得
+        const resp = await fetch(apiMenus + '/all-including-deleted');
       if (!resp.ok) {
         tbody.innerHTML = '<tr><td colspan="3">読み込みに失敗しました</td></tr>';
         return [];
       }
       const menus = await resp.json();
-      menusCache = menus || [];
+        menusCache = (menus || []).filter(m => !m.deleted); // セレクトボックス用は有効なもののみ
       tbody.innerHTML = '';
-      if (!menusCache || !menusCache.length) {
+        if (!menus || !menus.length) {
         // If there are no menus defined in menu management, try to show menuNames derived from screens
         // This avoids confusing mismatch where home shows menus (from screens) but admin shows none.
         // Load screens and extract unique menuName values.
@@ -592,7 +618,6 @@
           const r = await fetch(apiContent + '/all');
           if (!r.ok) {
             tbody.innerHTML = '<tr><td colspan="3">メニューがありません</td></tr>';
-            // still refresh selects to show empty options
             refreshMenuSelects();
             return [];
           }
@@ -600,7 +625,6 @@
           const menuNames = Array.from(new Set((items || []).map(it => it.menuName).filter(Boolean)));
           if (!menuNames.length) {
             tbody.innerHTML = '<tr><td colspan="3">メニューがありません</td></tr>';
-            // still refresh selects to show empty options
             refreshMenuSelects();
             return [];
           }
@@ -641,24 +665,21 @@
             frag.appendChild(tr);
           });
           tbody.appendChild(frag);
-           // ensure selects are refreshed
            refreshMenuSelects();
            return menuNames;
         } catch (e) {
           tbody.innerHTML = '<tr><td colspan="3">メニューがありません</td></tr>';
-          // still refresh selects to show empty options
           refreshMenuSelects();
           return [];
         }
       }
       {
         const frag = document.createDocumentFragment();
-        menusCache.forEach(m => frag.appendChild(renderMenuRow(m)));
+          menus.forEach(m => frag.appendChild(renderMenuRow(m)));
         tbody.appendChild(frag);
       }
-       // update any existing select elements in screens
        refreshMenuSelects();
-       return menusCache;
+        return menus;
     } catch (e) {
       tbody.innerHTML = '<tr><td colspan="3">読み込みに失敗しました</td></tr>';
       return [];
@@ -780,6 +801,31 @@
       alert('削除に失敗しました');
     }
   }
+
+    async function onRestoreMenu(menu) {
+        try {
+            const payload = Object.assign({}, menu, {deleted: false});
+            const resp = await fetch(apiMenus, {method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload)});
+            if (!resp.ok) {
+                alert('復元に失敗しました');
+                return;
+            }
+            await loadMenus();
+            await loadScreens();
+            try {
+                localStorage.setItem('menus-updated', String(Date.now()));
+            } catch (_) {
+            }
+            try {
+                if (menusBroadcast) menusBroadcast.postMessage('menus-updated');
+            } catch (_) {
+            }
+            // show notification
+            showNotification('success', 'メニューが復元されました', true);
+        } catch (e) {
+            alert('復元に失敗しました');
+        }
+    }
 
   // --- パス操作 ---
   async function onAddPath() {
