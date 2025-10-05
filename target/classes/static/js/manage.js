@@ -168,12 +168,6 @@
     // ensure currentValue is represented even if it's not in menusCache
     const hasCurrent = menusCache.some(m => m.name === currentValue);
 
-    // empty option
-    const emptyOpt = document.createElement('option');
-    emptyOpt.value = '';
-    emptyOpt.textContent = '未選択';
-    select.appendChild(emptyOpt);
-
     // add known menus
     menusCache.forEach(m => {
       const opt = document.createElement('option');
@@ -210,17 +204,12 @@
 
     const hasCurrent = pathsCache.some(p => p.name === currentValue);
 
-    // 空（未選択）
-    const emptyOpt = document.createElement('option');
-    emptyOpt.value = '';
-    emptyOpt.textContent = '未選択';
-    select.appendChild(emptyOpt);
-
     // 有効/無効を含む全パス（無効は選択不可）
     pathsCache.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.name;
-      opt.textContent = p.name + (p.deleted ? '（無効）' : '');
+      // IDを含めた表示形式: "ID: パス名" または "ID: パス名（無効）"
+      opt.textContent = `${p.id}: ${p.name}${p.deleted ? '（無効）' : ''}`;
       if (p.deleted) opt.disabled = true;
       select.appendChild(opt);
     });
@@ -231,7 +220,7 @@
       opt.value = currentValue;
       opt.textContent = currentValue + '（無効）';
       opt.disabled = true;
-      select.insertBefore(opt, select.children[1] || null);
+      select.insertBefore(opt, select.children[0] || null);
     }
 
     select.value = currentValue || '';
@@ -360,14 +349,11 @@
     selects.forEach(sel => {
       const currentVal = sel.value || '';
       while (sel.firstChild) sel.removeChild(sel.firstChild);
-      const emptyOpt = document.createElement('option');
-      emptyOpt.value = '';
-      emptyOpt.textContent = '未選択';
-      sel.appendChild(emptyOpt);
       pathsCache.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.name;
-        opt.textContent = p.name + (p.deleted ? '（無効）' : '');
+        // IDを含めた表示形式: "ID: パス名" または "ID: パス名（無効）"
+        opt.textContent = `${p.id}: ${p.name}${p.deleted ? '（無効）' : ''}`;
         if (p.deleted) opt.disabled = true;
         sel.appendChild(opt);
       });
@@ -376,7 +362,7 @@
         opt.value = currentVal;
         opt.textContent = currentVal + '（無効）';
         opt.disabled = true;
-        sel.insertBefore(opt, sel.children[1] || null);
+        sel.insertBefore(opt, sel.children[0] || null);
       }
       sel.value = currentVal;
     });

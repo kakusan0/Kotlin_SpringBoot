@@ -4,7 +4,7 @@ CREATE TABLE content_items (
   id BIGSERIAL PRIMARY KEY, -- 一意のID
   item_name VARCHAR(255) NOT NULL, -- アイテム名
   menu_name VARCHAR(255) NOT NULL DEFAULT '', -- メニュー名
-  path_name VARCHAR(255) NOT NULL DEFAULT '', -- パス名
+  path_name VARCHAR(255) DEFAULT '', -- パス名
   created_at TIMESTAMP DEFAULT (now() AT TIME ZONE 'UTC'), -- 作成日時
   updated_at TIMESTAMP DEFAULT (now() AT TIME ZONE 'UTC'), -- 更新日時
   enabled BOOLEAN NOT NULL DEFAULT TRUE -- 有効フラグ
@@ -23,13 +23,6 @@ CREATE TRIGGER set_updated_at
 BEFORE UPDATE ON content_items
 FOR EACH ROW
 EXECUTE FUNCTION pg_trigger_set_updated_at();
-
--- V2__insert_content_items.sql
-INSERT INTO content_items (item_name, menu_name, path_name, enabled)
-VALUES
-  ('ホーム', 'ホーム', 'home', TRUE),
-  ('パスワード生成', 'ツール', 'pwgen', TRUE),
-  ('設定', '設定', 'settings', TRUE);
 
 -- V5__create_menus.sql
 CREATE TABLE IF NOT EXISTS menus (

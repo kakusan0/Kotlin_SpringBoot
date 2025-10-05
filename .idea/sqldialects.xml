@@ -2,5 +2,6 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V1_8__all_in_one.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V9__allow_null_path_name.sql" dialect="PostgreSQL" />
   </component>
 </project>
