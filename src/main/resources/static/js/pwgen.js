@@ -426,9 +426,21 @@ function initPwgen() {
       if (useNum) chars += '0123456789';
       if (useSymbol) chars += '!@#$%^&*()';
       if (!chars) return '';
+
       let password = '';
-      for (let i = 0; i < length; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
+        // 暗号学的に安全な乱数生成器を使用
+        if (window.crypto && window.crypto.getRandomValues) {
+            const array = new Uint32Array(length);
+            window.crypto.getRandomValues(array);
+            for (let i = 0; i < length; i++) {
+                password += chars.charAt(array[i] % chars.length);
+            }
+        } else {
+            // フォールバック（非推奨）: 古いブラウザ向け
+            console.warn('crypto.getRandomValues not available, falling back to Math.random()');
+            for (let i = 0; i < length; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
       }
       return password;
     }

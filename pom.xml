@@ -56,6 +56,12 @@
             <artifactId>spring-session-jdbc</artifactId>
         </dependency>
 
+        <!-- Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- Docker Compose support -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
