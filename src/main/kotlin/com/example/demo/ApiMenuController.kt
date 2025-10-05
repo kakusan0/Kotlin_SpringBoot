@@ -2,6 +2,7 @@ package com.example.demo
 
 import com.example.demo.model.Menu
 import com.example.demo.service.MenuService
+import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -20,7 +21,7 @@ class ApiMenuController(
     }
 
     @PostMapping
-    fun create(@RequestBody menu: Menu): ResponseEntity<Menu> {
+    fun create(@Valid @RequestBody menu: Menu): ResponseEntity<Menu> {
         menuService.insert(menu)
         return ResponseEntity.ok(menu)
     }

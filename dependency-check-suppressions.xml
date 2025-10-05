@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+    OWASP Dependency Check 誤検知抑制設定
+    既知の誤検知や意図的に受け入れるリスクをここに記載
+    -->
+
+    <!-- 例: 特定のCVEを抑制する場合
+    <suppress>
+        <notes><![CDATA[
+        説明: この脆弱性は使用していない機能に関するものです
+        ]]></notes>
+        <cve>CVE-2023-12345</cve>
+    </suppress>
+    -->
+</suppressions>
+

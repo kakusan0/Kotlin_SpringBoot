@@ -16,6 +16,53 @@
   function qs(sel) { return document.querySelector(sel); }
   function qsa(sel) { return Array.from(document.querySelectorAll(sel)); }
 
+  // CSRF トークンを取得する関数
+  function getCsrfToken() {
+    // 1. まずmetaタグから取得（サーバーレンダリング時に埋め込まれる）
+    const meta = document.querySelector('meta[name="_csrf"]');
+    if (meta) {
+      const token = meta.getAttribute('content');
+      if (token) {
+        console.log('CSRF token loaded from meta tag');
+        return token;
+      }
+    }
+
+    // 2. Cookieから取得（フォールバック）
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'XSRF-TOKEN') {
+        console.log('CSRF token loaded from cookie');
+        return decodeURIComponent(value);
+      }
+    }
+
+    console.warn('CSRF token not found in meta tags or cookies');
+    return null;
+  }
+
+  // CSRF トークンを含むヘッダーを取得
+  function getHeaders(includeContentType = true) {
+    const headers = {};
+    const token = getCsrfToken();
+
+    // ヘッダー名もmetaタグから取得（デフォルトはX-XSRF-TOKEN）
+    const headerNameMeta = document.querySelector('meta[name="_csrf_header"]');
+    const headerName = headerNameMeta ? headerNameMeta.getAttribute('content') : 'X-XSRF-TOKEN';
+
+    if (token) {
+      headers[headerName] = token;
+      console.log('CSRF token added to headers:', token.substring(0, 10) + '...');
+    } else {
+      console.error('CSRF token is missing! Requests may fail.');
+    }
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+    return headers;
+  }
+
   // キャッシュ: メニュー一覧を保持して選択肢を高速に構築
   let menusCache = [];
   // キャッシュ: パス一覧（有効のみ）を保持
@@ -376,7 +423,7 @@
 
     const payload = Object.assign({}, item, { menuName: newMenuName });
     try {
-      const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiContent, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) {
         // サーバエラー: ユーザーへ通知して選択を元に戻す
         showNotification('error', 'メニューの更新に失敗しました');
@@ -410,7 +457,7 @@
 
     const payload = Object.assign({}, item, { pathName: normalized });
     try {
-      const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiContent, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) {
         showNotification('error', 'パス名の更新に失敗しました');
         try { if (inputElem) inputElem.value = prev || ''; } catch (_) {}
@@ -438,7 +485,7 @@
 
     const payload = Object.assign({}, item, { itemName: normalized });
     try {
-      const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiContent, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) {
         showNotification('error', '画面名の更新に失敗しました');
         try {
@@ -469,7 +516,7 @@
     if (prev === willDisable) return;
     const payload = Object.assign({}, path, { deleted: willDisable });
     try {
-      const resp = await fetch(apiPaths, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiPaths, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) {
         alert('状態の更新に失敗しました');
         try { selectElem.value = prev ? 'disabled' : 'enabled'; } catch(_){}
@@ -570,7 +617,7 @@
             importBtn.addEventListener('click', async () => {
               // create menu via API
               try {
-                const resp2 = await fetch(apiMenus, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+                const resp2 = await fetch(apiMenus, { method: 'POST', headers: getHeaders(), body: JSON.stringify({ name }) });
                 if (!resp2.ok) {
                   alert('インポートに失敗しました');
                   return;
@@ -657,12 +704,25 @@
     const name = window.prompt('追加するメニュー名を入力してください', '新しいメニュー');
     if (!name) return;
     const payload = { name };
+    console.log('Sending menu payload:', payload);
     try {
-      const resp = await fetch(apiMenus, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiMenus, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
+      console.log('Response status:', resp.status);
       if (!resp.ok) {
-        alert('メニュー作成に失敗しました');
+        // エラーの詳細を取得
+        const errorText = await resp.text();
+        console.error('Menu creation failed:', errorText);
+        try {
+          const errorJson = JSON.parse(errorText);
+          console.error('Error details:', errorJson);
+          alert('メニュー作成に失敗しました: ' + (errorJson.message || errorText));
+        } catch (_) {
+          alert('メニュー作成に失敗しました: ' + errorText);
+        }
         return;
       }
+      const created = await resp.json();
+      console.log('Menu created successfully:', created);
       await loadMenus();
       // refresh menu dropdowns for adding screens
       await loadScreens();
@@ -672,7 +732,8 @@
       // show notification
       showNotification('success', 'メニューが追加されました', true);
     } catch (e) {
-      alert('メニュー作成に失敗しました');
+      console.error('Exception during menu creation:', e);
+      alert('メニュー作成に失敗しました: ' + e.message);
     }
   }
 
@@ -681,7 +742,7 @@
     if (name == null) return;
     const payload = Object.assign({}, menu, { name });
     try {
-      const resp = await fetch(apiMenus, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiMenus, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) {
         alert('更新に失敗しました');
         return;
@@ -700,7 +761,7 @@
   async function onDeleteMenu(menu) {
     if (!window.confirm('このメニューを削除してよいですか?（メニューに紐づく画面がある場合、連鎖的な整合性は考慮していません）')) return;
     try {
-      const resp = await fetch(apiMenus + '/' + menu.id, { method: 'DELETE' });
+      const resp = await fetch(apiMenus + '/' + menu.id, { method: 'DELETE', headers: getHeaders(false) });
       if (!resp.ok) {
         alert('削除に失敗しました');
         return;
@@ -722,7 +783,7 @@
     if (!name) return;
     const payload = { name };
     try {
-      const resp = await fetch(apiPaths, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiPaths, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) { alert('パス作成に失敗しました'); return; }
       await loadPaths();
       await loadScreens();
@@ -736,7 +797,7 @@
     if (name == null) return;
     const payload = Object.assign({}, path, { name });
     try {
-      const resp = await fetch(apiPaths, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiPaths, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) { alert('更新に失敗しました'); return; }
       await loadPaths();
       await loadScreens();
@@ -748,7 +809,7 @@
   async function onDeletePath(path) {
     if (!window.confirm('このパスを論理削除します。よろしいですか？')) return;
     try {
-      const resp = await fetch(apiPaths + '/' + path.id, { method: 'DELETE' });
+      const resp = await fetch(apiPaths + '/' + path.id, { method: 'DELETE', headers: getHeaders(false) });
       if (!resp.ok) { alert('削除に失敗しました'); return; }
       await loadPaths();
       await loadScreens();
@@ -759,7 +820,7 @@
 
   async function onRestorePath(path) {
     try {
-      const resp = await fetch(apiPaths + '/' + path.id + '/restore', { method: 'POST' });
+      const resp = await fetch(apiPaths + '/' + path.id + '/restore', { method: 'POST', headers: getHeaders() });
       if (!resp.ok) { alert('復元に失敗しました'); return; }
       await loadPaths();
       await loadScreens();
@@ -790,7 +851,7 @@
     const pathName = window.prompt('この画面のパス名を入力してください（例: passwordGeneration）。空欄でも可', '');
     const payload = { itemName: name, menuName, pathName: (pathName ? pathName.trim() : null) };
     try {
-      const resp = await fetch(apiContent, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiContent, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) {
         alert('作成に失敗しました');
         return;
@@ -809,7 +870,7 @@
     if (name == null) return;
     const payload = Object.assign({}, item, { itemName: name });
     try {
-      const resp = await fetch(apiContent, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const resp = await fetch(apiContent, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(payload) });
       if (!resp.ok) {
         alert('更新に失敗しました');
         return;
@@ -825,7 +886,7 @@
   async function onDeleteScreen(item) {
     if (!window.confirm('削除してよいですか?')) return;
     try {
-      const resp = await fetch(apiContent + '/' + item.id, { method: 'DELETE' });
+      const resp = await fetch(apiContent + '/' + item.id, { method: 'DELETE', headers: getHeaders(false) });
       if (!resp.ok) {
         alert('削除に失敗しました');
         return;

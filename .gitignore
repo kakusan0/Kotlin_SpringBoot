@@ -51,3 +51,24 @@ hs_err_pid*
 replay_pid*
 
 !/target/
+src/main/resources/keystore/
+*.p12
+
+### Security - 機密情報
+.env
+.env.local
+.env.production
+*.key
+*.pem
+*.crt
+secrets/
+credentials/
+
+### IDE
+.idea/
+*.iml
+.vscode/
+
+### Logs
+logs/
+*.log

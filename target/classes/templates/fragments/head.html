@@ -7,6 +7,15 @@
     <!-- SEO: ページごとの説明を設定可能。コントローラで model.addAttribute("description", "...") を渡すと上書きされます -->
     <meta name="description"
         th:attr="content=${description != null ? description : 'シンプルな管理用ダッシュボード。ツールの選択とコンテンツ表示を提供します。'}" />
+
+    <!-- CSRF Token for AJAX requests -->
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}" />
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}" />
+
     <!-- Critical CSS moved to /css/style.css for maintainability and caching -->
 
     <!-- Stylesheets: preload を使って非同期にロード（onload で stylesheet に切り替え） -->
