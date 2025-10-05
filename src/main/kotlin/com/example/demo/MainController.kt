@@ -56,6 +56,9 @@ class MainController(
 
     @GetMapping(ApplicationConstants.CONTENT)
     fun selectItem(
+        @RequestParam(name = "menuName", defaultValue = "未選択")
+        @Size(max = 255, message = "menuName: 255文字以内で入力してください")
+        menuName: String,
         @RequestParam(name = "screenName", defaultValue = "未選択")
         @Size(max = 255, message = "screenName: 255文字以内で入力してください")
         screenName: String,

@@ -368,10 +368,50 @@
     // 初回ロードでメニューを描画
     loadAndRenderSidebarMenus();
 
+      // サイドバーのメニュー数に応じてヘッダーボタンの活性/非活性を制御
+      function updateHeaderButtonState() {
+          const itemSelectButton = document.getElementById('itemSelectButton');
+          if (!itemSelectButton) return;
+
+          // サイドバーの動的に挿入されたメニューアイテムの数をカウント
+          const ul = document.querySelector('#sidebarMenu .offcanvas-body ul.nav');
+          if (!ul) return;
+
+          const injectedMenuItems = ul.querySelectorAll('li[data-injected="true"]');
+          const hasMenus = injectedMenuItems.length > 0;
+
+          if (hasMenus) {
+              // メニューがある場合：ボタンを活性化
+              itemSelectButton.disabled = false;
+              itemSelectButton.classList.remove('disabled');
+              itemSelectButton.style.cursor = 'pointer';
+          } else {
+              // メニューがない場合（管理ボタンのみ）：ボタンを非活性化
+              itemSelectButton.disabled = true;
+              itemSelectButton.classList.add('disabled');
+              itemSelectButton.style.cursor = 'not-allowed';
+              itemSelectButton.title = 'メニューが登録されていません';
+          }
+      }
+
+      // 初回チェック
+      setTimeout(updateHeaderButtonState, 100);
+
+      // メニューの再描画後にもボタンの状態を更新
+      const originalLoadAndRenderSidebarMenus = loadAndRenderSidebarMenus;
+      loadAndRenderSidebarMenus = async function () {
+          await originalLoadAndRenderSidebarMenus();
+          updateHeaderButtonState();
+      };
+
     // When header's select button opens modal, populate it using currently cached screens
     const itemSelectButton = document.getElementById('itemSelectButton');
     if (itemSelectButton) {
       itemSelectButton.addEventListener('click', async function () {
+          // ボタンが非活性の場合は何もしない
+          if (this.disabled) return;
+
+          // ボタン活性時の処理
         // fetch screens and populate modal, filter by selectedSidebarMenu if set
         // Prefer the sidebar-selection variable if it's been set; otherwise use the header label
         const headerLabelEl = document.getElementById('selectedItemName');
