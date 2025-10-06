@@ -25,4 +25,13 @@ class AdminController(
         }
         return "manage"
     }
+
+    @GetMapping("/manage/ip")
+    fun manageIp(model: Model): String {
+        model.apply {
+            addAttribute("whitelist", whitelistIpMapper.getAll())
+            addAttribute("blacklist", blacklistIpMapper.getAll())
+        }
+        return "manage_ip"
+    }
 }
