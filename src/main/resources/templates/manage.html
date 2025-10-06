@@ -145,6 +145,59 @@
         </div>
       </div>
 
+      <div class="card mb-4">
+        <div class="card-header">ブラックリスト登録</div>
+        <div class="card-body d-flex gap-2 align-items-center flex-wrap">
+          <select id="whitelistSelectForBlacklist" class="form-select" style="max-width: 360px;">
+            <option value="">ホワイトリストから選択...</option>
+            <option th:each="w : ${whitelist}"
+                    th:value="${w.ipAddress}"
+                    th:disabled="${w.blacklisted}"
+                    th:text="${w.ipAddress + (w.blacklisted ? '（登録済）' : '')}">
+            </option>
+          </select>
+          <button id="btnAddToBlacklist" class="btn btn-outline-danger">ブラックリストに登録</button>
+          <small class="text-muted">※ 既にブラックリスト登録済みのIPは選択できません。</small>
+        </div>
+      </div>
+
+      <h2>ホワイトリストIP一覧</h2>
+      <table class="table table-bordered">
+        <thead>
+          <tr><th>ID</th><th>IPアドレス</th><th>登録日時</th><th>BL</th><th>BL回数</th></tr>
+        </thead>
+        <tbody>
+          <tr th:each="ip : ${whitelist}">
+            <td th:text="${ip.id}"></td>
+            <td th:text="${ip.ipAddress}"></td>
+            <td th:text="${#temporals.format(ip.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
+            <td>
+              <span th:text="${ip.blacklisted ? '✔' : ''}"></span>
+            </td>
+            <td th:text="${ip.blacklistedCount}"></td>
+          </tr>
+        </tbody>
+      </table>
+      <h2>ブラックリストIP一覧</h2>
+      <table class="table table-bordered">
+        <thead>
+          <tr><th>ID</th><th>IPアドレス</th><th>登録日時</th><th>回数</th><th>削除フラグ</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          <tr th:each="ip : ${blacklist}">
+            <td th:text="${ip.id}"></td>
+            <td th:text="${ip.ipAddress}"></td>
+            <td th:text="${#temporals.format(ip.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
+            <td th:text="${ip.times}"></td>
+            <td>
+              <span th:text="${ip.deleted ? '✔' : ''}"></span>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger btn-blacklist-delete" th:attr="data-id=${ip.id}" th:disabled="${ip.deleted}">削除（論理）</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </main>
 

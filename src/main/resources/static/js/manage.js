@@ -11,6 +11,7 @@
   const apiContent = '/api/content';
   const apiMenus = '/api/menus';
   const apiPaths = '/api/paths';
+  const apiIp = '/api/ip';
 
   // DOM ヘルパ関数
   function qs(sel) { return document.querySelector(sel); }
@@ -949,6 +950,58 @@
     }
   }
 
+  // --- ブラックリスト管理 ---
+  async function onAddToBlacklist() {
+    const sel = document.getElementById('whitelistSelectForBlacklist');
+    if (!sel) { alert('セレクトボックスが見つかりません'); return; }
+    const ip = (sel.value || '').trim();
+    if (!ip) { alert('IPアドレスを選択してください'); return; }
+    try {
+      const resp = await fetch(`${apiIp}/blacklist`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ ipAddress: ip })
+      });
+      if (!resp.ok) {
+        showNotification('error', 'ブラックリスト登録に失敗しました');
+        return;
+      }
+      showNotification('success', `ブラックリストに登録しました: ${ip}`);
+      // 画面を更新（サーバーサイド描画のリストを反映）
+      setTimeout(() => location.reload(), 600);
+    } catch (e) {
+      console.error(e);
+      showNotification('error', 'ブラックリスト登録に失敗しました');
+    }
+  }
+
+  async function onDeleteFromBlacklist(id) {
+    if (!id) return;
+    if (!confirm('このIPをブラックリストから論理削除しますか？')) return;
+    try {
+      const resp = await fetch(`${apiIp}/blacklist/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(false)
+      });
+      if (!resp.ok) {
+        showNotification('error', 'ブラックリスト削除に失敗しました');
+        return;
+      }
+      showNotification('success', 'ブラックリストを論理削除しました');
+      setTimeout(() => location.reload(), 600);
+    } catch (e) {
+      console.error(e);
+      showNotification('error', 'ブラックリスト削除に失敗しました');
+    }
+  }
+
+  function wireIpManagementUi() {
+    const btn = document.getElementById('btnAddToBlacklist');
+    if (btn) btn.addEventListener('click', onAddToBlacklist);
+    const delBtns = document.querySelectorAll('.btn-blacklist-delete');
+    delBtns.forEach(b => b.addEventListener('click', () => onDeleteFromBlacklist(b.getAttribute('data-id'))));
+  }
+
   // 初期化: イベントリスナ登録とデータロード
   function initManagePage() {
     try {
@@ -967,6 +1020,8 @@
         addPathBtn.addEventListener('click', onAddPath);
         addPathBtn.__bound = true;
       }
+      // ブラックリスト管理UIのイベントをバインド
+      wireIpManagementUi();
       // 初回ロード順序
       loadMenus().then(() => loadPaths()).then(() => loadScreens());
     } catch (_) { /* ignore */ }
