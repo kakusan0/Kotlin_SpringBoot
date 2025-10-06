@@ -148,6 +148,12 @@
             <version>3.0.5</version>
             <scope>test</scope>
         </dependency>
+        <!-- GeoIP2 for country lookup -->
+        <dependency>
+            <groupId>com.maxmind.geoip2</groupId>
+            <artifactId>geoip2</artifactId>
+            <version>4.2.0</version>
+        </dependency>
     </dependencies>
 
     <build>
