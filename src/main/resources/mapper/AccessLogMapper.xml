@@ -49,4 +49,11 @@
     ORDER BY remote_ip, created_at DESC
   </select>
 
+  <select id="selectIpsWithMissingUserAgent" resultType="string">
+    SELECT DISTINCT remote_ip
+    FROM access_logs
+    WHERE remote_ip IS NOT NULL
+      AND (user_agent IS NULL OR TRIM(user_agent) = '')
+  </select>
+
 </mapper>

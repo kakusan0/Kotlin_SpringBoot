@@ -24,7 +24,7 @@ class AdminController(
         model.apply {
             addAttribute("screens", contentItemService.getAll())
             addAttribute("menus", menuService.getAll())
-            addAttribute("whitelist", whitelistIpMapper.getAll())
+            addAttribute("whitelist", whitelistIpMapper.getActive())
             addAttribute("blacklist", blacklistIpMapper.getAll())
         }
         return "manage"
@@ -32,7 +32,7 @@ class AdminController(
 
     @GetMapping("/manage/ip")
     fun manageIp(model: Model): String {
-        val whitelist = whitelistIpMapper.getAll()
+        val whitelist = whitelistIpMapper.getActive()
         val blacklist = blacklistIpMapper.getAll()
         model.addAttribute("whitelist", whitelist)
         model.addAttribute("blacklist", blacklist)

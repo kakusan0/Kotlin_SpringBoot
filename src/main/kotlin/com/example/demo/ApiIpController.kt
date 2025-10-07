@@ -3,6 +3,7 @@ package com.example.demo
 import com.example.demo.mapper.BlacklistIpMapper
 import com.example.demo.mapper.WhitelistIpMapper
 import com.example.demo.mapper.BlacklistEventMapper
+import com.example.demo.mapper.AccessLogMapper
 import com.example.demo.model.BlacklistEvent
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.constraints.NotBlank
@@ -16,13 +17,18 @@ import java.util.UUID
 class ApiIpController(
     private val whitelistIpMapper: WhitelistIpMapper,
     private val blacklistIpMapper: BlacklistIpMapper,
-    private val blacklistEventMapper: BlacklistEventMapper
+    private val blacklistEventMapper: BlacklistEventMapper,
+    private val accessLogMapper: AccessLogMapper,
 ) {
     data class BlacklistRequest(@field:NotBlank val ipAddress: String)
+    data class AutoBlacklistResult(
+        val totalCandidates: Int,
+        val processed: Int
+    )
 
     @GetMapping("/whitelist")
     fun listWhitelist(): ResponseEntity<Any> =
-        ResponseEntity.ok(whitelistIpMapper.getAll())
+        ResponseEntity.ok(whitelistIpMapper.getActive())
 
     @GetMapping("/blacklist")
     fun listBlacklist(): ResponseEntity<Any> =
@@ -57,5 +63,38 @@ class ApiIpController(
     fun deleteFromBlacklist(@PathVariable id: Long): ResponseEntity<Void> {
         blacklistIpMapper.markDeletedById(id)
         return ResponseEntity.noContent().build()
+    }
+
+    // UA欠損IPの一括ブラックリスト化（手動トリガ用）
+    @PostMapping("/auto-blacklist-ua-missing")
+    fun autoBlacklistUaMissing(): ResponseEntity<AutoBlacklistResult> {
+        val candidates = accessLogMapper.selectIpsWithMissingUserAgent()
+        var processed = 0
+        candidates.forEach { ip ->
+            try {
+                blacklistIpMapper.upsertIncrementTimes(ip)
+                whitelistIpMapper.markBlacklistedAndIncrement(ip)
+                // イベント記録（自動登録）
+                try {
+                    blacklistEventMapper.insert(
+                        BlacklistEvent(
+                            requestId = UUID.randomUUID().toString(),
+                            ipAddress = ip,
+                            method = "AUTO",
+                            path = "/api/ip/auto-blacklist-ua-missing",
+                            status = HttpStatus.CREATED.value(),
+                            userAgent = null,
+                            referer = null,
+                            reason = "UA_MISSING",
+                            source = "AUTO"
+                        )
+                    )
+                } catch (_: Exception) { }
+                processed++
+            } catch (_: Exception) {
+                // 1件ずつ継続
+            }
+        }
+        return ResponseEntity.ok(AutoBlacklistResult(totalCandidates = candidates.size, processed = processed))
     }
 }

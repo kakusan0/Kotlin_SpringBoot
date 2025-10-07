@@ -180,6 +180,32 @@
     }
   }
 
+  // --- 自動ブラックリスト（UA欠損） ---
+  async function onAutoBlacklistUaMissing() {
+    const btn = document.getElementById('btnAutoBlacklistUaMissing');
+    if (btn) btn.disabled = true;
+    try {
+      const resp = await fetch('/api/ip/auto-blacklist-ua-missing', {
+        method: 'POST',
+        headers: getHeaders(false)
+      });
+      if (!resp.ok) {
+        alert('自動ブラックリスト登録に失敗しました');
+        return;
+      }
+      const result = await resp.json().catch(() => null);
+      const processed = result && typeof result.processed === 'number' ? result.processed : 0;
+      const total = result && typeof result.totalCandidates === 'number' ? result.totalCandidates : 0;
+      alert(`UA欠損IPの自動登録が完了しました。対象:${total} 件, 登録:${processed} 件`);
+      setTimeout(() => location.reload(), 300);
+    } catch (e) {
+      console.error(e);
+      alert('自動ブラックリスト登録に失敗しました');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function bindActions() {
     const addBtn = document.getElementById('btnAddToBlacklist');
     if (addBtn && !addBtn.__bound) {
@@ -192,6 +218,11 @@
         btn.__bound = true;
       }
     });
+    const autoBtn = document.getElementById('btnAutoBlacklistUaMissing');
+    if (autoBtn && !autoBtn.__bound) {
+      autoBtn.addEventListener('click', onAutoBlacklistUaMissing);
+      autoBtn.__bound = true;
+    }
   }
 
   function init() {
@@ -205,4 +236,3 @@
     init();
   }
 })();
-

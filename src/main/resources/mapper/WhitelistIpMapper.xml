@@ -12,6 +12,12 @@
   <select id="getAll" resultType="com.example.demo.model.WhitelistIp">
     SELECT id, ip_address, created_at, blacklisted, blacklisted_count FROM whitelist_ips ORDER BY created_at DESC
   </select>
+  <select id="getActive" resultType="com.example.demo.model.WhitelistIp">
+    SELECT id, ip_address, created_at, blacklisted, blacklisted_count
+      FROM whitelist_ips
+     WHERE COALESCE(blacklisted, FALSE) = FALSE
+     ORDER BY created_at DESC
+  </select>
   <update id="markBlacklistedAndIncrement" parameterType="string">
     UPDATE whitelist_ips
        SET blacklisted = TRUE,
@@ -19,4 +25,3 @@
      WHERE ip_address = #{ipAddress}
   </update>
 </mapper>
-

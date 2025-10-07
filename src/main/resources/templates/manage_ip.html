@@ -36,7 +36,12 @@
           <input id="ipSearchInput" type="text" class="form-control" placeholder="IPアドレスを検索（部分一致）" aria-label="IPアドレス検索">
           <button id="ipSearchClear" class="btn btn-outline-secondary" type="button" aria-label="検索条件をクリア">クリア</button>
         </div>
-        <small class="text-muted">ホワイトリストとブラックリストを同時に絞り込みます（Enter不要、入力で即時反映）。</small>
+        <div class="mt-2 d-flex gap-2 flex-wrap">
+          <button id="btnAutoBlacklistUaMissing" class="btn btn-warning" type="button">
+            UA欠損IPを一括ブラックリスト化
+          </button>
+          <small class="text-muted">アクセスログで User-Agent が空のIPを対象に、自動でブラックリスト登録します。</small>
+        </div>
       </div>
 
       <div class="card mb-4">
