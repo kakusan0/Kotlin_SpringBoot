@@ -34,4 +34,19 @@
     )
   </insert>
 
+  <!-- 指定したIP一覧に対する最新アクセスのパス/UAを取得（PostgreSQL） -->
+  <select id="selectLatestPathByIps" resultType="com.example.demo.model.IpLatestPath">
+    SELECT DISTINCT ON (remote_ip)
+      remote_ip AS ipAddress,
+      path,
+      user_agent AS userAgent
+    FROM access_logs
+    WHERE remote_ip IS NOT NULL
+      AND remote_ip IN
+      <foreach collection="ips" item="ip" open="(" separator="," close=")">
+        #{ip}
+      </foreach>
+    ORDER BY remote_ip, created_at DESC
+  </select>
+
 </mapper>

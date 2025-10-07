@@ -29,10 +29,20 @@
     <div class="container-fluid">
       <h2 class="mb-3">IP管理</h2>
 
+      <!-- IP検索ボックス -->
+      <div class="mb-4">
+        <div class="input-group" id="ipSearchBox">
+          <span class="input-group-text" id="ipSearchIcon" aria-hidden="true"><i class="bi bi-search"></i></span>
+          <input id="ipSearchInput" type="text" class="form-control" placeholder="IPアドレスを検索（部分一致）" aria-label="IPアドレス検索">
+          <button id="ipSearchClear" class="btn btn-outline-secondary" type="button" aria-label="検索条件をクリア">クリア</button>
+        </div>
+        <small class="text-muted">ホワイトリストとブラックリストを同時に絞り込みます（Enter不要、入力で即時反映）。</small>
+      </div>
+
       <div class="card mb-4">
         <div class="card-header">ブラックリスト登録</div>
         <div class="card-body d-flex gap-2 align-items-center flex-wrap">
-          <select id="whitelistSelectForBlacklist" class="form-select" style="max-width: 360px;">
+          <select id="whitelistSelectForBlacklist" class="form-select" style="max-width: 360px;" aria-label="ホワイトリストから選択">
             <option value="">ホワイトリストから選択...</option>
             <option th:each="w : ${whitelist}"
                     th:value="${w.ipAddress}"
@@ -48,12 +58,14 @@
       <h2>ホワイトリストIP一覧</h2>
       <table class="table table-bordered" id="whitelistTable">
         <thead>
-          <tr><th>ID</th><th>IPアドレス</th><th>登録日時</th><th>BL</th><th>BL回数</th></tr>
+          <tr><th>ID</th><th>IPアドレス</th><th>最新パス</th><th>最新UA</th><th>登録日時</th><th>BL</th><th>BL回数</th></tr>
         </thead>
         <tbody>
-          <tr th:each="ip : ${whitelist}">
+          <tr th:each="ip : ${whitelist}" th:attr="data-ip=${ip.ipAddress}">
             <td th:text="${ip.id}"></td>
             <td th:text="${ip.ipAddress}"></td>
+            <td th:text="${latestPathsByIp[ip.ipAddress]} ?: '-'" class="text-truncate" style="max-width: 320px;"></td>
+            <td th:text="${latestUserAgentsByIp[ip.ipAddress]} ?: '-'" class="text-truncate" style="max-width: 360px;"></td>
             <td th:text="${#temporals.format(ip.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
             <td><span th:text="${ip.blacklisted ? '✔' : ''}"></span></td>
             <td th:text="${ip.blacklistedCount}"></td>
@@ -64,12 +76,14 @@
       <h2>ブラックリストIP一覧</h2>
       <table class="table table-bordered" id="blacklistTable">
         <thead>
-          <tr><th>ID</th><th>IPアドレス</th><th>登録日時</th><th>回数</th><th>削除フラグ</th><th>操作</th></tr>
+          <tr><th>ID</th><th>IPアドレス</th><th>最新パス</th><th>最新UA</th><th>登録日時</th><th>回数</th><th>削除フラグ</th><th>操作</th></tr>
         </thead>
         <tbody>
-          <tr th:each="ip : ${blacklist}">
+          <tr th:each="ip : ${blacklist}" th:attr="data-ip=${ip.ipAddress}">
             <td th:text="${ip.id}"></td>
             <td th:text="${ip.ipAddress}"></td>
+            <td th:text="${latestPathsByIp[ip.ipAddress]} ?: '-'" class="text-truncate" style="max-width: 320px;"></td>
+            <td th:text="${latestUserAgentsByIp[ip.ipAddress]} ?: '-'" class="text-truncate" style="max-width: 360px;"></td>
             <td th:text="${#temporals.format(ip.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
             <td th:text="${ip.times}"></td>
             <td><span th:text="${ip.deleted ? '✔' : ''}"></span></td>
