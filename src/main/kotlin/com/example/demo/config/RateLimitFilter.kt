@@ -5,12 +5,14 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
+import com.example.demo.util.IpUtils
 
 /**
  * レート制限フィルター
@@ -19,7 +21,9 @@ import java.util.concurrent.ConcurrentHashMap
  */
 @Component
 @Order(1)
-class RateLimitFilter : OncePerRequestFilter() {
+class RateLimitFilter(
+    @Value("\${app.trust-proxy:false}") private val trustProxy: Boolean
+) : OncePerRequestFilter() {
 
     private val cache: MutableMap<String, Bucket> = ConcurrentHashMap()
 
@@ -34,7 +38,7 @@ class RateLimitFilter : OncePerRequestFilter() {
         response: HttpServletResponse,
         filterChain: FilterChain
     ) {
-        val clientIp = getClientIp(request)
+        val clientIp = IpUtils.clientIp(request, trustProxy)
         val bucket = cache.computeIfAbsent(clientIp) { createBucket() }
 
         if (bucket.tryConsume(1)) {
@@ -58,13 +62,6 @@ class RateLimitFilter : OncePerRequestFilter() {
                 limit.capacity(CAPACITY).refillGreedy(CAPACITY, REFILL_DURATION)
             }
             .build()
-
-    private fun getClientIp(request: HttpServletRequest): String =
-        request.getHeader("X-Forwarded-For")
-            ?.split(",")
-            ?.firstOrNull()
-            ?.trim()
-            ?: request.remoteAddr
 
     override fun shouldNotFilterAsyncDispatch(): Boolean = false
     override fun shouldNotFilterErrorDispatch(): Boolean = false

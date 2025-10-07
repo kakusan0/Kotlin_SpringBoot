@@ -8,6 +8,7 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter
+import org.springframework.security.web.header.writers.StaticHeadersWriter
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
@@ -58,6 +59,8 @@ class SecurityConfig {
                     .referrerPolicy { it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN) }
                     // Content-Security-Policy: XSS攻撃対策
                     .contentSecurityPolicy { it.policyDirectives(CSP_POLICY) }
+                    .addHeaderWriter(StaticHeadersWriter("Permissions-Policy",
+                        "geolocation=(), microphone=(), camera=(), usb=(), payment=(), fullscreen=()"))
             }
 
             // 認証設定（現時点では全アクセスを許可）
