@@ -25,31 +25,8 @@
     </div>
   </header>
 
-  <!-- サイドバー（簡易） -->
-  <div aria-labelledby="sidebarMenuLabel" class="offcanvas offcanvas-start offcanvas-md" id="sidebarMenu" tabindex="-1">
-    <div class="offcanvas-body p-0">
-      <ul class="nav flex-column">
-        <li class="nav-item">
-          <a class="nav-link text-dark" href="/">
-            <i class="bi bi-house-door-fill"></i>
-            <span>Home</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link text-dark" href="/manage">
-            <i class="bi bi-gear-fill"></i>
-            <span>管理</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link text-dark" href="/manage/ip">
-            <i class="bi bi-shield-lock"></i>
-            <span>IP管理</span>
-          </a>
-        </li>
-      </ul>
-    </div>
-  </div>
+  <!-- サイドバー（共通フラグメント） -->
+  <div th:replace="~{fragments/sidebar :: adminSidebar}"></div>
 
   <main class="main-content p-4">
     <div class="container-fluid">

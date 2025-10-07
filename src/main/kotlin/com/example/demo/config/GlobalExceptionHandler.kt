@@ -9,6 +9,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.servlet.NoHandlerFoundException
+import org.springframework.web.servlet.resource.NoResourceFoundException
+import jakarta.servlet.http.HttpServletRequest
 
 /**
  * グローバルエラーハンドラー
@@ -93,6 +96,29 @@ class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
             ErrorResponse(message = "サーバー内部エラーが発生しました")
+        )
+    }
+
+    /**
+     * 静的リソース未検出（例: base.jsp など） -> 404
+     */
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResource(ex: NoResourceFoundException, request: HttpServletRequest): ResponseEntity<ErrorResponse> {
+        logger.debug("NoResourceFound: path={}", request.requestURI)
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            ErrorResponse(message = "リソースが見つかりません: ${request.requestURI}")
+        )
+    }
+
+    /**
+     * ハンドラ未検出（存在しないURL） -> 404
+     * spring.mvc.throw-exception-if-no-handler-found=true が有効な場合に到達
+     */
+    @ExceptionHandler(NoHandlerFoundException::class)
+    fun handleNoHandler(ex: NoHandlerFoundException): ResponseEntity<ErrorResponse> {
+        logger.debug("NoHandlerFound: method={}, path={}", ex.httpMethod, ex.requestURL)
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            ErrorResponse(message = "ページが見つかりません: ${ex.requestURL}")
         )
     }
 }

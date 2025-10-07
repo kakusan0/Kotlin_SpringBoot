@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.BlacklistEventMapper">
+
+  <insert id="insert" parameterType="com.example.demo.model.BlacklistEvent" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO blacklist_events (
+      created_at,
+      request_id,
+      ip_address,
+      method,
+      path,
+      status,
+      user_agent,
+      referer,
+      reason,
+      source
+    ) VALUES (
+      #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
+      #{requestId,jdbcType=VARCHAR},
+      #{ipAddress,jdbcType=VARCHAR},
+      #{method,jdbcType=VARCHAR},
+      #{path,jdbcType=VARCHAR},
+      #{status,jdbcType=INTEGER},
+      #{userAgent,jdbcType=VARCHAR},
+      #{referer,jdbcType=VARCHAR},
+      #{reason,jdbcType=VARCHAR},
+      #{source,jdbcType=VARCHAR}
+    )
+  </insert>
+
+</mapper>
+
