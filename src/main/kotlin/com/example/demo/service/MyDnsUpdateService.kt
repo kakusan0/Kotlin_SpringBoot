@@ -22,6 +22,12 @@ class MyDnsUpdateService(
         .build()
 
     fun updateDynamicDns(): Boolean {
+        // 資格情報が未設定ならスキップ
+        if (username.isBlank() || password.isBlank()) {
+            logger.warn("MyDNS credentials are not set. Skipping MyDNS update.")
+            return true // スキップとして成功扱い（起動やジョブを失敗させない）
+        }
+
         logger.info("Starting MyDNS IP address update for both IPv4 and IPv6")
 
         val ipv4Success = updateDns(ipv4Url, "IPv4")
