@@ -11,7 +11,7 @@
     <groupId>com.jp.demo</groupId>
     <artifactId>app</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>war</packaging>
     <name>app</name>
     <description>Demo project for Spring Boot with Kotlin and MyBatis</description>
 
@@ -21,6 +21,8 @@
         <mainClass>com.example.demo.DemoApplicationKt</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- プロパティでテストスキップを切り替えられるようにする（デフォルトは false） -->
+        <skipTests>false</skipTests>
     </properties>
 
     <dependencies>
@@ -211,6 +213,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.1.2</version>
+                <configuration>
+                    <!-- コマンドラインで -DskipTests=true を指定するとテストをスキップします -->
+                    <skipTests>${skipTests}</skipTests>
+                </configuration>
             </plugin>
         </plugins>
     </build>
