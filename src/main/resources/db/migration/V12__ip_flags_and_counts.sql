@@ -1,6 +1,0 @@
--- Add flags and counters for IP management
-ALTER TABLE whitelist_ips ADD COLUMN IF NOT EXISTS blacklisted BOOLEAN DEFAULT FALSE;
-ALTER TABLE whitelist_ips ADD COLUMN IF NOT EXISTS blacklisted_count INTEGER DEFAULT 0;
-
-ALTER TABLE blacklist_ips ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT FALSE;
-ALTER TABLE blacklist_ips ADD COLUMN IF NOT EXISTS times INTEGER DEFAULT 0;
