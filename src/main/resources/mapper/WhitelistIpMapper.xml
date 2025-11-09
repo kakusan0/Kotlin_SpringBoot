@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.WhitelistIpMapper">
+  <insert id="insert" parameterType="com.example.demo.model.WhitelistIp" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO whitelist_ips (ip_address)
+    VALUES (#{ipAddress})
+    ON CONFLICT (ip_address) DO NOTHING
+  </insert>
+  <select id="existsByIp" parameterType="string" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM whitelist_ips WHERE ip_address = #{ipAddress})
+  </select>
+  <select id="getAll" resultType="com.example.demo.model.WhitelistIp">
+    SELECT id, ip_address, created_at, blacklisted, blacklisted_count FROM whitelist_ips ORDER BY created_at DESC
+  </select>
+  <select id="getActive" resultType="com.example.demo.model.WhitelistIp">
+    SELECT id, ip_address, created_at, blacklisted, blacklisted_count
+      FROM whitelist_ips
+     WHERE COALESCE(blacklisted, FALSE) = FALSE
+     ORDER BY created_at DESC
+  </select>
+  <update id="markBlacklistedAndIncrement" parameterType="string">
+    UPDATE whitelist_ips
+       SET blacklisted = TRUE,
+           blacklisted_count = COALESCE(blacklisted_count, 0) + 1
+     WHERE ip_address = #{ipAddress}
+  </update>
+</mapper>

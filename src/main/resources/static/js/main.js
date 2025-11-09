@@ -192,6 +192,8 @@
           return a && a.getAttribute('href') === '/manage';
         });
 
+        console.debug('loadAndRenderSidebarMenus: uniqueMenuNames =', uniqueMenuNames);
+
         uniqueMenuNames.forEach(menuName => {
           const label = String(menuName).trim();
           if (!label) return;
@@ -199,11 +201,15 @@
           const existsByMenuAttr = ul.querySelector('a[data-menu-name="' + CSS.escape(label) + '"]');
           const existsByScreenAttr = ul.querySelector('a[data-screen-name="' + CSS.escape(label) + '"]');
           const existsByText = Array.from(ul.querySelectorAll('a')).some(a => (a.textContent || '').trim() === label);
-          if (existsByMenuAttr || existsByScreenAttr || existsByText) return;
+          if (existsByMenuAttr || existsByScreenAttr || existsByText) {
+            console.debug('Menu already exists, skipping:', label);
+            return;
+          }
 
           const li = document.createElement('li');
           li.className = 'nav-item';
           li.setAttribute('data-injected', 'true');
+          console.debug('Injecting menu:', label);
           const a = document.createElement('a');
           a.className = 'nav-link text-dark sidebar-menu-link';
           a.href = '#';
@@ -365,51 +371,88 @@
       }
     }
 
-    // 初回ロードでメニューを描画
-    loadAndRenderSidebarMenus();
-
-      // サイドバーのメニュー数に応じてヘッダーボタンの活性/非活性を制御
-      function updateHeaderButtonState() {
-          const itemSelectButton = document.getElementById('itemSelectButton');
-          if (!itemSelectButton) return;
-
-          // サイドバーの動的に挿入されたメニューアイテムの数をカウント
-          const ul = document.querySelector('#sidebarMenu .offcanvas-body ul.nav');
-          if (!ul) return;
-
-          const injectedMenuItems = ul.querySelectorAll('li[data-injected="true"]');
-          const hasMenus = injectedMenuItems.length > 0;
-
-          if (hasMenus) {
-              // メニューがある場合：ボタンを活性化
-              itemSelectButton.disabled = false;
-              itemSelectButton.classList.remove('disabled');
-              itemSelectButton.style.cursor = 'pointer';
-          } else {
-              // メニューがない場合（管理ボタンのみ）：ボタンを非活性化
-              itemSelectButton.disabled = true;
-              itemSelectButton.classList.add('disabled');
-              itemSelectButton.style.cursor = 'not-allowed';
-              itemSelectButton.title = 'メニューが登録されていません';
-          }
+    // サイドバーのメニュー数に応じてヘッダーボタンの活性/非活性を制御
+    function updateHeaderButtonState() {
+      const itemSelectButton = document.getElementById('itemSelectButton');
+      if (!itemSelectButton) {
+        console.debug('updateHeaderButtonState: itemSelectButton not found');
+        return;
       }
 
-      // 初回チェック
-      setTimeout(updateHeaderButtonState, 100);
+      // サイドバーの動的に挿入されたメニューアイテムの数をカウント
+      const ul = document.querySelector('#sidebarMenu .offcanvas-body ul.nav');
+      if (!ul) {
+        console.debug('updateHeaderButtonState: sidebar ul not found');
+        return;
+      }
 
-      // メニューの再描画後にもボタンの状態を更新
-      const originalLoadAndRenderSidebarMenus = loadAndRenderSidebarMenus;
-      loadAndRenderSidebarMenus = async function () {
-          await originalLoadAndRenderSidebarMenus();
-          updateHeaderButtonState();
-      };
+      // 管理リンク以外のメニューアイテムをすべてカウント（サーバー側レンダリング + 動的挿入）
+      const allMenuItems = ul.querySelectorAll('li.nav-item');
+      const manageItem = Array.from(allMenuItems).find(li => {
+        const a = li.querySelector('a[href="/manage"]');
+        return a !== null;
+      });
+
+      const menuCount = manageItem ? allMenuItems.length - 1 : allMenuItems.length;
+      const hasMenus = menuCount > 0;
+
+      console.debug('updateHeaderButtonState:', {
+        totalItems: allMenuItems.length,
+        menuCount: menuCount,
+        hasMenus: hasMenus,
+        hasManageItem: manageItem !== null
+      });
+
+      if (hasMenus) {
+        // メニューがある場合：ボタンを活性化
+        itemSelectButton.disabled = false;
+        itemSelectButton.classList.remove('disabled');
+        itemSelectButton.style.cursor = 'pointer';
+        itemSelectButton.style.pointerEvents = 'auto';
+        itemSelectButton.removeAttribute('title');
+        // Bootstrapのモーダルトリガー属性を有効化
+        itemSelectButton.setAttribute('data-bs-toggle', 'modal');
+        itemSelectButton.setAttribute('data-bs-target', '#scrollableModal');
+        console.debug('Button activated');
+      } else {
+        // メニューがない場合（管理ボタンのみ）：ボタンを非活性化
+        itemSelectButton.disabled = true;
+        itemSelectButton.classList.add('disabled');
+        itemSelectButton.style.cursor = 'not-allowed';
+        itemSelectButton.style.pointerEvents = 'none';
+        itemSelectButton.title = 'メニューが登録されていません';
+        // Bootstrapのモーダルトリガー属性を無効化
+        itemSelectButton.removeAttribute('data-bs-toggle');
+        itemSelectButton.removeAttribute('data-bs-target');
+        console.debug('Button deactivated');
+      }
+    }
+
+    // loadAndRenderSidebarMenusをラップして、ボタン状態を更新
+    async function loadAndRenderSidebarMenusWithUpdate() {
+      console.debug('loadAndRenderSidebarMenusWithUpdate: starting');
+      await loadAndRenderSidebarMenus();
+      console.debug('loadAndRenderSidebarMenusWithUpdate: menus loaded, scheduling button state update');
+      // メニュー描画後に少し待ってからボタン状態を更新
+      setTimeout(() => {
+        console.debug('loadAndRenderSidebarMenusWithUpdate: calling updateHeaderButtonState');
+        updateHeaderButtonState();
+      }, 50);
+    }
+
+    // 初回ロードでメニューを描画
+    loadAndRenderSidebarMenusWithUpdate();
 
     // When header's select button opens modal, populate it using currently cached screens
     const itemSelectButton = document.getElementById('itemSelectButton');
     if (itemSelectButton) {
-      itemSelectButton.addEventListener('click', async function () {
+      itemSelectButton.addEventListener('click', async function (e) {
           // ボタンが非活性の場合は何もしない
-          if (this.disabled) return;
+          if (this.disabled) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
 
           // ボタン活性時の処理
         // fetch screens and populate modal, filter by selectedSidebarMenu if set
@@ -434,7 +477,7 @@
           if (!ev) return;
           if (ev.data === 'menus-updated') {
             contentCache.clear();
-            loadAndRenderSidebarMenus();
+            loadAndRenderSidebarMenusWithUpdate();
           }
         });
       } catch (err) {
@@ -447,7 +490,7 @@
       if (!e) return;
       if (e.key === 'menus-updated') {
         contentCache.clear();
-        loadAndRenderSidebarMenus();
+        loadAndRenderSidebarMenusWithUpdate();
       }
     });
 

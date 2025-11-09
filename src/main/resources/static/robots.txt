@@ -1,0 +1,67 @@
+# robots.txt for this application
+# Disallow crawling of admin and API endpoints
+
+User-agent: *
+Disallow: /manage
+Disallow: /manage/
+Disallow: /manage/*
+Disallow: /api/
+Disallow: /api/*
+
+# Block AI crawlers / model-training bots explicitly
+# OpenAI
+User-agent: GPTBot
+Disallow: /
+User-agent: ChatGPT-User
+Disallow: /
+
+# Google (AI training)
+User-agent: Google-Extended
+Disallow: /
+
+# Microsoft (AI training)
+User-agent: Microsoft-Extended
+Disallow: /
+
+# Apple (AI training)
+User-agent: Applebot-Extended
+Disallow: /
+
+# Anthropic
+User-agent: ClaudeBot
+Disallow: /
+User-agent: Claude-Web
+Disallow: /
+User-agent: anthropic-ai
+Disallow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Disallow: /
+
+# Amazon
+User-agent: Amazonbot
+Disallow: /
+
+# ByteDance
+User-agent: Bytespider
+Disallow: /
+
+# Meta
+User-agent: Meta-ExternalAgent
+Disallow: /
+User-agent: Meta-External Agent
+Disallow: /
+User-agent: FacebookBot
+Disallow: /
+
+# Common Crawl (often used for AI datasets)
+User-agent: CCBot
+Disallow: /
+
+# Cohere
+User-agent: cohere-ai
+Disallow: /
+
+# If you have a sitemap, you can add it below (uncomment and update URL)
+# Sitemap: https://www.example.com/sitemap.xml

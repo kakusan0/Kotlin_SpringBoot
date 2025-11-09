@@ -50,9 +50,10 @@ replay_pid*
 hs_err_pid*
 replay_pid*
 
-!/target/
-src/main/resources/keystore/
-*.p12
+### Maven/Gradle Build Files
+target/
+build/
+out/
 
 ### Security - 機密情報
 .env
@@ -63,6 +64,8 @@ src/main/resources/keystore/
 *.crt
 secrets/
 credentials/
+src/main/resources/keystore/
+*.p12
 
 ### IDE
 .idea/

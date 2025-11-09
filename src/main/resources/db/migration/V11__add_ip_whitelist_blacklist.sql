@@ -1,0 +1,13 @@
+-- ホワイトリストテーブル
+CREATE TABLE IF NOT EXISTS whitelist_ips (
+    id SERIAL PRIMARY KEY,
+    ip_address VARCHAR(45) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ブラックリストテーブル
+CREATE TABLE IF NOT EXISTS blacklist_ips (
+    id SERIAL PRIMARY KEY,
+    ip_address VARCHAR(45) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
