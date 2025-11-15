@@ -15,6 +15,7 @@ class AuthController {
     fun login(
         @RequestParam(name = "logout", required = false) logout: Boolean?,
         @RequestParam(name = "error", required = false) error: Boolean?,
+        @RequestParam(name = "username", required = false) username: String?,
         model: Model
     ): String {
         // 既にログイン済みで、明示的なログアウト/エラー指定がない場合はホームへ
@@ -28,6 +29,10 @@ class AuthController {
         }
         if (error == true) {
             model.addAttribute("error", "ユーザー名またはパスワードが正しくありません")
+            // ログイン失敗時にユーザー名を保持
+            if (!username.isNullOrBlank()) {
+                model.addAttribute("username", username)
+            }
         }
         return "login"
     }

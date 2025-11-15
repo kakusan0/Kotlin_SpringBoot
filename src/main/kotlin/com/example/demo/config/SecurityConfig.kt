@@ -21,7 +21,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val customAuthenticationFailureHandler: CustomAuthenticationFailureHandler
+) {
 
     @Value("\${app.csp.connect-src:'self'}")
     private lateinit var cspConnectSrc: String
@@ -101,7 +103,7 @@ class SecurityConfig {
             .formLogin {
                 it.loginPage("/login").permitAll()
                 it.defaultSuccessUrl("/home")
-                it.failureUrl("/login?error")
+                it.failureHandler(customAuthenticationFailureHandler)
             }
             .webAuthn {
                 it.rpName("Spring Security Relying Party")
