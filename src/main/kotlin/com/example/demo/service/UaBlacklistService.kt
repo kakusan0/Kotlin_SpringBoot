@@ -37,7 +37,8 @@ class UaBlacklistService(
                 "REGEX" -> {
                     try {
                         if (Regex(r.pattern, RegexOption.IGNORE_CASE).containsMatchIn(ua)) return true
-                    } catch (_: Exception) {}
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }

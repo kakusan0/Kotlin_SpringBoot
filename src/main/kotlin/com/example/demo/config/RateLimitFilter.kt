@@ -1,5 +1,6 @@
 package com.example.demo.config
 
+import com.example.demo.util.IpUtils
 import io.github.bucket4j.Bucket
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
-import com.example.demo.util.IpUtils
 
 /**
  * レート制限フィルター

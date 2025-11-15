@@ -1,16 +1,16 @@
 package com.example.demo
 
+import com.example.demo.mapper.AccessLogMapper
+import com.example.demo.mapper.BlacklistEventMapper
 import com.example.demo.mapper.BlacklistIpMapper
 import com.example.demo.mapper.WhitelistIpMapper
-import com.example.demo.mapper.BlacklistEventMapper
-import com.example.demo.mapper.AccessLogMapper
 import com.example.demo.model.BlacklistEvent
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.util.UUID
+import java.util.*
 
 @RestController
 @RequestMapping("/api/ip")
@@ -55,7 +55,8 @@ class ApiIpController(
                     source = "API"
                 )
             )
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
 
@@ -89,7 +90,8 @@ class ApiIpController(
                             source = "AUTO"
                         )
                     )
-                } catch (_: Exception) { }
+                } catch (_: Exception) {
+                }
                 processed++
             } catch (_: Exception) {
                 // 1件ずつ継続

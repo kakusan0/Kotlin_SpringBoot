@@ -2,28 +2,41 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.demo.mapper.UaBlacklistRuleMapper">
 
-  <resultMap id="BaseMap" type="com.example.demo.model.UaBlacklistRule">
-    <id column="id" property="id" />
-    <result column="pattern" property="pattern" />
-    <result column="match_type" property="matchType" />
-    <result column="deleted" property="deleted" />
-  </resultMap>
+    <resultMap id="BaseMap" type="com.example.demo.model.UaBlacklistRule">
+        <id column="id" property="id"/>
+        <result column="pattern" property="pattern"/>
+        <result column="match_type" property="matchType"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
 
-  <select id="selectActive" resultMap="BaseMap">
-    SELECT id, pattern, match_type, deleted
-    FROM ua_blacklist_rules
-    WHERE deleted = FALSE
-    ORDER BY created_at DESC, id DESC
-  </select>
+    <select id="selectActive" resultMap="BaseMap">
+        SELECT
+            id
+            , pattern
+            , match_type
+            , deleted
+        FROM
+            ua_blacklist_rules
+        WHERE
+            deleted = FALSE
+        ORDER BY
+            created_at DESC, id DESC
+    </select>
 
-  <insert id="insert" parameterType="com.example.demo.model.UaBlacklistRule" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO ua_blacklist_rules(pattern, match_type, deleted)
-    VALUES(#{pattern}, #{matchType}, COALESCE(#{deleted}, FALSE))
-  </insert>
+    <insert id="insert" parameterType="com.example.demo.model.UaBlacklistRule" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO
+            ua_blacklist_rules(pattern, match_type, deleted)
+        VALUES
+            (#{pattern}, #{matchType}, COALESCE(#{deleted}, FALSE))
+    </insert>
 
-  <update id="logicalDelete" parameterType="long">
-    UPDATE ua_blacklist_rules SET deleted = TRUE WHERE id = #{id}
-  </update>
+    <update id="logicalDelete" parameterType="long">
+        UPDATE ua_blacklist_rules
+        SET
+            deleted = TRUE
+        WHERE
+            id = #{id}
+    </update>
 
 </mapper>
 

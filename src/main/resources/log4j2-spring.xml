@@ -4,7 +4,9 @@
         <Property name="LOG_DIR">logs</Property>
         <Property name="APP_LOG">${LOG_DIR}/app.log</Property>
         <Property name="AUDIT_LOG">${LOG_DIR}/audit.log</Property>
-        <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg | rid=%X{requestId} uid=%X{userId} ip=%X{clientIp} %X{method} %X{uri}%n%throwable</Property>
+        <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg | rid=%X{requestId}
+            uid=%X{userId} ip=%X{clientIp} %X{method} %X{uri}%n%throwable
+        </Property>
     </Properties>
 
     <Appenders>
@@ -32,10 +34,10 @@
 
         <JDBC name="AuditDB" tableName="audit_log">
             <ConnectionSource class="org.apache.logging.log4j.core.appender.db.jdbc.DriverManagerConnectionSource"
-                               url="${env:LOG_DB_URL:-jdbc:postgresql://localhost:5432/demo_db}"
-                               user="${env:LOG_DB_USER:-demo_user}"
-                               password="${env:LOG_DB_PASS:-demo_pass}"
-                               driverClassName="org.postgresql.Driver"/>
+                              url="${env:LOG_DB_URL:-jdbc:postgresql://localhost:5432/demo_db}"
+                              user="${env:LOG_DB_USER:-demo_user}"
+                              password="${env:LOG_DB_PASS:-demo_pass}"
+                              driverClassName="org.postgresql.Driver"/>
             <Column name="event_time" isEventTimestamp="true"/>
             <Column name="level" pattern="%level"/>
             <Column name="logger" pattern="%logger"/>

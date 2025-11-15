@@ -1,26 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.demo.mapper.BlacklistIpMapper">
-  <insert id="insert" parameterType="com.example.demo.model.BlacklistIp" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO blacklist_ips (ip_address)
-    VALUES (#{ipAddress})
-    ON CONFLICT (ip_address) DO NOTHING
-  </insert>
-  <select id="existsByIp" parameterType="string" resultType="boolean">
-    SELECT EXISTS(SELECT 1 FROM blacklist_ips WHERE ip_address = #{ipAddress} AND deleted = FALSE)
-  </select>
-  <select id="getAll" resultType="com.example.demo.model.BlacklistIp">
-    SELECT id, ip_address, created_at, deleted, times FROM blacklist_ips ORDER BY created_at DESC
-  </select>
-  <insert id="upsertIncrementTimes" parameterType="string">
-    INSERT INTO blacklist_ips (ip_address, times, deleted)
-    VALUES (#{ipAddress}, 1, FALSE)
-    ON CONFLICT (ip_address) DO UPDATE
-      SET times = blacklist_ips.times + 1,
-          deleted = FALSE
-  </insert>
-  <update id="markDeletedById" parameterType="long">
-    UPDATE blacklist_ips SET deleted = TRUE WHERE id = #{id}
-  </update>
+    <insert id="insert" parameterType="com.example.demo.model.BlacklistIp" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO
+            blacklist_ips (ip_address)
+        VALUES
+            (#{ipAddress}) ON CONFLICT (ip_address) DO NOTHING
+    </insert>
+    <select id="existsByIp" parameterType="string" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM blacklist_ips WHERE ip_address = #{ipAddress} AND deleted = FALSE)
+    </select>
+    <select id="getAll" resultType="com.example.demo.model.BlacklistIp">
+        SELECT
+            id
+            , ip_address
+            , created_at
+            , deleted
+            , times
+        FROM
+            blacklist_ips
+        ORDER BY
+            created_at DESC
+    </select>
+    <insert id="upsertIncrementTimes" parameterType="string">
+        INSERT INTO
+            blacklist_ips (ip_address, times, deleted)
+        VALUES
+            (#{ipAddress}, 1, FALSE) ON CONFLICT (ip_address) DO
+        UPDATE
+            SET times = blacklist_ips.times + 1,
+            deleted = FALSE
+    </insert>
+    <update id="markDeletedById" parameterType="long">
+        UPDATE blacklist_ips
+        SET
+            deleted = TRUE
+        WHERE
+            id = #{id}
+    </update>
 </mapper>
 

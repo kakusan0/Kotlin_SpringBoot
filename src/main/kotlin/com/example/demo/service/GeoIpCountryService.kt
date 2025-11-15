@@ -18,7 +18,9 @@ class GeoIpCountryService(
     private val readerRef = AtomicReference<Any?>()
     private var readerClass: Class<*>? = null
 
-    init { tryLoad() }
+    init {
+        tryLoad()
+    }
 
     private fun tryLoad() {
         if (dbPath.isBlank()) {

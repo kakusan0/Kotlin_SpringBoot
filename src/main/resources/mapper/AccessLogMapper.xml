@@ -2,58 +2,41 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.demo.mapper.AccessLogMapper">
 
-  <insert id="insert" parameterType="com.example.demo.model.AccessLog" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO access_logs (
-      created_at,
-      request_id,
-      method,
-      path,
-      query,
-      status,
-      duration_ms,
-      remote_ip,
-      user_agent,
-      referer,
-      username,
-      request_bytes,
-      response_bytes
-    ) VALUES (
-      #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime},
-      #{requestId,jdbcType=VARCHAR},
-      #{method,jdbcType=VARCHAR},
-      #{path,jdbcType=VARCHAR},
-      #{query,jdbcType=VARCHAR},
-      #{status,jdbcType=INTEGER},
-      #{durationMs,jdbcType=BIGINT},
-      #{remoteIp,jdbcType=VARCHAR},
-      #{userAgent,jdbcType=VARCHAR},
-      #{referer,jdbcType=VARCHAR},
-      #{username,jdbcType=VARCHAR},
-      #{requestBytes,jdbcType=BIGINT},
-      #{responseBytes,jdbcType=BIGINT}
-    )
-  </insert>
+    <insert id="insert" parameterType="com.example.demo.model.AccessLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO
+            access_logs ( created_at, request_id, method, path, query, status, duration_ms, remote_ip, user_agent
+                        , referer, username, request_bytes, response_bytes)
+        VALUES
+            ( #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}, #{requestId,jdbcType=VARCHAR}
+            , #{method,jdbcType=VARCHAR}, #{path,jdbcType=VARCHAR}, #{query,jdbcType=VARCHAR}
+            , #{status,jdbcType=INTEGER}, #{durationMs,jdbcType=BIGINT}, #{remoteIp,jdbcType=VARCHAR}
+            , #{userAgent,jdbcType=VARCHAR}, #{referer,jdbcType=VARCHAR}, #{username,jdbcType=VARCHAR}
+            , #{requestBytes,jdbcType=BIGINT}, #{responseBytes,jdbcType=BIGINT})
+    </insert>
 
-  <!-- 指定したIP一覧に対する最新アクセスのパス/UAを取得（PostgreSQL） -->
-  <select id="selectLatestPathByIps" resultType="com.example.demo.model.IpLatestPath">
-    SELECT DISTINCT ON (remote_ip)
-      remote_ip AS ipAddress,
-      path,
-      user_agent AS userAgent
-    FROM access_logs
-    WHERE remote_ip IS NOT NULL
-      AND remote_ip IN
-      <foreach collection="ips" item="ip" open="(" separator="," close=")">
-        #{ip}
-      </foreach>
-    ORDER BY remote_ip, created_at DESC
-  </select>
+    <!-- 指定したIP一覧に対する最新アクセスのパス/UAを取得（PostgreSQL） -->
+    <select id="selectLatestPathByIps" resultType="com.example.demo.model.IpLatestPath">
+        SELECT DISTINCT ON (remote_ip)
+        remote_ip AS ipAddress,
+        path,
+        user_agent AS userAgent
+        FROM access_logs
+        WHERE remote_ip IS NOT NULL
+        AND remote_ip IN
+        <foreach collection="ips" item="ip" open="(" separator="," close=")">
+            #{ip}
+        </foreach>
+        ORDER BY remote_ip, created_at DESC
+    </select>
 
-  <select id="selectIpsWithMissingUserAgent" resultType="string">
-    SELECT DISTINCT remote_ip
-    FROM access_logs
-    WHERE remote_ip IS NOT NULL
-      AND (user_agent IS NULL OR TRIM(user_agent) = '')
-  </select>
+    <select id="selectIpsWithMissingUserAgent" resultType="string">
+        SELECT DISTINCT
+            remote_ip
+        FROM
+            access_logs
+        WHERE
+            remote_ip IS NOT NULL
+            AND (user_agent IS NULL OR TRIM(user_agent) = '')
+    </select>
 
 </mapper>

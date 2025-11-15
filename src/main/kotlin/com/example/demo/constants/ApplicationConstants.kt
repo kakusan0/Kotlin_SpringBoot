@@ -21,6 +21,7 @@ object ApplicationConstants {
     object RegisterConstants {
         // パスワードに使用する文字集合
         const val CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
         // 生成パスワード長の既定値
         const val PASSWORD_LENGTH = 15
     }

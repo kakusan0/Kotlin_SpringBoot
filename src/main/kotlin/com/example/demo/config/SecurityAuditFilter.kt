@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import org.springframework.web.util.ContentCachingRequestWrapper
 import org.springframework.web.util.ContentCachingResponseWrapper
-import java.util.UUID
+import java.util.*
 
 /**
  * 全HTTPアクセスをDBに記録するフィルター
@@ -67,7 +67,13 @@ class SecurityAuditFilter(
             try {
                 accessLogMapper.insert(accessLog)
             } catch (e: Exception) {
-                log.warn("早期アクセスログ保存に失敗: method={}, path={}, status={}, err={}", request.method, request.requestURI, statusCode, e.toString())
+                log.warn(
+                    "早期アクセスログ保存に失敗: method={}, path={}, status={}, err={}",
+                    request.method,
+                    request.requestURI,
+                    statusCode,
+                    e.toString()
+                )
             }
             // blacklist_events にも記録
             try {
@@ -95,10 +101,14 @@ class SecurityAuditFilter(
                 try {
                     blacklistIpMapper.upsertIncrementTimes(remoteIp)
                     whitelistIpMapper.markBlacklistedAndIncrement(remoteIp)
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                }
             }
             response.status = 404
-            try { response.writer.write("") } catch (_: Exception) {}
+            try {
+                response.writer.write("")
+            } catch (_: Exception) {
+            }
             writeEarlyAccessLogAndEvent(404, "UA")
             return
         }
@@ -108,9 +118,13 @@ class SecurityAuditFilter(
             try {
                 blacklistIpMapper.upsertIncrementTimes(remoteIp)
                 whitelistIpMapper.markBlacklistedAndIncrement(remoteIp)
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
             response.status = 404
-            try { response.writer.write("") } catch (_: Exception) {}
+            try {
+                response.writer.write("")
+            } catch (_: Exception) {
+            }
             writeEarlyAccessLogAndEvent(404, "COUNTRY")
             return
         }
@@ -121,9 +135,13 @@ class SecurityAuditFilter(
             try {
                 blacklistIpMapper.upsertIncrementTimes(remoteIp)
                 whitelistIpMapper.markBlacklistedAndIncrement(remoteIp)
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
             response.status = 404
-            try { response.writer.write("") } catch (_: Exception) {}
+            try {
+                response.writer.write("")
+            } catch (_: Exception) {
+            }
             writeEarlyAccessLogAndEvent(404, "BLACKLIST")
             return
         }
@@ -148,7 +166,10 @@ class SecurityAuditFilter(
         } finally {
             val duration = System.currentTimeMillis() - start
             // レスポンスボディをクライアントへ返却
-            try { resWrap.copyBodyToResponse() } catch (_: Exception) {}
+            try {
+                resWrap.copyBodyToResponse()
+            } catch (_: Exception) {
+            }
 
             val accessLog = AccessLog(
                 requestId = requestId,
@@ -167,7 +188,13 @@ class SecurityAuditFilter(
             try {
                 accessLogMapper.insert(accessLog)
             } catch (e: Exception) {
-                log.warn("アクセスログ保存に失敗: method={}, path={}, status={}, err={}", request.method, request.requestURI, status, e.toString())
+                log.warn(
+                    "アクセスログ保存に失敗: method={}, path={}, status={}, err={}",
+                    request.method,
+                    request.requestURI,
+                    status,
+                    e.toString()
+                )
             }
         }
     }

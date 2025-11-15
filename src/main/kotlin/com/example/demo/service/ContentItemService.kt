@@ -2,7 +2,6 @@ package com.example.demo.service
 
 import com.example.demo.mapper.ContentItemMapper
 import com.example.demo.model.ContentItem
-import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Caching
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

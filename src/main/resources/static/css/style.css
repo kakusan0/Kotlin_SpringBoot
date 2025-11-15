@@ -1,62 +1,62 @@
 :root {
-  --header-height: 60px;
-  --sidebar-width-expanded: 160px;
-  /* 広げた時の幅 */
-  --sidebar-width-collapsed: 90px;
-  /* 畳んだ時の幅を少し広げる */
-  /* JSが失敗した場合の予備として100vhを設定 */
-  --app-height: 100vh;
+    --header-height: 60px;
+    --sidebar-width-expanded: 160px;
+    /* 広げた時の幅 */
+    --sidebar-width-collapsed: 90px;
+    /* 畳んだ時の幅を少し広げる */
+    /* JSが失敗した場合の予備として100vhを設定 */
+    --app-height: 100vh;
 }
 
 /* デスクトップ表示をデフォルトのスタイルとする */
 body {
-  padding-top: var(--header-height);
-  user-select: none;
-  -webkit-user-select: none;
-  /* Safari互換用 */
+    padding-top: var(--header-height);
+    user-select: none;
+    -webkit-user-select: none;
+    /* Safari互換用 */
 }
 
 input,
 textarea,
 .selectable-content {
-  user-select: text;
-  -webkit-user-select: text;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--header-height);
-  background-color: #ffffff;
-  z-index: 1050;
-  /* ▼▼▼ 追加: PC表示でのヘッダー下線 ▼▼▼ */
-  border-bottom: 1px solid #dee2e6;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--header-height);
+    background-color: #ffffff;
+    z-index: 1050;
+    /* ▼▼▼ 追加: PC表示でのヘッダー下線 ▼▼▼ */
+    border-bottom: 1px solid #dee2e6;
 }
 
 .offcanvas-md {
-  --bs-offcanvas-width: var(--sidebar-width-expanded);
+    --bs-offcanvas-width: var(--sidebar-width-expanded);
 }
 
 /* サイドバー内リンクの基本スタイル（横並び） */
 .offcanvas-body .nav-link {
-  display: flex;
-  align-items: center;
-  /* アイコンとテキストを垂直方向に中央揃え */
-  padding: 1rem 1.5rem;
-  /* パディングを調整 */
+    display: flex;
+    align-items: center;
+    /* アイコンとテキストを垂直方向に中央揃え */
+    padding: 1rem 1.5rem;
+    /* パディングを調整 */
 }
 
 .offcanvas-body .nav-link .bi {
-  margin-right: 0.75rem;
-  /* アイコンの右側に余白を設定 */
+    margin-right: 0.75rem;
+    /* アイコンの右側に余白を設定 */
 }
 
 /* --- モーダルのカスタムスタイル (ダークテーマ) --- */
 #scrollableModal .modal-content {
-  background-color: #ffffff;
-  color: #000000;
+    background-color: #ffffff;
+    color: #000000;
 }
 
 /*
@@ -65,125 +65,161 @@ textarea,
 
 /* エラーモーダル用の背景: 暗い赤色、半透明 */
 .modal-backdrop.backdrop-error {
-  background-color: rgba(114, 28, 36, 0.7);
-  /* Bootstrapの.bg-dangerに近い色 */
+    background-color: rgba(114, 28, 36, 0.7);
+    /* Bootstrapの.bg-dangerに近い色 */
 }
 
 /* 画面選択モーダル用の背景: 少し暗いグレー */
 .modal-backdrop.backdrop-select {
-  background-color: rgba(50, 50, 50, 0.75);
+    background-color: rgba(50, 50, 50, 0.75);
 }
 
 /* ▼▼▼ 追加: エラーモーダルのメッセージがはみ出るのを防ぐ ▼▼▼ */
 #errorModal .modal-body {
-  /* 長い文字列を強制的に改行させる */
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  /* 旧ブラウザ互換用 */
+    /* 長い文字列を強制的に改行させる */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    /* 旧ブラウザ互換用 */
 }
 
 #scrollableModal .modal-header {
-  border: none;
-  /* ヘッダーの境界線の色を調整 */
+    border: none;
+    /* ヘッダーの境界線の色を調整 */
 }
 
 #scrollableModal .modal-footer {
-  border-top-color: #495057;
-  /* フッターの境界線の色を調整 */
+    border-top-color: #495057;
+    /* フッターの境界線の色を調整 */
 }
 
 /* モーダル内のリストアイテムのスタイル調整 */
 #scrollableModal .list-group-item-action {
-  background-color: #ffffff;
-  color: #000000;
+    background-color: #ffffff;
+    color: #000000;
 }
 
 /* モーダルの閉じるボタンを白くする */
 #scrollableModal .btn-close {
-  filter: invert(1) grayscale(100%) brightness(200%);
+    filter: invert(1) grayscale(100%) brightness(200%);
 }
 
 /* パスワードジェネレータ用トグルボタン */
-.opt-btn { padding:6px 8px; border-radius:6px; border:1px solid #ccc; background:#f1f3f5; color:#212529; font-size:0.85rem; cursor:pointer; }
-.opt-btn.opt-on { background:#0d6efd; color:#fff; border-color:#0d6efd; }
-.opt-btn:focus { outline: 2px solid rgba(13,110,253,0.12); outline-offset:2px; }
+.opt-btn {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #f1f3f5;
+    color: #212529;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.opt-btn.opt-on {
+    background: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+
+.opt-btn:focus {
+    outline: 2px solid rgba(13, 110, 253, 0.12);
+    outline-offset: 2px;
+}
+
 /* Ensure the compact panel stays on top so buttons receive pointer events */
-.compact-pwgen { position: relative; z-index: 2; }
+.compact-pwgen {
+    position: relative;
+    z-index: 2;
+}
+
 /* Ensure option buttons accept pointer events */
-.opt-btn { pointer-events: auto; }
+.opt-btn {
+    pointer-events: auto;
+}
 
 /* debug highlight when button is activated */
-.opt-btn.pw-debug-active { box-shadow: 0 0 0 3px rgba(13,110,253,0.2) inset; transform: translateY(1px); }
+.opt-btn.pw-debug-active {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2) inset;
+    transform: translateY(1px);
+}
 
 /* 小さなトースト（コピー通知）のスタイル */
-.pw-toast { position: fixed; right: 10px; bottom: 10px; background: #28a745; color: #fff; padding: 6px 10px; border-radius: 4px; z-index: 9999; }
+.pw-toast {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    background: #28a745;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    z-index: 9999;
+}
 
 /* スマホ表示 (md未満) のスタイルを定義 */
 @media (max-width: 767.98px) {
-  body {
-    /* ヘッダーが下に来るので、paddingを下に変更 */
-    padding-top: 0;
-    /* セーフエリアの高さを考慮してパディングを調整 */
-    padding-bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
-  }
+    body {
+        /* ヘッダーが下に来るので、paddingを下に変更 */
+        padding-top: 0;
+        /* セーフエリアの高さを考慮してパディングを調整 */
+        padding-bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+    }
 
-  .header {
-    /* ヘッダーを画面下部に固定 */
-    top: auto;
-    bottom: 0;
-    /* セーフエリアに対応して高さを確保 */
-    height: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    border-bottom: none;
-    border-top: 1px solid #dee2e6;
-    /* タッチ操作しやすいように少し上方向に表示 */
-    box-shadow: 0 -1px 4px rgba(0,0,0,0.04);
-  }
+    .header {
+        /* ヘッダーを画面下部に固定 */
+        top: auto;
+        bottom: 0;
+        /* セーフエリアに対応して高さを確保 */
+        height: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        border-bottom: none;
+        border-top: 1px solid #dee2e6;
+        /* タッチ操作しやすいように少し上方向に表示 */
+        box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.04);
+    }
 
-  /* ヘッダー内部のコンテンツを安全に中央揃えにする */
-  .header > .d-flex {
-    height: var(--header-height);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 12px; /* 左右のタッチ領域を確保 */
-    box-sizing: border-box;
-  }
+    /* ヘッダー内部のコンテンツを安全に中央揃えにする */
+    .header > .d-flex {
+        height: var(--header-height);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px; /* 左右のタッチ領域を確保 */
+        box-sizing: border-box;
+    }
 
-  /* ヘッダーボタンのタッチ領域を広げる（モバイル向け） */
-  .header .btn {
-    padding: 10px 12px;
-  }
+    /* ヘッダーボタンのタッチ領域を広げる（モバイル向け） */
+    .header .btn {
+        padding: 10px 12px;
+    }
 
-  .offcanvas.offcanvas-start {
-    height: calc(var(--app-height) - var(--header-height));
-    border: 0;
-  }
+    .offcanvas.offcanvas-start {
+        height: calc(var(--app-height) - var(--header-height));
+        border: 0;
+    }
 
-  .offcanvas-body {
-    /* サイドバー内のコンテンツを下に配置 */
-    display: flex;
-    flex-direction: column;
-  }
+    .offcanvas-body {
+        /* サイドバー内のコンテンツを下に配置 */
+        display: flex;
+        flex-direction: column;
+    }
 
-  .offcanvas-body .nav {
-    /* メニュー(ul)をコンテナの下端に押しやる */
-    margin-top: auto;
-  }
+    .offcanvas-body .nav {
+        /* メニュー(ul)をコンテナの下端に押しやる */
+        margin-top: auto;
+    }
 
-  /* ▼▼▼ 追加: スマホ表示でのモーダルサイズ調整 ▼▼▼ */
-  #scrollableModal .modal-dialog {
-    max-width: 80%;
-    /* 横幅を画面の80%に制限 */
-    margin: 1.75rem auto;
-    /* 上下のマージンを確保し、左右中央揃え */
-  }
+    /* ▼▼▼ 追加: スマホ表示でのモーダルサイズ調整 ▼▼▼ */
+    #scrollableModal .modal-dialog {
+        max-width: 80%;
+        /* 横幅を画面の80%に制限 */
+        margin: 1.75rem auto;
+        /* 上下のマージンを確保し、左右中央揃え */
+    }
 
-  /* ▼▼▼ 追加: スマホ表示でモーダルがフッターに被らないように調整 ▼▼▼ */
-  #scrollableModal.modal {
-    /* モーダル全体の高さを、フッターの高さを引いた分に制限する */
-    height: calc(var(--app-height) - (var(--header-height) + env(safe-area-inset-bottom, 0px)));
-  }
+    /* ▼▼▼ 追加: スマホ表示でモーダルがフッターに被らないように調整 ▼▼▼ */
+    #scrollableModal.modal {
+        /* モーダル全体の高さを、フッターの高さを引いた分に制限する */
+        height: calc(var(--app-height) - (var(--header-height) + env(safe-area-inset-bottom, 0px)));
+    }
 
 }
 
@@ -191,45 +227,45 @@ textarea,
 
 /* PC表示 (md以上) のスタイルを再定義 */
 @media (min-width: 768px) {
-  .offcanvas-md.offcanvas-start {
-    /* PCではヘッダーの下に配置 */
-    top: var(--header-height);
-    height: calc(var(--app-height) - var(--header-height));
-    transform: none;
-    visibility: visible !important;
-    border-right: 1px solid #dee2e6;
-    width: var(--sidebar-width-expanded);
-    transition: width 0.3s ease;
-  }
+    .offcanvas-md.offcanvas-start {
+        /* PCではヘッダーの下に配置 */
+        top: var(--header-height);
+        height: calc(var(--app-height) - var(--header-height));
+        transform: none;
+        visibility: visible !important;
+        border-right: 1px solid #dee2e6;
+        width: var(--sidebar-width-expanded);
+        transition: width 0.3s ease;
+    }
 
-  .main-content {
-    margin-left: var(--sidebar-width-expanded);
-    transition: margin-left 0.3s ease;
-  }
+    .main-content {
+        margin-left: var(--sidebar-width-expanded);
+        transition: margin-left 0.3s ease;
+    }
 
-  /* --- is-collapsedクラスが付与された時のスタイル --- */
-  .offcanvas-md.is-collapsed {
-    width: var(--sidebar-width-collapsed);
-  }
+    /* --- is-collapsedクラスが付与された時のスタイル --- */
+    .offcanvas-md.is-collapsed {
+        width: var(--sidebar-width-collapsed);
+    }
 
-  .main-content.is-collapsed {
-    margin-left: var(--sidebar-width-collapsed);
-  }
+    .main-content.is-collapsed {
+        margin-left: var(--sidebar-width-collapsed);
+    }
 
-  /* 畳んだ状態のレイアウトを「アイコン＋名称」の縦並びに変更 */
-  .offcanvas-md.is-collapsed .nav-link {
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
+    /* 畳んだ状態のレイアウトを「アイコン＋名称」の縦並びに変更 */
+    .offcanvas-md.is-collapsed .nav-link {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
 
-  .offcanvas-md.is-collapsed .nav-link .bi {
-    margin-right: 0;
-    margin-bottom: 0.25rem;
-    /* アイコンと名称の間に余白を追加 */
-  }
+    .offcanvas-md.is-collapsed .nav-link .bi {
+        margin-right: 0;
+        margin-bottom: 0.25rem;
+        /* アイコンと名称の間に余白を追加 */
+    }
 }
 
 /* スマホ横画面のスタイル (判定を画面の高さ基準に変更) */
@@ -237,323 +273,356 @@ textarea,
 @media (min-width: 768px),
 (max-height: 500px) and (orientation: landscape) {
 
-  /* --- 共通レイアウト調整 --- */
-  body {
-    padding-top: var(--header-height);
-    padding-bottom: 0;
-  }
+    /* --- 共通レイアウト調整 --- */
+    body {
+        padding-top: var(--header-height);
+        padding-bottom: 0;
+    }
 
-  .header {
-    top: 0;
-    bottom: auto;
-    border-bottom: 1px solid #dee2e6;
-    border-top: none;
-  }
+    .header {
+        top: 0;
+        bottom: auto;
+        border-bottom: 1px solid #dee2e6;
+        border-top: none;
+    }
 
-  /* --- サイドバー & メインコンテンツ (PC/スマホ横画面 共通) --- */
-  .offcanvas-md.offcanvas-start {
-    top: var(--header-height);
-    height: calc(var(--app-height) - var(--header-height));
-    transform: none !important;
-    visibility: visible !important;
-    border-right: 1px solid #dee2e6;
-    width: var(--sidebar-width-expanded);
-    transition: width 0.3s ease;
-  }
+    /* --- サイドバー & メインコンテンツ (PC/スマホ横画面 共通) --- */
+    .offcanvas-md.offcanvas-start {
+        top: var(--header-height);
+        height: calc(var(--app-height) - var(--header-height));
+        transform: none !important;
+        visibility: visible !important;
+        border-right: 1px solid #dee2e6;
+        width: var(--sidebar-width-expanded);
+        transition: width 0.3s ease;
+    }
 
-  .main-content {
-    margin-left: var(--sidebar-width-expanded);
-    transition: margin-left 0.3s ease;
-  }
+    .main-content {
+        margin-left: var(--sidebar-width-expanded);
+        transition: margin-left 0.3s ease;
+    }
 
-  /* --- is-collapsedクラスが付与された時のスタイル --- */
-  .offcanvas-md.is-collapsed {
-    width: var(--sidebar-width-collapsed);
-  }
+    /* --- is-collapsedクラスが付与された時のスタイル --- */
+    .offcanvas-md.is-collapsed {
+        width: var(--sidebar-width-collapsed);
+    }
 
-  .main-content.is-collapsed {
-    margin-left: var(--sidebar-width-collapsed);
-  }
+    .main-content.is-collapsed {
+        margin-left: var(--sidebar-width-collapsed);
+    }
 
-  /* 畳んだ状態のレイアウトを「アイコン＋名称」の縦並びに変更 */
-  .offcanvas-md.is-collapsed .nav-link {
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
+    /* 畳んだ状態のレイアウトを「アイコン＋名称」の縦並びに変更 */
+    .offcanvas-md.is-collapsed .nav-link {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
 
-  .offcanvas-md.is-collapsed .nav-link .bi {
-    margin-right: 0;
-    margin-bottom: 0.25rem;
-    /* アイコンと名称の間に余白を追加 */
-  }
+    .offcanvas-md.is-collapsed .nav-link .bi {
+        margin-right: 0;
+        margin-bottom: 0.25rem;
+        /* アイコンと名称の間に余白を追加 */
+    }
 
-  /* --- UI要素の調整 --- */
-  /* 縦画面で下寄せにしていたメニューを通常の上寄せに戻す */
-  .offcanvas-body {
-    display: block;
-  }
+    /* --- UI要素の調整 --- */
+    /* 縦画面で下寄せにしていたメニューを通常の上寄せに戻す */
+    .offcanvas-body {
+        display: block;
+    }
 
-  .offcanvas-body .nav {
-    margin-top: 0;
-  }
+    .offcanvas-body .nav {
+        margin-top: 0;
+    }
 }
 
 /* --- critical styles moved from head fragment --- */
-html, body { height: 100%; }
-body { padding-top: 60px; margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-.header { position: fixed; top: 0; left: 0; width: 100%; height: 60px; background: #fff; z-index: 1050; border-bottom: 1px solid #dee2e6; }
-.main-content { margin-left: 160px; }
-@media (max-width:767.98px) {
-  body { padding-top: 0; padding-bottom: 60px; }
-  .main-content { margin-left: 0; }
-  /* For mobile: center the main button and place the menu button at left */
-  .header > .d-flex { justify-content: center; position: relative; }
-  .header > .d-flex > div:first-child {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-  /* Make the previously absolute center container flow normally so it's centered by flex */
-  .header .position-absolute.top-50.start-50.translate-middle {
-    position: static;
-    transform: none;
+html, body {
+    height: 100%;
+}
+
+body {
+    padding-top: 60px;
     margin: 0;
-  }
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background: #fff;
+    z-index: 1050;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.main-content {
+    margin-left: 160px;
+}
+
+@media (max-width: 767.98px) {
+    body {
+        padding-top: 0;
+        padding-bottom: 60px;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    /* For mobile: center the main button and place the menu button at left */
+    .header > .d-flex {
+        justify-content: center;
+        position: relative;
+    }
+
+    .header > .d-flex > div:first-child {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    /* Make the previously absolute center container flow normally so it's centered by flex */
+    .header .position-absolute.top-50.start-50.translate-middle {
+        position: static;
+        transform: none;
+        margin: 0;
+    }
 }
 
 /* Fallback styles when JS toggles body.header-bottom (for environments where media queries may not apply) */
 body.header-bottom {
-  padding-top: 0;
-  padding-bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+    padding-top: 0;
+    padding-bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
 }
 
 body.header-bottom .header {
-  top: auto;
-  bottom: 0;
-  height: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  border-bottom: none;
-  border-top: 1px solid #dee2e6;
-  box-shadow: 0 -1px 4px rgba(0,0,0,0.04);
+    top: auto;
+    bottom: 0;
+    height: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-bottom: none;
+    border-top: 1px solid #dee2e6;
+    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.04);
 }
 
 /* header inner layout for header-bottom fallback */
 body.header-bottom .header > .d-flex {
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  box-sizing: border-box;
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    box-sizing: border-box;
 }
 
 body.header-bottom .header > .d-flex > div:first-child {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 body.header-bottom .header .position-absolute.top-50.start-50.translate-middle {
-  position: static;
-  transform: none;
-  margin: 0;
+    position: static;
+    transform: none;
+    margin: 0;
 }
 
 /* 管理画面のメニュー選択プルダウンの幅を柔軟に調整 */
 .menu-select {
-  min-width: 120px !important;
-  width: auto !important;
-  max-width: 250px !important;
-  transition: all 0.2s ease;
+    min-width: 120px !important;
+    width: auto !important;
+    max-width: 250px !important;
+    transition: all 0.2s ease;
 }
 
 /* メニュー選択プルダウンにチェックが表示されても横に広がらないよう制御 */
 .menu-select.is-valid {
-  min-width: 120px !important;
-  width: auto !important;
-  max-width: 250px !important;
-  border-color: #198754 !important;
-  padding-right: 2.5rem !important;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23198754' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3e%3c/svg%3e") !important;
-  background-repeat: no-repeat !important;
-  background-position: right 0.5rem center !important;
-  background-size: 1rem 1rem !important;
+    min-width: 120px !important;
+    width: auto !important;
+    max-width: 250px !important;
+    border-color: #198754 !important;
+    padding-right: 2.5rem !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23198754' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.5rem center !important;
+    background-size: 1rem 1rem !important;
 }
 
 /* パス選択プルダウンの幅を柔軟に調整 */
 .path-select {
-  min-width: 120px !important;
-  width: auto !important;
-  max-width: 250px !important;
-  transition: all 0.2s ease;
+    min-width: 120px !important;
+    width: auto !important;
+    max-width: 250px !important;
+    transition: all 0.2s ease;
 }
 
 /* 画面名入力欄の幅を柔軟に調整 */
 .name-input {
-  min-width: 120px !important;
-  width: auto !important;
-  max-width: 300px !important;
-  transition: all 0.2s ease;
+    min-width: 120px !important;
+    width: auto !important;
+    max-width: 300px !important;
+    transition: all 0.2s ease;
 }
 
 /* 管理画面テーブルの列幅を柔軟に最適化 */
 #manageTable {
-  table-layout: fixed;
-  width: 100%;
+    table-layout: fixed;
+    width: 100%;
 }
 
 #manageTable th:nth-child(1),
 #manageTable td:nth-child(1) {
-  width: 8%;  /* ID列 */
+    width: 8%; /* ID列 */
 }
 
 #manageTable th:nth-child(2),
 #manageTable td:nth-child(2) {
-  width: 25%; /* メニュー名列 */
+    width: 25%; /* メニュー名列 */
 }
 
 #manageTable th:nth-child(3),
 #manageTable td:nth-child(3) {
-  width: 25%; /* 画面名列 */
+    width: 25%; /* 画面名列 */
 }
 
 #manageTable th:nth-child(4),
 #manageTable td:nth-child(4) {
-  width: 25%; /* パス名列 */
+    width: 25%; /* パス名列 */
 }
 
 #manageTable th:nth-child(5),
 #manageTable td:nth-child(5) {
-  width: 17%; /* 操作列 */
+    width: 17%; /* 操作列 */
 }
 
 /* メニュー管理テーブルの列幅調整 */
 #menuTable {
-  table-layout: fixed;
-  width: 100%;
+    table-layout: fixed;
+    width: 100%;
 }
 
 #menuTable th:nth-child(1),
 #menuTable td:nth-child(1) {
-  width: 15%; /* ID列 */
+    width: 15%; /* ID列 */
 }
 
 #menuTable th:nth-child(2),
 #menuTable td:nth-child(2) {
-  width: 65%; /* メニュー名列 */
+    width: 65%; /* メニュー名列 */
 }
 
 #menuTable th:nth-child(3),
 #menuTable td:nth-child(3) {
-  width: 20%; /* 操作列 */
+    width: 20%; /* 操作列 */
 }
 
 /* パス管理テーブルの列幅調整 */
 #pathTable {
-  table-layout: fixed;
-  width: 100%;
+    table-layout: fixed;
+    width: 100%;
 }
 
 #pathTable th:nth-child(1),
 #pathTable td:nth-child(1) {
-  width: 15%; /* ID列 */
+    width: 15%; /* ID列 */
 }
 
 #pathTable th:nth-child(2),
 #pathTable td:nth-child(2) {
-  width: 45%; /* パス名列 */
+    width: 45%; /* パス名列 */
 }
 
 #pathTable th:nth-child(3),
 #pathTable td:nth-child(3) {
-  width: 20%; /* 状態列 */
+    width: 20%; /* 状態列 */
 }
 
 #pathTable th:nth-child(4),
 #pathTable td:nth-child(4) {
-  width: 20%; /* 操作列 */
+    width: 20%; /* 操作列 */
 }
 
 /* テーブル内の入力要素の横幅調整 */
 #manageTable select,
 #manageTable input {
-  width: 100%;
-  min-width: 120px;
+    width: 100%;
+    min-width: 120px;
 }
 
 #menuTable input {
-  width: 100%;
-  min-width: 150px;
+    width: 100%;
+    min-width: 150px;
 }
 
 #pathTable input,
 #pathTable select {
-  width: 100%;
-  min-width: 120px;
+    width: 100%;
+    min-width: 120px;
 }
 
 /* テーブルセルの文字の折り返し設定 */
 #manageTable td,
 #menuTable td,
 #pathTable td {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 /* 操作ボタンのスタイル改善 */
 #manageTable .btn-sm {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
 }
 
 /* 通知トーストのスタイル改善 */
 #updateNotification {
-  border-radius: 0.5rem;
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
 
 /* レスポンシブ対応でもある程度の幅を確保 */
 @media (max-width: 768px) {
-  #manageTable {
-    min-width: 600px;
-  }
+    #manageTable {
+        min-width: 600px;
+    }
 
-  .menu-select,
-  .path-select {
-    min-width: 100px !important;
-    max-width: 180px !important;
-  }
+    .menu-select,
+    .path-select {
+        min-width: 100px !important;
+        max-width: 180px !important;
+    }
 
-  .name-input {
-    min-width: 100px !important;
-    max-width: 200px !important;
-  }
+    .name-input {
+        min-width: 100px !important;
+        max-width: 200px !important;
+    }
 
-  #manageTable th,
-  #manageTable td {
-    padding: 0.25rem;
-    font-size: 0.75rem;
-  }
+    #manageTable th,
+    #manageTable td {
+        padding: 0.25rem;
+        font-size: 0.75rem;
+    }
 
-  #manageTable .btn-sm {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
-  }
+    #manageTable .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
 }
 
 /* 横スクロール対応 */
 .table-responsive {
-  overflow-x: auto;
+    overflow-x: auto;
 }
 
 #manageArea,
 #menuArea,
 #pathArea {
-  overflow-x: auto;
+    overflow-x: auto;
 }

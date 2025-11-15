@@ -2,20 +2,20 @@
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 
 <body>
-  <!-- エラーモーダル（errorMessage があるとき表示） -->
-  <div aria-hidden="true" aria-labelledby="errorModalLabel" class="modal fade" data-bs-backdrop="static"
-    data-bs-keyboard="false" id="errorModal" tabindex="-1" th:fragment="content" th:if="${errorMessage}">
+<!-- エラーモーダル（errorMessage があるとき表示） -->
+<div aria-hidden="true" aria-labelledby="errorModalLabel" class="modal fade" data-bs-backdrop="static"
+     data-bs-keyboard="false" id="errorModal" tabindex="-1" th:fragment="content" th:if="${errorMessage}">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-danger text-white">
-          <h5 class="modal-title" id="errorModalLabel"><i class="bi bi-exclamation-triangle-fill"></i> エラー</h5>
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="errorModalLabel"><i class="bi bi-exclamation-triangle-fill"></i> エラー</h5>
+            </div>
+            <div class="modal-body">
+                <p class="selectable-content" th:text="${errorMessage}">エラーメッセージがここに表示されます。</p>
+            </div>
         </div>
-        <div class="modal-body">
-          <p class="selectable-content" th:text="${errorMessage}">エラーメッセージがここに表示されます。</p>
-        </div>
-      </div>
     </div>
-  </div>
+</div>
 
 </body>
 
