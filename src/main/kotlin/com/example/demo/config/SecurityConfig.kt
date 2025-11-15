@@ -65,14 +65,15 @@ class SecurityConfig(
                     .frameOptions { it.deny() }
                     // X-Content-Type-Options: nosniff
                     .contentTypeOptions { }
-                    // X-XSS-Protection: 1; mode=block
+                    // X-XSS-Protection: 1; mode=block（非推奨だが互換性のため残す）
                     .xssProtection { it.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK) }
-                    // Strict-Transport-Security（HTTPS使用時に有効化）
+                    // Strict-Transport-Security（HTTPS使用時のみ有効化、Tomcatがリバプロ背後でHTTPSを処理する場合も機能）
                     .httpStrictTransportSecurity { it.includeSubDomains(true).maxAgeInSeconds(HSTS_MAX_AGE) }
                     // Referrer-Policy: 外部サイトへのリファラー情報を制限
                     .referrerPolicy { it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN) }
                     // Content-Security-Policy: XSS攻撃対策
                     .contentSecurityPolicy { it.policyDirectives(cspPolicy) }
+                    // Permissions-Policy: ブラウザ機能の制限
                     .addHeaderWriter(
                         StaticHeadersWriter(
                             "Permissions-Policy",
@@ -120,7 +121,7 @@ class SecurityConfig(
             .httpBasic { it.disable() }
             .logout {
                 it.logoutUrl("/logout")
-                it.logoutSuccessUrl("/login?logout")
+                it.logoutSuccessUrl("/home")
                 it.permitAll()
             }
 
