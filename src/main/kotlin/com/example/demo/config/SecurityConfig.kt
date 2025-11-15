@@ -84,20 +84,22 @@ class SecurityConfig(
             // 認可設定
             .authorizeHttpRequests { auth ->
                 auth
-                    // 静的リソースは認証不要
+                    // 静的リソース・ログインなどは認証不要
                     .requestMatchers(
                         "/css/**", "/js/**", "/webjars/**",
                         "/favicon.ico", "/favicon.svg", "/.well-known/**",
                         "/login"
                     ).permitAll()
-                    // APIエンドポイント（CSRF保護あり）
+                    // 公開ページ
+                    .requestMatchers("/home", "/home/**", "/content", "/content/**").permitAll()
+                    // API は現状公開（必要に応じて要制限）
                     .requestMatchers("/api/**").permitAll()
-                    // Actuatorエンドポイントは制限を検討
+                    // Actuator
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                    .requestMatchers("/actuator/**").denyAll() // その他のactuatorエンドポイントは拒否
-                    // /home はログイン必須
-                    .requestMatchers("/home/**", "/manage/**", "/content/**").authenticated()
-                    // その他は全て許可（将来的に認証を追加する場合はここを変更）
+                    .requestMatchers("/actuator/**").denyAll()
+                    // 管理画面は要ログイン
+                    .requestMatchers("/manage", "/manage/**").authenticated()
+                    // その他は許可（必要に応じて見直し）
                     .anyRequest().permitAll()
             }
 

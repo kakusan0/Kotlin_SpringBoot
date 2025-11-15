@@ -132,6 +132,12 @@
             <artifactId>geoip2</artifactId>
             <version>4.2.0</version>
         </dependency>
+
+        <!-- Thymeleaf + Spring Security dialect -->
+        <dependency>
+            <groupId>org.thymeleaf.extras</groupId>
+            <artifactId>thymeleaf-extras-springsecurity6</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
