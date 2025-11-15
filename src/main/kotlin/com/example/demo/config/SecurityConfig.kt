@@ -29,7 +29,7 @@ class SecurityConfig {
     companion object {
         private const val HSTS_MAX_AGE = 31536000L // 1年
         private const val CORS_MAX_AGE = 3600L // 1時間
-        private val ALLOWED_ORIGINS = listOf("https://localhost:8443")
+        private val ALLOWED_ORIGINS = listOf("https://localhost:8443", "http://localhost:8080")
         private val ALLOWED_METHODS = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
     }
 
