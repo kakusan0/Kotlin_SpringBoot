@@ -6,6 +6,8 @@ import com.example.demo.service.MenuService
 import jakarta.validation.constraints.Size
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.ClassPathResource
+import org.springframework.security.authentication.AnonymousAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.validation.annotation.Validated
@@ -50,10 +52,15 @@ class MainController(
 
     @GetMapping(ApplicationConstants.HOME)
     fun root(model: Model): String {
+        val auth = SecurityContextHolder.getContext().authentication
+        val isAuthenticated = auth != null && auth.isAuthenticated && auth !is AnonymousAuthenticationToken
+
         addCommonAttributes(model)
         model.addAttribute("currentScreen", "")
         model.addAttribute("selectedScreenName", "メニューを選択")
         model.addAttribute("currentScreenPath", "")
+        // Thymeleafのsecタグは動くが、必要に応じてモデル側からも参照できるように残す
+        model.addAttribute("isUserAuthenticated", isAuthenticated)
         return "main"
     }
 
