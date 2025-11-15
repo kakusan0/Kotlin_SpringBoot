@@ -29,8 +29,19 @@
                 <span id="selectedItemName" th:text="${selectedScreenName ?: '画面を選択'}"></span>
             </button>
         </div>
-        <!-- 右側：ログイン/ログアウト ボタン -->
-        <div class="position-absolute top-50 end-0 translate-middle-y pe-3">
+        <!-- 右側：ユーザー情報 + ログイン/ログアウト ボタン -->
+        <div class="position-absolute top-50 end-0 translate-middle-y pe-3 d-flex align-items-center gap-2">
+            <!-- 認証済み: ユーザー名/ロール表示 -->
+            <div class="text-end me-1" sec:authorize="isAuthenticated()">
+                <div>
+                    <i class="bi bi-person-circle"></i>
+                    <span sec:authentication="name">username</span>
+                </div>
+                <div>
+                    <span class="badge bg-info text-dark" th:each="a : ${#authentication.authorities}"
+                          th:text="${a.getAuthority()}"></span>
+                </div>
+            </div>
             <!-- 未認証: ログインボタン -->
             <a class="btn btn-outline-primary btn-sm" href="/login" sec:authorize="isAnonymous()" th:href="@{/login}">
                 <i class="bi bi-box-arrow-in-right"></i>
@@ -62,8 +73,8 @@
                 </a>
             </li>
 
-            <!-- 管理（ログイン時のみ表示） -->
-            <li class="nav-item" sec:authorize="isAuthenticated()">
+            <!-- 管理（管理者・ユーザーで表示） -->
+            <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','USER')">
                 <a class="nav-link text-dark" href="/manage" th:href="@{/manage}">
                     <i class="bi bi-tools"></i>
                     <span>管理</span>

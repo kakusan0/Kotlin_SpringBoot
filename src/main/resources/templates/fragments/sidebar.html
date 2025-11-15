@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html xmlns:sec="http://www.thymeleaf.org/extras/spring-security" xmlns:th="http://www.thymeleaf.org">
 <div th:fragment="adminSidebar">
     <div aria-labelledby="sidebarMenuLabel" class="offcanvas offcanvas-start offcanvas-md" id="sidebarMenu"
          tabindex="-1">
@@ -20,7 +21,8 @@
                         <span>管理</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                <!-- IP管理: ADMINロールのみ表示 -->
+                <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                     <a class="nav-link text-dark"
                        th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/manage/ip')} ? ' active'"
                        th:href="@{/manage/ip}">
@@ -28,7 +30,8 @@
                         <span>IP管理</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                <!-- User-Agent管理: ADMINロールのみ表示 -->
+                <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                     <a class="nav-link text-dark"
                        th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/manage/ua')} ? ' active'"
                        th:href="@{/manage/ua}">
@@ -40,3 +43,4 @@
         </div>
     </div>
 </div>
+</html>

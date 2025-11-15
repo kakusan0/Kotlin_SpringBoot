@@ -24,7 +24,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 class SecurityConfig(
     private val customAuthenticationFailureHandler: CustomAuthenticationFailureHandler,
-    private val loginRateLimitFilter: LoginRateLimitFilter
+    private val loginRateLimitFilter: LoginRateLimitFilter,
+    private val customAuthenticationSuccessHandler: CustomAuthenticationSuccessHandler
 ) {
 
     @Value("\${app.csp.connect-src:'self'}")
@@ -91,17 +92,19 @@ class SecurityConfig(
                         "/favicon.ico", "/favicon.svg", "/.well-known/**",
                         "/login"
                     ).permitAll()
-                    // 公開ページ
-                    .requestMatchers("/home", "/home/**", "/content", "/content/**").permitAll()
-                    // API は現状公開（必要に応じて要制限）
+                    // 管理画面トップはMENUまたはADMINで表示可（詳細パスより先に定義）
+                    .requestMatchers("/manage").hasAnyRole("MENU", "ADMIN")
+                    // 管理画面の詳細はADMIN限定
+                    .requestMatchers("/manage/**").hasRole("ADMIN")
+                    // 管理以外の画面はMENUロール必要
+                    .requestMatchers("/", "/home", "/home/**", "/content", "/content/**").hasRole("MENU")
+                    // API は必要に応じて見直し（現状は公開）
                     .requestMatchers("/api/**").permitAll()
                     // Actuator
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").denyAll()
-                    // 管理画面は要ログイン
-                    .requestMatchers("/manage", "/manage/**").authenticated()
-                    // その他は許可（必要に応じて見直し）
-                    .anyRequest().permitAll()
+                    // その他は拒否
+                    .anyRequest().denyAll()
             }
 
             // ログイン前にログイン試行のレート制限フィルターを追加
@@ -110,7 +113,7 @@ class SecurityConfig(
             // フォームログインを有効化
             .formLogin {
                 it.loginPage("/login").permitAll()
-                it.defaultSuccessUrl("/home")
+                it.successHandler(customAuthenticationSuccessHandler)
                 it.failureHandler(customAuthenticationFailureHandler)
             }
             .webAuthn {
@@ -152,11 +155,21 @@ class SecurityConfig(
 
     @Bean
     fun userDetailsService(passwordEncoder: PasswordEncoder): UserDetailsService {
-        val userDetails = User.builder()
-            .username("user")
-            .password(passwordEncoder.encode("password"))
-            .roles("USER")
+        val admin = User.builder()
+            .username("admin")
+            .password(passwordEncoder.encode("admin"))
+            .roles("ADMIN", "MENU")
             .build()
-        return InMemoryUserDetailsManager(userDetails)
+        val user1 = User.builder()
+            .username("user1")
+            .password(passwordEncoder.encode("user1"))
+            .roles("USER", "MENU")
+            .build()
+        val user2 = User.builder()
+            .username("user2")
+            .password(passwordEncoder.encode("user2"))
+            .roles("USER", "MENU")
+            .build()
+        return InMemoryUserDetailsManager(admin, user1, user2)
     }
 }
