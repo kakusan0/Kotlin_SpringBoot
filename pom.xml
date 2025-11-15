@@ -142,6 +142,8 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>${mainClass}</mainClass>
+                    <!-- 静的リソース変更もクラスパスに即時反映 -->
+                    <addResources>true</addResources>
                 </configuration>
             </plugin>
             <plugin>

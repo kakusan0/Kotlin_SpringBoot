@@ -29,6 +29,16 @@
                 <span id="selectedItemName" th:text="${selectedScreenName ?: '画面を選択'}"></span>
             </button>
         </div>
+        <!-- 右側：ログアウトボタン -->
+        <div class="position-absolute top-50 end-0 translate-middle-y pe-3">
+            <form action="/logout" class="m-0" method="post" th:action="@{/logout}">
+                <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden">
+                <button class="btn btn-outline-danger btn-sm" type="submit">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span class="d-none d-md-inline ms-1">ログアウト</span>
+                </button>
+            </form>
+        </div>
     </div>
 </header>
 

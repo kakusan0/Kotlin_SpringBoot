@@ -1,5 +1,6 @@
 package com.example.demo.config
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -22,26 +23,30 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 class SecurityConfig {
 
+    @Value("\${app.csp.connect-src:'self'}")
+    private lateinit var cspConnectSrc: String
+
     companion object {
         private const val HSTS_MAX_AGE = 31536000L // 1年
         private const val CORS_MAX_AGE = 3600L // 1時間
         private val ALLOWED_ORIGINS = listOf("https://localhost:8443")
         private val ALLOWED_METHODS = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
-
-        private const val CSP_POLICY =
-            "default-src 'self'; " +
-                    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
-                    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
-                    "img-src 'self' data: https:; " +
-                    "font-src 'self' data: https://cdn.jsdelivr.net; " +
-                    "connect-src 'self'; " +
-                    "frame-ancestors 'none'; " +
-                    "base-uri 'self'; " +
-                    "form-action 'self'"
     }
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
+        val cspPolicy = buildString {
+            append("default-src 'self'; ")
+            append("script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; ")
+            append("style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; ")
+            append("img-src 'self' data: https:; ")
+            append("font-src 'self' data: https://cdn.jsdelivr.net; ")
+            append("connect-src ").append(cspConnectSrc).append("; ")
+            append("frame-ancestors 'none'; ")
+            append("base-uri 'self'; ")
+            append("form-action 'self'")
+        }
+
         http
             // CSRF保護を有効化（CookieベースのCSRFトークン）
             .csrf { it.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) }
@@ -63,7 +68,7 @@ class SecurityConfig {
                     // Referrer-Policy: 外部サイトへのリファラー情報を制限
                     .referrerPolicy { it.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN) }
                     // Content-Security-Policy: XSS攻撃対策
-                    .contentSecurityPolicy { it.policyDirectives(CSP_POLICY) }
+                    .contentSecurityPolicy { it.policyDirectives(cspPolicy) }
                     .addHeaderWriter(
                         StaticHeadersWriter(
                             "Permissions-Policy",
@@ -72,36 +77,42 @@ class SecurityConfig {
                     )
             }
 
-            // 認証設定（現時点では全アクセスを許可）
+            // 認可設定
             .authorizeHttpRequests { auth ->
                 auth
                     // 静的リソースは認証不要
                     .requestMatchers(
                         "/css/**", "/js/**", "/webjars/**",
-                        "/favicon.ico", "/favicon.svg", "/.well-known/**"
+                        "/favicon.ico", "/favicon.svg", "/.well-known/**",
+                        "/login"
                     ).permitAll()
                     // APIエンドポイント（CSRF保護あり）
                     .requestMatchers("/api/**").permitAll()
                     // Actuatorエンドポイントは制限を検討
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").denyAll() // その他のactuatorエンドポイントは拒否
+                    // /home はログイン必須
+                    .requestMatchers("/home", "/manage", "/content").authenticated()
                     // その他は全て許可（将来的に認証を追加する場合はここを変更）
                     .anyRequest().permitAll()
             }
 
-            // フォームログインは現時点では無効化（必要に応じて有効化）
-            .formLogin { it.disable() }
-//            .formLogin {
-//                it.loginPage("/login").permitAll()
-//                it.defaultSuccessUrl("/mypage")
-//            }
+            // フォームログインを有効化
+            .formLogin {
+                it.loginPage("/login").permitAll()
+                it.defaultSuccessUrl("/home")
+            }
             .webAuthn {
                 it.rpName("Spring Security Relying Party")
                 it.rpId("localhost")
                 it.allowedOrigins(setOf("http://localhost:8080"))
             }
             .httpBasic { it.disable() }
-            .logout { it.disable() }
+            .logout {
+                it.logoutUrl("/logout")
+                it.logoutSuccessUrl("/login")
+                it.permitAll()
+            }
 
         return http.build()
     }

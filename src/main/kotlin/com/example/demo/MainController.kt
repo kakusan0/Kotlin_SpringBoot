@@ -46,6 +46,9 @@ class MainController(
     }
 
     @GetMapping(ApplicationConstants.ROOT)
+    fun index(): String = "${ApplicationConstants.REDIRECT}${ApplicationConstants.HOME}"
+
+    @GetMapping(ApplicationConstants.HOME)
     fun root(model: Model): String {
         addCommonAttributes(model)
         model.addAttribute("currentScreen", "")
