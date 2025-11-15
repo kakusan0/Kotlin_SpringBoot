@@ -16,9 +16,9 @@ class MyBatisConfig(
     fun sqlSessionFactory(): SqlSessionFactory {
         val factoryBean = SqlSessionFactoryBean()
         factoryBean.setDataSource(dataSource)
-        // 明示的にクラスパス上の mapper/*.xml のみを対象にする
+        // 明示的にクラスパス上の mapper/**/*.xml のみを対象にする
         val resolver = PathMatchingResourcePatternResolver()
-        factoryBean.setMapperLocations(*resolver.getResources("classpath*:mapper/*.xml"))
+        factoryBean.setMapperLocations(*resolver.getResources("classpath*:mapper/**/*.xml"))
         val configuration = org.apache.ibatis.session.Configuration()
         configuration.isMapUnderscoreToCamelCase = true
         configuration.isLazyLoadingEnabled = true
