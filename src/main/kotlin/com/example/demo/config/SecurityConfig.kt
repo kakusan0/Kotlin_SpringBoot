@@ -25,7 +25,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfig(
     private val customAuthenticationFailureHandler: CustomAuthenticationFailureHandler,
     private val loginRateLimitFilter: LoginRateLimitFilter,
-    private val customAuthenticationSuccessHandler: CustomAuthenticationSuccessHandler
 ) {
 
     @Value("\${app.csp.connect-src:'self'}")
@@ -113,7 +112,6 @@ class SecurityConfig(
             // フォームログインを有効化
             .formLogin {
                 it.loginPage("/login").permitAll()
-                it.successHandler(customAuthenticationSuccessHandler)
                 it.failureHandler(customAuthenticationFailureHandler)
             }
             .webAuthn {
