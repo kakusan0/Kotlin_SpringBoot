@@ -13,10 +13,9 @@ import org.springframework.transaction.annotation.Transactional
 class PathService(
     private val pathMapper: PathMapper
 ) {
-    @Cacheable(cacheNames = ["pathsActive"])
+    // 一覧は最新性重視のためキャッシュしない
     fun getAllActive(): List<Path> = pathMapper.selectAllActive()
 
-    @Cacheable(cacheNames = ["pathsAll"])
     fun getAllIncludingDeleted(): List<Path> = pathMapper.selectAllIncludingDeleted()
 
     @Cacheable(cacheNames = ["pathById"], key = "#id")
@@ -25,7 +24,6 @@ class PathService(
     @Transactional
     @Caching(
         evict = [
-            CacheEvict(cacheNames = ["pathsActive", "pathsAll"], allEntries = true),
             CacheEvict(cacheNames = ["pathById"], key = "#record.id", condition = "#record.id != null")
         ]
     )
@@ -34,7 +32,6 @@ class PathService(
     @Transactional
     @Caching(
         evict = [
-            CacheEvict(cacheNames = ["pathsActive", "pathsAll"], allEntries = true),
             CacheEvict(cacheNames = ["pathById"], key = "#record.id", condition = "#record.id != null")
         ]
     )
@@ -43,7 +40,6 @@ class PathService(
     @Transactional
     @Caching(
         evict = [
-            CacheEvict(cacheNames = ["pathsActive", "pathsAll"], allEntries = true),
             CacheEvict(cacheNames = ["pathById"], key = "#id")
         ]
     )
@@ -52,7 +48,6 @@ class PathService(
     @Transactional
     @Caching(
         evict = [
-            CacheEvict(cacheNames = ["pathsActive", "pathsAll"], allEntries = true),
             CacheEvict(cacheNames = ["pathById"], key = "#id")
         ]
     )

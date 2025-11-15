@@ -13,10 +13,10 @@ import org.springframework.transaction.annotation.Transactional
 class MenuService(
     private val menuMapper: MenuMapper
 ) {
-    // ホームページ表示用：削除されていないメニューのみ取得（キャッシュなし）
+    // ホームページ表示用：削除されていないメニューのみ取得（キャッシュなしのまま）
     fun getAll(): List<Menu> = menuMapper.selectAll()
 
-    @Cacheable(cacheNames = ["menusIncludingDeleted"])
+    // 管理画面で削除済みも含む一覧は最新性重視のためキャッシュしない
     fun getAllIncludingDeleted(): List<Menu> = menuMapper.selectAllIncludingDeleted()
 
     @Cacheable(cacheNames = ["menuById"], key = "#id")
@@ -25,8 +25,7 @@ class MenuService(
     @Transactional
     @Caching(
         evict = [
-            CacheEvict(cacheNames = ["menus"], allEntries = true),
-            CacheEvict(cacheNames = ["menusIncludingDeleted"], allEntries = true),
+            // 一覧はキャッシュしていないため一覧系のエビクトは不要
             CacheEvict(cacheNames = ["menuById"], key = "#record.id", condition = "#record.id != null")
         ]
     )
@@ -35,8 +34,6 @@ class MenuService(
     @Transactional
     @Caching(
         evict = [
-            CacheEvict(cacheNames = ["menus"], allEntries = true),
-            CacheEvict(cacheNames = ["menusIncludingDeleted"], allEntries = true),
             CacheEvict(cacheNames = ["menuById"], key = "#record.id", condition = "#record.id != null")
         ]
     )
@@ -45,8 +42,6 @@ class MenuService(
     @Transactional
     @Caching(
         evict = [
-            CacheEvict(cacheNames = ["menus"], allEntries = true),
-            CacheEvict(cacheNames = ["menusIncludingDeleted"], allEntries = true),
             CacheEvict(cacheNames = ["menuById"], key = "#id")
         ]
     )
