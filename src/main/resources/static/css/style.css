@@ -619,10 +619,69 @@ body.header-bottom .header .position-absolute.top-50.start-50.translate-middle {
 /* 横スクロール対応 */
 .table-responsive {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* iOS向けのスムーズスクロール */
 }
 
 #manageArea,
 #menuArea,
 #pathArea {
     overflow-x: auto;
+}
+
+/* IP管理画面のテーブルスタイル */
+#whitelistTable,
+#blacklistTable {
+    table-layout: auto;
+    min-width: 100%;
+}
+
+/* スマホ表示時のIP管理画面の調整 */
+@media (max-width: 767.98px) {
+    /* IP管理画面のテーブルは横スクロールを前提に最小幅を設定 */
+    #whitelistTable,
+    #blacklistTable {
+        min-width: 800px;
+    }
+
+    /* テーブル内のフォントサイズを小さくして読みやすく */
+    #whitelistTable th,
+    #whitelistTable td,
+    #blacklistTable th,
+    #blacklistTable td {
+        font-size: 0.85rem;
+        padding: 0.5rem;
+        white-space: nowrap;
+    }
+
+    /* 削除ボタンのサイズ調整 */
+    .btn-blacklist-delete {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* IP検索ボックスの調整 */
+    #ipSearchBox {
+        flex-wrap: wrap;
+    }
+
+    #ipSearchBox .input-group-text,
+    #ipSearchBox .form-control,
+    #ipSearchBox .btn {
+        font-size: 0.9rem;
+    }
+
+    /* ブラックリスト登録カードの調整 */
+    .card-body {
+        padding: 1rem;
+    }
+
+    #whitelistSelectForBlacklist {
+        max-width: 100% !important;
+    }
+
+    /* UA欠損IPボタンの調整 */
+    #btnAutoBlacklistUaMissing {
+        font-size: 0.85rem;
+        width: 100%;
+    }
 }
