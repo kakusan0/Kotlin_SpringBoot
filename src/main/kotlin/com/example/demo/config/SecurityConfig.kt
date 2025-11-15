@@ -11,6 +11,7 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.provisioning.InMemoryUserDetailsManager
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
 import org.springframework.security.web.header.writers.StaticHeadersWriter
@@ -22,7 +23,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
-    private val customAuthenticationFailureHandler: CustomAuthenticationFailureHandler
+    private val customAuthenticationFailureHandler: CustomAuthenticationFailureHandler,
+    private val loginRateLimitFilter: LoginRateLimitFilter
 ) {
 
     @Value("\${app.csp.connect-src:'self'}")
@@ -98,6 +100,9 @@ class SecurityConfig(
                     // その他は全て許可（将来的に認証を追加する場合はここを変更）
                     .anyRequest().permitAll()
             }
+
+            // ログイン前にログイン試行のレート制限フィルターを追加
+            .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter::class.java)
 
             // フォームログインを有効化
             .formLogin {

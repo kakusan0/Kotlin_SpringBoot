@@ -16,6 +16,7 @@ class AuthController {
         @RequestParam(name = "logout", required = false) logout: Boolean?,
         @RequestParam(name = "error", required = false) error: Boolean?,
         @RequestParam(name = "username", required = false) username: String?,
+        @RequestParam(name = "message", required = false) message: String?,
         model: Model
     ): String {
         // 既にログイン済みで、明示的なログアウト/エラー指定がない場合はホームへ
@@ -28,7 +29,9 @@ class AuthController {
             model.addAttribute("message", "ログアウトしました")
         }
         if (error == true) {
-            model.addAttribute("error", "ユーザー名またはパスワードが正しくありません")
+            // カスタムメッセージがある場合はそれを使用、なければデフォルトメッセージ
+            val errorMessage = message ?: "ユーザー名またはパスワードが正しくありません"
+            model.addAttribute("error", errorMessage)
             // ログイン失敗時にユーザー名を保持
             if (!username.isNullOrBlank()) {
                 model.addAttribute("username", username)
