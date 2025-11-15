@@ -14,4 +14,10 @@ interface AccessLogMapper {
 
     // user_agent が空（NULL/空白）のアクセスログを持つIP一覧（重複排除）
     fun selectIpsWithMissingUserAgent(): List<String>
+
+    // 特定のUAパターンに一致するIPアドレス一覧を取得（重複排除）
+    fun selectIpsByUserAgentPattern(
+        @Param("pattern") pattern: String,
+        @Param("matchType") matchType: String
+    ): List<String>
 }

@@ -39,4 +39,30 @@
             AND (user_agent IS NULL OR TRIM(user_agent) = '')
     </select>
 
+    <!-- 特定のUAパターンに一致するIPアドレス一覧を取得 -->
+    <select id="selectIpsByUserAgentPattern" resultType="string">
+        SELECT DISTINCT
+        remote_ip
+        FROM
+        access_logs
+        WHERE
+        remote_ip IS NOT NULL
+        AND user_agent IS NOT NULL
+        AND
+        <choose>
+            <when test="matchType == 'EXACT'">
+                LOWER(user_agent) = LOWER(#{pattern})
+            </when>
+            <when test="matchType == 'PREFIX'">
+                LOWER(user_agent) LIKE CONCAT(LOWER(#{pattern}), '%')
+            </when>
+            <when test="matchType == 'REGEX'">
+                user_agent ~* #{pattern}
+            </when>
+            <otherwise>
+                1=0
+            </otherwise>
+        </choose>
+    </select>
+
 </mapper>

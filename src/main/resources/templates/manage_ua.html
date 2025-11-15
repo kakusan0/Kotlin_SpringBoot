@@ -31,15 +31,22 @@
         <div class="card mb-4">
             <div class="card-header">ルールを追加</div>
             <div class="card-body d-flex gap-2 align-items-center flex-wrap">
-                <input class="form-control" id="uaPattern" placeholder="User-Agent パターン（例: curl/）"
+                <input aria-label="User-Agentパターン" class="form-control" id="uaPattern"
+                       placeholder="User-Agent パターン（例: curl/）"
                        style="max-width: 360px;"/>
-                <select class="form-select" id="uaMatchType" style="max-width: 200px;">
+                <select aria-label="マッチタイプ" class="form-select" id="uaMatchType" style="max-width: 200px;">
                     <option value="EXACT">EXACT（完全一致）</option>
                     <option value="PREFIX">PREFIX（前方一致）</option>
                     <option value="REGEX">REGEX（正規表現）</option>
                 </select>
                 <button class="btn btn-primary" id="btnAddUaRule">追加</button>
                 <small class="text-muted">REGEXは大文字小文字を区別しません（IGNORE_CASE）。</small>
+            </div>
+            <div class="card-footer bg-light">
+                <small class="text-info">
+                    <i class="bi bi-info-circle"></i>
+                    ルール追加時に、過去のアクセスログから該当するUser-AgentのIPアドレスも自動的にブロックされます。
+                </small>
             </div>
         </div>
 

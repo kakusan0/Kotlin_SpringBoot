@@ -69,7 +69,15 @@
                 }
                 addBtn.disabled = true;
                 try {
-                    await addRule(pattern, matchType);
+                    const result = await addRule(pattern, matchType);
+                    // ブロックされたIPアドレス数を表示
+                    if (result && result.blockedIpsCount !== undefined) {
+                        if (result.blockedIpsCount > 0) {
+                            alert(`ルールを追加しました。\n過去のアクセスログから ${result.blockedIpsCount} 件のIPアドレスをブロックしました。`);
+                        } else {
+                            alert('ルールを追加しました。\n該当する過去のIPアドレスはありませんでした。');
+                        }
+                    }
                     location.reload();
                 } catch (e) {
                     console.error(e);
