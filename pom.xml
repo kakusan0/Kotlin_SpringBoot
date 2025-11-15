@@ -16,8 +16,8 @@
     <description>Demo project for Spring Boot with Kotlin and MyBatis</description>
 
     <properties>
-        <java.version>21</java.version>
-        <kotlin.version>2.0.21</kotlin.version>
+        <java.version>25</java.version>
+        <kotlin.version>2.3.0-Beta2</kotlin.version>
         <mainClass>com.example.demo.DemoApplicationKt</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -158,6 +158,27 @@
                     </dependency>
                     <!-- kotlin-maven-noarg 削除: JPAエンティティ用の引数なしコンストラクタ生成は不要 -->
                 </dependencies>
+            </plugin>
+            <!-- JDK ツールチェーン (任意) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>toolchain</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <toolchains>
+                        <jdk>
+                            <version>25</version>
+                        </jdk>
+                    </toolchains>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
