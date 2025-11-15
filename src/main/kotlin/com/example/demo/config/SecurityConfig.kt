@@ -4,6 +4,11 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.core.userdetails.User
+import org.springframework.security.core.userdetails.UserDetailsService
+import org.springframework.security.crypto.factory.PasswordEncoderFactories
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.provisioning.InMemoryUserDetailsManager
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
@@ -62,7 +67,7 @@ class SecurityConfig {
                     .addHeaderWriter(
                         StaticHeadersWriter(
                             "Permissions-Policy",
-                            "geolocation=(), microphone=(), camera=(), usb=(), payment=(), fullscreen=()"
+                            "geolocation=(), microphone=(), camera=(), usb=(), payment=(), fullscreen()"
                         )
                     )
             }
@@ -86,6 +91,15 @@ class SecurityConfig {
 
             // フォームログインは現時点では無効化（必要に応じて有効化）
             .formLogin { it.disable() }
+//            .formLogin {
+//                it.loginPage("/login").permitAll()
+//                it.defaultSuccessUrl("/mypage")
+//            }
+            .webAuthn {
+                it.rpName("Spring Security Relying Party")
+                it.rpId("localhost")
+                it.allowedOrigins(setOf("http://localhost:8080"))
+            }
             .httpBasic { it.disable() }
             .logout { it.disable() }
 
@@ -109,5 +123,18 @@ class SecurityConfig {
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/**", configuration)
         }
+    }
+
+    @Bean
+    fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
+
+    @Bean
+    fun userDetailsService(passwordEncoder: PasswordEncoder): UserDetailsService {
+        val userDetails = User.builder()
+            .username("user")
+            .password(passwordEncoder.encode("password"))
+            .roles("USER")
+            .build()
+        return InMemoryUserDetailsManager(userDetails)
     }
 }
