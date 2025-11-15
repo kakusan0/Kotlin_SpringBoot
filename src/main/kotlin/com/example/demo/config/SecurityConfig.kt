@@ -92,7 +92,7 @@ class SecurityConfig {
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").denyAll() // その他のactuatorエンドポイントは拒否
                     // /home はログイン必須
-                    .requestMatchers("/home", "/manage", "/content").authenticated()
+                    .requestMatchers("/home/**", "/manage/**", "/content/**").authenticated()
                     // その他は全て許可（将来的に認証を追加する場合はここを変更）
                     .anyRequest().permitAll()
             }
@@ -101,6 +101,7 @@ class SecurityConfig {
             .formLogin {
                 it.loginPage("/login").permitAll()
                 it.defaultSuccessUrl("/home")
+                it.failureUrl("/login?error")
             }
             .webAuthn {
                 it.rpName("Spring Security Relying Party")
@@ -110,7 +111,7 @@ class SecurityConfig {
             .httpBasic { it.disable() }
             .logout {
                 it.logoutUrl("/logout")
-                it.logoutSuccessUrl("/login")
+                it.logoutSuccessUrl("/login?logout")
                 it.permitAll()
             }
 
