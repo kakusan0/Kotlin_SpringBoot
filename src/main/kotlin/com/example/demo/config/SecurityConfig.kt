@@ -149,11 +149,11 @@ class SecurityConfig(
 
     @Bean
     fun userDetailsService(passwordEncoder: PasswordEncoder): UserDetailsService {
-        val userDetails = User.builder()
-            .username("user")
-            .password(passwordEncoder.encode("password"))
+        val user1 = User.builder()
+            .username("user1")
+            .password(passwordEncoder.encode("user1"))
             .roles("USER")
             .build()
-        return InMemoryUserDetailsManager(userDetails)
+        return InMemoryUserDetailsManager(user1)
     }
 }
