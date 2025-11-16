@@ -12,6 +12,7 @@
     const apiMenus = '/api/menus';
     const apiPaths = '/api/paths';
     const apiIp = '/api/ip';
+    const apiUserMenus = '/api/user-menus'; // 既存のユーザー割当APIがある前提（なければ別実装）
 
     // DOM ヘルパ関数
     function qs(sel) {
@@ -368,7 +369,10 @@
         const menuTd = document.createElement('td');
         const nameTd = document.createElement('td');
         const pathTd = document.createElement('td');
+        const userTd = document.createElement('td');
+        userTd.textContent = item.username || '(全体)';
         const actionsTd = document.createElement('td');
+        actionsTd.className = 'text-end';
 
         const editBtn = document.createElement('button');
         editBtn.className = 'btn btn-sm btn-outline-primary me-2';
@@ -399,6 +403,7 @@
         tr.appendChild(menuTd);
         tr.appendChild(nameTd);
         tr.appendChild(pathTd);
+        tr.appendChild(userTd);
         tr.appendChild(actionsTd);
         return tr;
     }
@@ -732,7 +737,7 @@
     async function loadScreens() {
         const tbody = qs('#manageTable tbody');
         if (!tbody) return [];
-        tbody.innerHTML = '<tr><td colspan="5">読み込み中...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6">読み込み中...</td></tr>';
         try {
             // ensure menusCache is populated so selects can be built properly
             if (!menusCache || !menusCache.length) {
@@ -744,13 +749,13 @@
             }
             const resp = await fetch(apiContent + '/all');
             if (!resp.ok) {
-                tbody.innerHTML = '<tr><td colspan="5">読み込みに失敗しました</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6">読み込みに失敗しました</td></tr>';
                 return [];
             }
             const items = await resp.json();
             tbody.innerHTML = '';
             if (!items || !items.length) {
-                tbody.innerHTML = '<tr><td colspan="5">項目がありません</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6">項目がありません</td></tr>';
                 return [];
             }
             {
@@ -760,7 +765,7 @@
             }
             return items;
         } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="5">読み込みに失敗しました</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6">読み込みに失敗しました</td></tr>';
             return [];
         }
     }
@@ -1096,6 +1101,166 @@
         delBtns.forEach(b => b.addEventListener('click', () => onDeleteFromBlacklist(b.getAttribute('data-id'))));
     }
 
+    // --- ユーザーメニュー管理 ---
+    async function loadMenuSettings() {
+        const resp = await fetch(apiMenus + '/settings');
+        if (!resp.ok) return [];
+        return await resp.json();
+    }
+
+    async function saveMenuRequired(menuId, required) {
+        await fetch(apiMenus + '/settings', {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({menuId, required})
+        });
+    }
+
+    async function loadRoleAssignments(role) {
+        const resp = await fetch(`${apiMenus}/role-assignments/${encodeURIComponent(role)}`);
+        if (!resp.ok) return [];
+        return await resp.json(); // menuId list
+    }
+
+    async function assignRoleMenu(role, menuId) {
+        await fetch(apiMenus + '/role-assignments', {
+            method: 'POST', headers: getHeaders(), body: JSON.stringify({roleName: role, menuId})
+        });
+    }
+
+    async function removeRoleMenu(role, menuId) {
+        await fetch(`${apiMenus}/role-assignments?role=${encodeURIComponent(role)}&menuId=${encodeURIComponent(menuId)}`, {
+            method: 'DELETE', headers: getHeaders(false)
+        });
+    }
+
+    async function loadUserAssignedMenus(username) {
+        const resp = await fetch(`${apiMenus}/all`); // 利用可能メニュー一覧（権限に応じてフィルタ済）
+        if (!resp.ok) return [];
+        const all = await resp.json();
+        // ユーザーの割当自体は専用APIが望ましいが、既存に合わせるなら user_menu API を用意すべき。
+        // ここでは既存の endpoints がないため、この関数はallを返し、後続のチェックボックスは /api/user-menu を期待。
+        return all;
+    }
+
+    function renderUserMenusPanel() {
+        const area = qs('#userMenuArea');
+        if (!area) return;
+        const userSelect = qs('#userSelect');
+        if (!userSelect) return;
+
+        userSelect.addEventListener('change', async () => {
+            const username = userSelect.value;
+            const container = qs('#availableMenus');
+            container.innerHTML = '';
+            if (!username) return;
+
+            // 取得: メニュー一覧、必須フラグ、ロール割当
+            const [menusResp, settings, adminRoleMenus, userRoleMenus] = await Promise.all([
+                fetch(apiMenus + '/all-including-deleted'),
+                loadMenuSettings(),
+                loadRoleAssignments('ROLE_ADMIN'),
+                loadRoleAssignments('ROLE_USER')
+            ]);
+            const menus = menusResp.ok ? await menusResp.json() : [];
+
+            const settingsMap = new Map(settings.map(s => [String(s.menuId), !!s.required]));
+            const adminSet = new Set(adminRoleMenus.map(String));
+            const userSet = new Set(userRoleMenus.map(String));
+
+            const frag = document.createDocumentFragment();
+            menus.filter(m => !m.deleted).forEach(m => {
+                const row = document.createElement('div');
+                row.className = 'd-flex align-items-center gap-2 mb-2';
+
+                const label = document.createElement('label');
+                label.className = 'form-check-label flex-grow-1';
+                label.textContent = `${m.name} (ID:${m.id})`;
+
+                // 必須トグル
+                const requiredToggle = document.createElement('input');
+                requiredToggle.type = 'checkbox';
+                requiredToggle.className = 'form-check-input';
+                requiredToggle.checked = settingsMap.get(String(m.id)) || false;
+                requiredToggle.title = '必須メニュー（全ユーザーに強制付与したい場合にON）';
+                requiredToggle.addEventListener('change', async () => {
+                    await saveMenuRequired(m.id, requiredToggle.checked);
+                    showNotification('success', `必須メニューを${requiredToggle.checked ? 'ON' : 'OFF'}にしました`);
+                });
+
+                // ロール割当のトグル（ROLE_USER / ROLE_ADMIN）
+                const roleUser = document.createElement('input');
+                roleUser.type = 'checkbox';
+                roleUser.className = 'form-check-input';
+                roleUser.checked = userSet.has(String(m.id));
+                roleUser.title = 'ROLE_USERに付与';
+                roleUser.addEventListener('change', async () => {
+                    if (roleUser.checked) await assignRoleMenu('ROLE_USER', m.id); else await removeRoleMenu('ROLE_USER', m.id);
+                    showNotification('success', 'ROLE_USERの割当を更新しました');
+                });
+
+                const roleAdmin = document.createElement('input');
+                roleAdmin.type = 'checkbox';
+                roleAdmin.className = 'form-check-input';
+                roleAdmin.checked = adminSet.has(String(m.id));
+                roleAdmin.title = 'ROLE_ADMINに付与';
+                roleAdmin.addEventListener('change', async () => {
+                    if (roleAdmin.checked) await assignRoleMenu('ROLE_ADMIN', m.id); else await removeRoleMenu('ROLE_ADMIN', m.id);
+                    showNotification('success', 'ROLE_ADMINの割当を更新しました');
+                });
+
+                // ユーザー割当（このユーザーに付与）
+                const userAssign = document.createElement('button');
+                userAssign.className = 'btn btn-sm btn-outline-primary';
+                userAssign.textContent = 'このユーザーに付与';
+                userAssign.addEventListener('click', async () => {
+                    try {
+                        const resp = await fetch('/api/user-menu', {
+                            method: 'POST',
+                            headers: getHeaders(),
+                            body: JSON.stringify({username, menuId: m.id})
+                        });
+                        if (!resp.ok) throw new Error();
+                        showNotification('success', `${username} にメニューを付与しました`);
+                    } catch (_) {
+                        showNotification('error', '付与に失敗しました');
+                    }
+                });
+
+                const userRemove = document.createElement('button');
+                userRemove.className = 'btn btn-sm btn-outline-secondary';
+                userRemove.textContent = 'このユーザーから外す';
+                userRemove.addEventListener('click', async () => {
+                    try {
+                        const resp = await fetch(`/api/user-menu?username=${encodeURIComponent(username)}&menuId=${encodeURIComponent(m.id)}`, {
+                            method: 'DELETE',
+                            headers: getHeaders(false)
+                        });
+                        if (!resp.ok) throw new Error();
+                        showNotification('success', `${username} からメニューを外しました`);
+                    } catch (_) {
+                        showNotification('error', '除外に失敗しました');
+                    }
+                });
+
+                // 割当ユーザー表示（簡易: 別API必要。ここではプレースホルダ）
+                const assignedUsers = document.createElement('span');
+                assignedUsers.className = 'text-muted small';
+                assignedUsers.textContent = '';
+
+                row.appendChild(label);
+                row.appendChild(requiredToggle);
+                row.appendChild(roleUser);
+                row.appendChild(roleAdmin);
+                row.appendChild(userAssign);
+                row.appendChild(userRemove);
+                row.appendChild(assignedUsers);
+                frag.appendChild(row);
+            });
+            container.appendChild(frag);
+        });
+    }
+
     // 初期化: イベントリスナ登録とデータロード
     function initManagePage() {
         try {
@@ -1118,6 +1283,8 @@
             wireIpManagementUi();
             // 初回ロード順序
             loadMenus().then(() => loadPaths()).then(() => loadScreens());
+            // ユーザーメニュー
+            renderUserMenusPanel();
         } catch (_) { /* ignore */
         }
     }

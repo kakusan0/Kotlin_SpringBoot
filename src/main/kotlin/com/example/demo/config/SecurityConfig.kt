@@ -3,6 +3,7 @@ package com.example.demo.config
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.core.userdetails.User
@@ -91,12 +92,12 @@ class SecurityConfig(
                         "/favicon.ico", "/favicon.svg", "/.well-known/**",
                         "/login"
                     ).permitAll()
+                    // ホーム/コンテンツのGETは未ログインでも許可
+                    .requestMatchers(HttpMethod.GET, "/", "/home", "/home/**", "/content", "/content/**").permitAll()
                     // 管理画面トップはMENUまたはADMINで表示可（詳細パスより先に定義）
                     .requestMatchers("/manage").hasAnyRole("MENU", "ADMIN")
                     // 管理画面の詳細はADMIN限定
                     .requestMatchers("/manage/**").hasRole("ADMIN")
-                    // 管理以外の画面はMENUロール必要
-                    .requestMatchers("/", "/home", "/home/**", "/content", "/content/**").hasRole("MENU")
                     // API は必要に応じて見直し（現状は公開）
                     .requestMatchers("/api/**").permitAll()
                     // Actuator

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="ja" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" xmlns:th="http://www.thymeleaf.org">
 
 <head th:replace="~{fragments/head :: commonHead('管理画面')}">
     <title>管理画面</title>
@@ -56,10 +56,16 @@
                         id="screens-tab" role="tab" type="button">画面管理
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
+            <li class="nav-item" role="presentation" sec:authorize="hasRole('ADMIN')">
                 <button aria-controls="paths" aria-selected="false" class="nav-link" data-bs-target="#paths"
                         data-bs-toggle="tab"
                         id="paths-tab" role="tab" type="button">パス管理
+                </button>
+            </li>
+            <li class="nav-item" role="presentation" sec:authorize="hasRole('ADMIN')">
+                <button aria-controls="userMenus" aria-selected="false" class="nav-link" data-bs-target="#userMenus"
+                        data-bs-toggle="tab"
+                        id="userMenus-tab" role="tab" type="button">ユーザーメニュー設定
                 </button>
             </li>
         </ul>
@@ -70,8 +76,8 @@
                 <div class="mb-3">
                     <button class="btn btn-primary" id="addMenuBtn">メニューを追加</button>
                 </div>
-                <div id="menuArea">
-                    <table class="table table-striped" id="menuTable">
+                <div class="table-responsive" id="menuArea">
+                    <table class="table table-striped table-compact" id="menuTable">
                         <thead>
                         <tr>
                             <th>ID</th>
@@ -96,14 +102,15 @@
                 <div class="mb-3">
                     <button class="btn btn-primary" id="addScreenBtn">画面を追加</button>
                 </div>
-                <div id="manageArea">
-                    <table class="table table-striped" id="manageTable">
+                <div class="table-responsive" id="manageArea">
+                    <table class="table table-striped table-compact" id="manageTable">
                         <thead>
                         <tr>
                             <th>ID</th>
                             <th>メニュー名</th>
                             <th>画面名</th>
                             <th>パス名</th>
+                            <th>ユーザー</th>
                             <th>操作</th>
                         </tr>
                         </thead>
@@ -114,6 +121,7 @@
                             <td th:text="${s.menuName}"></td>
                             <td th:text="${s.itemName}"></td>
                             <td th:text="${s.pathName}"></td>
+                            <td th:text="${s.username != null ? s.username : '(全体)'}"></td>
                             <td><span class="text-muted">読み込み後に置き換え</span></td>
                         </tr>
                         </tbody>
@@ -126,8 +134,8 @@
                 <div class="mb-3">
                     <button class="btn btn-primary" id="addPathBtn">パスを追加</button>
                 </div>
-                <div id="pathArea">
-                    <table class="table table-striped" id="pathTable">
+                <div class="table-responsive" id="pathArea">
+                    <table class="table table-striped table-compact" id="pathTable">
                         <thead>
                         <tr>
                             <th>ID</th>
@@ -140,6 +148,28 @@
                         <!-- rows populated by manage.js -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- ユーザーメニュー設定タブ -->
+            <div aria-labelledby="userMenus-tab" class="tab-pane fade" id="userMenus" role="tabpanel">
+                <div class="mb-3">
+                    <label class="form-label" for="userSelect">ユーザー選択:</label>
+                    <select class="form-select" id="userSelect" style="max-width: 300px;">
+                        <option value="">-- ユーザーを選択 --</option>
+                        <option value="default">default (未ログイン時のデフォルト)</option>
+                        <option value="admin">admin</option>
+                        <option value="user1">user1</option>
+                        <option value="user2">user2</option>
+                    </select>
+                </div>
+                <div id="userMenuArea">
+                    <h5>利用可能なメニュー</h5>
+                    <div class="mb-3" id="availableMenus">
+                        <!-- 動的に生成 -->
+                    </div>
+                    <p class="text-muted">※ チェックを入れたメニューがユーザーの /home に表示されます</p>
+                    <p class="text-muted">※ "default" ユーザーの設定は未ログイン時の表示に適用されます</p>
                 </div>
             </div>
         </div>

@@ -23,6 +23,10 @@ data class ContentItem(
     )
     var pathName: String? = null,
 
+    // 追加: 登録ユーザー名（null はグローバル）
+    @field:Size(max = 255, message = "username は最大255文字までです")
+    var username: String? = null,
+
     var createdAt: OffsetDateTime? = null,
     var updatedAt: OffsetDateTime? = null,
     var enabled: Boolean = true

@@ -3,8 +3,11 @@ package com.example.demo.service
 import com.example.demo.mapper.ContentItemMapper
 import com.example.demo.model.ContentItem
 import org.springframework.cache.annotation.Caching
+import org.springframework.security.authentication.AnonymousAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.OffsetDateTime
 
 @Service
 @Transactional(readOnly = true)
@@ -29,6 +32,14 @@ class ContentItemService(
     )
     fun insert(record: ContentItem): Int {
         record.pathName = record.pathName?.trim()?.takeIf { it.isNotEmpty() }
+        // 追加: ログインユーザー名を保存（未ログインはnullでグローバル）
+        val auth = SecurityContextHolder.getContext().authentication
+        val username =
+            if (auth != null && auth.isAuthenticated && auth !is AnonymousAuthenticationToken) auth.name else null
+        record.username = username
+        val now = OffsetDateTime.now()
+        if (record.createdAt == null) record.createdAt = now
+        record.updatedAt = now
         return contentItemMapper.insert(record)
     }
 
@@ -40,6 +51,12 @@ class ContentItemService(
     )
     fun update(record: ContentItem): Int {
         record.pathName = record.pathName?.trim()?.takeIf { it.isNotEmpty() }
+        // 追加: 更新者のユーザー名に上書き（要件により上書きしないなら削除）
+        val auth = SecurityContextHolder.getContext().authentication
+        val username =
+            if (auth != null && auth.isAuthenticated && auth !is AnonymousAuthenticationToken) auth.name else null
+        record.username = username
+        record.updatedAt = OffsetDateTime.now()
         return contentItemMapper.updateByPrimaryKey(record)
     }
 

@@ -46,7 +46,7 @@
         const now = Date.now();
         try {
             if (!menuName) {
-                // ホームページ用APIを使用
+                // ホームページ用APIを使用（サーバー側でユーザーフィルタリング済み）
                 if (contentCache.all.data && (now - contentCache.all.ts) < contentCache.ttl) {
                     return contentCache.all.data;
                 }
@@ -56,8 +56,7 @@
                 contentCache.all = {data, ts: now};
                 return data;
             } else {
-                // メニュー名が指定されている場合は、常に全データを取得してクライアントサイドでフィルタリング
-                // これにより、サーバーサイドのフィルタリングの問題を回避
+                // メニュー名が指定されている場合も、サーバー側でフィルタリング済みのデータを使用
                 if (contentCache.all.data && (now - contentCache.all.ts) < contentCache.ttl) {
                     const allData = contentCache.all.data;
                     return Array.isArray(allData) ? allData.filter(item =>
@@ -70,7 +69,7 @@
                 const data = await resp.json();
                 contentCache.all = {data, ts: now};
 
-                // クライアントサイドで厳密にフィルタリング
+                // サーバー側で既にユーザーフィルタリング済みなので、メニュー名でのみフィルタリング
                 return Array.isArray(data) ? data.filter(item =>
                     item && item.menuName && String(item.menuName).trim() === String(menuName).trim()
                 ) : [];
@@ -133,14 +132,14 @@
         // 追加: 選択中のサイドバーメニュー名（画面管理で登録した menuName）
         let selectedSidebarMenu = null;
 
-        // サイドバーにサーバー上のメニュー（画面管理で登録された menuName の集合）を表示する
+        // サイドバーにサーバー上のメニュー（ユーザーに許可された menuName の集合）を表示する
         async function loadAndRenderSidebarMenus() {
             try {
                 const path = window.location && window.location.pathname ? window.location.pathname : '';
                 // do not inject or modify manage page sidebar (manage page has its own sidebar content)
                 if (path === '/manage' || path.startsWith('/manage')) return;
 
-                // まず有効なメニュー一覧を取得
+                // まず有効なメニュー一覧を取得（サーバー側でユーザーフィルタリング済み）
                 let validMenuNames = [];
                 try {
                     const menusResp = await fetchWithTimeout('/api/menus/all', {credentials: 'same-origin'}, 10000);
@@ -152,6 +151,7 @@
                     console.warn('Failed to fetch valid menus:', e);
                 }
 
+                // サーバー側でユーザーフィルタリング済みの画面データを取得
                 const screens = await getContentScreens('');
                 if (!Array.isArray(screens)) return;
 
@@ -192,8 +192,6 @@
                     return a && a.getAttribute('href') === '/manage';
                 });
 
-                console.debug('loadAndRenderSidebarMenus: uniqueMenuNames =', uniqueMenuNames);
-
                 uniqueMenuNames.forEach(menuName => {
                     const label = String(menuName).trim();
                     if (!label) return;
@@ -202,14 +200,12 @@
                     const existsByScreenAttr = ul.querySelector('a[data-screen-name="' + CSS.escape(label) + '"]');
                     const existsByText = Array.from(ul.querySelectorAll('a')).some(a => (a.textContent || '').trim() === label);
                     if (existsByMenuAttr || existsByScreenAttr || existsByText) {
-                        console.debug('Menu already exists, skipping:', label);
                         return;
                     }
 
                     const li = document.createElement('li');
                     li.className = 'nav-item';
                     li.setAttribute('data-injected', 'true');
-                    console.debug('Injecting menu:', label);
                     const a = document.createElement('a');
                     a.className = 'nav-link text-dark sidebar-menu-link';
                     a.href = '#';
@@ -284,9 +280,6 @@
                 listGroup.innerHTML = '';
                 let items = screens || [];
 
-                // デバッグ情報：受信したデータをログ出力
-                console.debug('populateContentModal called with:', {menuName, itemCount: items.length});
-
                 // If no menu selected, prompt user to select a menu from the sidebar
                 if (!menuName) {
                     const el = document.createElement('div');
@@ -296,24 +289,12 @@
                     return;
                 }
 
-                // 厳密なメニュー名フィルタリング：完全一致のみ
+                // メニュー名でフィルタリング（サーバー側で既にユーザーフィルタリング済み）
                 if (menuName) {
-                    const originalCount = items.length;
                     items = items.filter(s => {
                         const itemMenuName = s && s.menuName ? String(s.menuName).trim() : '';
                         const targetMenuName = String(menuName).trim();
                         return itemMenuName === targetMenuName;
-                    });
-                    console.debug('Menu filter applied:', {
-                        menuName,
-                        originalCount,
-                        filteredCount: items.length,
-                        filteredItems: items.map(s => ({
-                            id: s.id,
-                            menuName: s.menuName,
-                            itemName: s.itemName,
-                            pathName: s.pathName
-                        }))
                     });
                 }
 
@@ -337,15 +318,6 @@
                 // enabled=true のものだけ表示
                 items = items.filter(s => s.enabled === true);
 
-                console.debug('Final validation applied:', {
-                    finalCount: items.length,
-                    finalItems: items.map(s => ({
-                        id: s.id,
-                        menuName: s.menuName,
-                        itemName: s.itemName,
-                        pathName: s.pathName
-                    }))
-                });
 
                 if (!items.length) {
                     const el = document.createElement('div');
@@ -389,14 +361,12 @@
         function updateHeaderButtonState() {
             const itemSelectButton = document.getElementById('itemSelectButton');
             if (!itemSelectButton) {
-                console.debug('updateHeaderButtonState: itemSelectButton not found');
                 return;
             }
 
             // サイドバーの動的に挿入されたメニューアイテムの数をカウント
             const ul = document.querySelector('#sidebarMenu .offcanvas-body ul.nav');
             if (!ul) {
-                console.debug('updateHeaderButtonState: sidebar ul not found');
                 return;
             }
 
@@ -410,13 +380,6 @@
             const menuCount = manageItem ? allMenuItems.length - 1 : allMenuItems.length;
             const hasMenus = menuCount > 0;
 
-            console.debug('updateHeaderButtonState:', {
-                totalItems: allMenuItems.length,
-                menuCount: menuCount,
-                hasMenus: hasMenus,
-                hasManageItem: manageItem !== null
-            });
-
             if (hasMenus) {
                 // メニューがある場合：ボタンを活性化
                 itemSelectButton.disabled = false;
@@ -427,7 +390,6 @@
                 // Bootstrapのモーダルトリガー属性を有効化
                 itemSelectButton.setAttribute('data-bs-toggle', 'modal');
                 itemSelectButton.setAttribute('data-bs-target', '#scrollableModal');
-                console.debug('Button activated');
             } else {
                 // メニューがない場合（管理ボタンのみ）：ボタンを非活性化
                 itemSelectButton.disabled = true;
@@ -438,18 +400,14 @@
                 // Bootstrapのモーダルトリガー属性を無効化
                 itemSelectButton.removeAttribute('data-bs-toggle');
                 itemSelectButton.removeAttribute('data-bs-target');
-                console.debug('Button deactivated');
             }
         }
 
         // loadAndRenderSidebarMenusをラップして、ボタン状態を更新
         async function loadAndRenderSidebarMenusWithUpdate() {
-            console.debug('loadAndRenderSidebarMenusWithUpdate: starting');
             await loadAndRenderSidebarMenus();
-            console.debug('loadAndRenderSidebarMenusWithUpdate: menus loaded, scheduling button state update');
             // メニュー描画後に少し待ってからボタン状態を更新
             setTimeout(() => {
-                console.debug('loadAndRenderSidebarMenusWithUpdate: calling updateHeaderButtonState');
                 updateHeaderButtonState();
             }, 50);
         }

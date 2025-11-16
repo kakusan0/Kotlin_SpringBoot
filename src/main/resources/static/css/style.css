@@ -685,3 +685,85 @@ body.header-bottom .header .position-absolute.top-50.start-50.translate-middle {
         width: 100%;
     }
 }
+
+/* --- Admin tables: compact columns --- */
+.table-compact {
+    table-layout: fixed;
+}
+
+.table-compact th,
+.table-compact td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: .375rem .5rem; /* 少し詰める */
+}
+
+/* 画面管理テーブル (#manageTable) 列幅 */
+#manageTable th:nth-child(1),
+#manageTable td:nth-child(1) {
+    width: 56px;
+}
+
+#manageTable th:nth-child(2),
+#manageTable td:nth-child(2) {
+    width: 22%;
+}
+
+#manageTable th:nth-child(3),
+#manageTable td:nth-child(3) {
+    width: 26%;
+}
+
+#manageTable th:nth-child(4),
+#manageTable td:nth-child(4) {
+    width: 22%;
+}
+
+#manageTable th:nth-child(5),
+#manageTable td:nth-child(5) {
+    width: 12%;
+}
+
+#manageTable th:nth-child(6),
+#manageTable td:nth-child(6) {
+    width: 12%;
+}
+
+/* メニュー管理テーブル (#menuTable) 列幅 */
+#menuTable th:nth-child(1),
+#menuTable td:nth-child(1) {
+    width: 60px;
+}
+
+#menuTable th:nth-child(2),
+#menuTable td:nth-child(2) {
+    width: auto;
+}
+
+#menuTable th:nth-child(3),
+#menuTable td:nth-child(3) {
+    width: 160px;
+}
+
+/* パス管理テーブル (#pathTable) 列幅 */
+#pathTable th:nth-child(1),
+#pathTable td:nth-child(1) {
+    width: 60px;
+}
+
+#pathTable th:nth-child(2),
+#pathTable td:nth-child(2) {
+    width: auto;
+}
+
+#pathTable th:nth-child(3),
+#pathTable td:nth-child(3) {
+    width: 110px;
+}
+
+#pathTable th:nth-child(4),
+#pathTable td:nth-child(4) {
+    width: 180px;
+}

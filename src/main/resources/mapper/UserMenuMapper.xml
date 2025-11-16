@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.UserMenuMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.demo.model.UserMenu">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="username" jdbcType="VARCHAR" property="username"/>
+        <result column="menu_id" jdbcType="BIGINT" property="menuId"/>
+        <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" javaType="java.time.OffsetDateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">id
+    , username, menu_id, created_at</sql>
+
+    <select id="selectByUsername" parameterType="string" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM user_menu
+        WHERE username = #{username}
+        ORDER BY id
+    </select>
+
+    <select id="selectMenuIdsByUsername" parameterType="string" resultType="long">
+        SELECT
+            menu_id
+        FROM
+            user_menu
+        WHERE
+            username = #{username}
+        ORDER BY
+            menu_id
+    </select>
+
+    <select id="selectByMenuId" parameterType="long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM user_menu
+        WHERE menu_id = #{menuId}
+        ORDER BY id
+    </select>
+
+    <insert id="insert" parameterType="com.example.demo.model.UserMenu" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO
+            user_menu (username, menu_id, created_at)
+        VALUES
+            ( #{username,jdbcType=VARCHAR}, #{menuId,jdbcType=BIGINT}
+            , #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime})
+    </insert>
+
+    <delete id="deleteByUsernameAndMenuId">
+        DELETE
+        FROM
+            user_menu
+        WHERE
+            username = #{username}
+            AND menu_id = #{menuId}
+    </delete>
+
+</mapper>

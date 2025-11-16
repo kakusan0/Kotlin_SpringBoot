@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.RoleMenuMapper">
+
+    <select id="selectMenuIdsByRole" parameterType="string" resultType="long">
+        SELECT
+            menu_id
+        FROM
+            role_menu
+        WHERE
+            role_name = #{roleName}
+        ORDER BY
+            menu_id
+    </select>
+
+    <insert id="insert" parameterType="com.example.demo.model.RoleMenu" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO
+            role_menu (role_name, menu_id, created_at)
+        VALUES
+            (#{roleName}, #{menuId}, now()) ON CONFLICT (role_name, menu_id) DO NOTHING
+    </insert>
+
+    <delete id="deleteByRoleAndMenu">
+        DELETE
+        FROM
+            role_menu
+        WHERE
+            role_name = #{roleName}
+            AND menu_id = #{menuId}
+    </delete>
+
+</mapper>
+
