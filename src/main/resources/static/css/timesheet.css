@@ -65,11 +65,12 @@
 }
 
 .display {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: bold;
     margin-bottom: 8px;
     text-align: center;
     color: #0066cc;
+    font-family: 'Courier New', monospace;
 }
 
 .mode {
@@ -77,6 +78,7 @@
     margin-bottom: 10px;
     font-size: 14px;
     color: #555;
+    font-weight: 500;
 }
 
 .clock {
@@ -91,26 +93,28 @@
 
 .hand {
     width: 3px;
-    height: 80px;
+    height: 85px;
     background: #0066cc;
     position: absolute;
-    top: 20px;
+    top: 15px;
     left: 98.5px;
     transform-origin: bottom;
     pointer-events: none;
-    transition: transform 0.06s linear;
+    transition: transform 0.08s ease-out;
     border-radius: 2px;
+    box-shadow: 0 0 4px rgba(0, 102, 204, 0.4);
 }
 
 .center-dot {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     background: #0066cc;
     border-radius: 50%;
     position: absolute;
-    top: 94px;
-    left: 94px;
-    border: 2px solid white;
+    top: 93px;
+    left: 93px;
+    border: 3px solid white;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
 }
 
 .drag-area {

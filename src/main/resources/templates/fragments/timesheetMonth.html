@@ -58,7 +58,7 @@
         </div>
 
         <div class="display" id="timeDisplay">00:00</div>
-        <div class="mode" id="modeLabel">時を設定してください</div>
+        <div class="mode" id="modeLabel">時を設定してください (0-23)</div>
 
         <div class="clock" id="clock">
             <div class="hand" id="hand"></div>
@@ -181,7 +181,7 @@
                 }
 
                 selectingHour = true;
-                modeLabel.textContent = "時を設定してください";
+                modeLabel.textContent = "時を設定してください (0-23)";
                 updateDisplay();
                 setHandPositionFromTime();
 
@@ -199,10 +199,13 @@
                 picker.setAttribute('aria-hidden', 'false');
             });
 
+            // 24時間制対応ロジック ---------------------------------
             function angleToTime(angle, isHourMode) {
                 if (isHourMode) {
-                    hour = Math.round(angle / 30) % 12;
+                    // 360度を24分割 => 15度/時。丸めて0-23に正規化
+                    hour = Math.round(angle / 15) % 24;
                 } else {
+                    // 分は従来通り 6度/分 (60分)
                     minute = Math.round(angle / 6) % 60;
                 }
                 updateDisplay();
@@ -213,7 +216,8 @@
             }
 
             function setHandPositionFromTime() {
-                const angle = selectingHour ? (hour % 12) * 30 : minute * 6;
+                // 時モード: 15度 * 時 (0-23)。分モード: 6度 * 分
+                const angle = selectingHour ? (hour % 24) * 15 : minute * 6;
                 hand.style.transform = `rotate(${angle}deg)`;
             }
 
@@ -244,7 +248,7 @@
 
                 if (selectingHour) {
                     selectingHour = false;
-                    modeLabel.textContent = "分を設定してください";
+                    modeLabel.textContent = "分を設定してください (0-59)";
                     setHandPositionFromTime();
                 } else {
                     if (currentCell) {
@@ -255,6 +259,8 @@
                     picker.setAttribute('aria-hidden', 'true');
                 }
             }
+
+            // -----------------------------------------------------
 
             document.addEventListener('mousedown', (e) => {
                 if (picker.contains(e.target) || e.target.closest('td.time-cell')) return;
@@ -274,4 +280,3 @@
         /*]]>*/
     </script>
 </div>
-
