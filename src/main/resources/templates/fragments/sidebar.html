@@ -14,14 +14,6 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark"
-                       th:classappend="${#httpServletRequest != null and #httpServletRequest.requestURI == '/manage'} ? ' active'"
-                       th:href="@{/manage}">
-                        <i class="bi bi-gear-fill"></i>
-                        <span>管理</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-dark"
                        th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/manage/ip')} ? ' active'"
                        th:href="@{/manage/ip}">
                         <i class="bi bi-shield-lock"></i>
