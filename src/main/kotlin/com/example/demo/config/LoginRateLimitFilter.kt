@@ -22,9 +22,9 @@ import java.util.concurrent.ConcurrentHashMap
 @Component
 @Order(2)
 class LoginRateLimitFilter(
-    @Value("\${app.trust-proxy:false}") private val trustProxy: Boolean,
-    @Value("\${app.login.rate-limit.capacity:5}") private val capacity: Long,
-    @Value("\${app.login.rate-limit.refill-minutes:5}") private val refillMinutes: Long
+    @param:Value("\${app.trust-proxy:false}") private val trustProxy: Boolean,
+    @param:Value("\${app.login.rate-limit.capacity:5}") private val capacity: Long,
+    @param:Value("\${app.login.rate-limit.refill-minutes:5}") private val refillMinutes: Long
 ) : OncePerRequestFilter() {
 
     private val cache: MutableMap<String, Bucket> = ConcurrentHashMap()

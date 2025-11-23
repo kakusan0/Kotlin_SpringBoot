@@ -29,7 +29,7 @@ class SecurityAuditFilter(
     private val geoIpCountryService: com.example.demo.service.GeoIpCountryService,
     private val blacklistEventMapper: BlacklistEventMapper,
     private val uaBlacklistService: com.example.demo.service.UaBlacklistService,
-    @Value("\${app.trust-proxy:false}") private val trustProxy: Boolean
+    @param:Value("\${app.trust-proxy:false}") private val trustProxy: Boolean
 ) : OncePerRequestFilter() {
 
     companion object {

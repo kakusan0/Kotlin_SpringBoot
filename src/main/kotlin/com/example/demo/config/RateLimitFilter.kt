@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 @Component
 @Order(1)
 class RateLimitFilter(
-    @Value("\${app.trust-proxy:false}") private val trustProxy: Boolean
+    @param:Value("\${app.trust-proxy:false}") private val trustProxy: Boolean
 ) : OncePerRequestFilter() {
 
     private val cache: MutableMap<String, Bucket> = ConcurrentHashMap()

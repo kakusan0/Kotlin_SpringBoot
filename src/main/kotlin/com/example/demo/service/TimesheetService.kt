@@ -1,5 +1,6 @@
 package com.example.demo.service
 
+import com.example.demo.config.MetricsConfig
 import com.example.demo.mapper.TimesheetEntryMapper
 import com.example.demo.model.TimesheetEntry
 import org.springframework.dao.DuplicateKeyException
@@ -13,7 +14,8 @@ class TimesheetNotFoundException(message: String) : RuntimeException(message)
 
 @Service
 class TimesheetService(
-    private val timesheetEntryMapper: TimesheetEntryMapper
+    private val timesheetEntryMapper: TimesheetEntryMapper,
+    private val metricsConfig: MetricsConfig
 ) {
     @Transactional
     fun clockIn(userName: String, now: LocalTime = LocalTime.now()): TimesheetEntry {
@@ -39,6 +41,7 @@ class TimesheetService(
         )
         return try {
             timesheetEntryMapper.insert(entry)
+            metricsConfig.incrementClockIn()
             entry
         } catch (e: DuplicateKeyException) {
             // 競合（同時INSERT）時は再取得して整合状態に合わせる
@@ -69,6 +72,7 @@ class TimesheetService(
         }
         val updated = existing.copy(endTime = now)
         timesheetEntryMapper.updateTimes(updated)
+        metricsConfig.incrementClockOut()
         return updated
     }
 
