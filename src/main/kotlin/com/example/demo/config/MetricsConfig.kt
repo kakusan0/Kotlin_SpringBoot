@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component
 class MetricsConfig(
     private val meterRegistry: MeterRegistry
 ) {
-    private lateinit var clockInCounter: Counter
-    private lateinit var clockOutCounter: Counter
+    private var clockInCounter: Counter? = null
+    private var clockOutCounter: Counter? = null
 
     @PostConstruct
     fun initializeMetrics() {
@@ -28,10 +28,10 @@ class MetricsConfig(
     }
 
     fun incrementClockIn() {
-        clockInCounter.increment()
+        clockInCounter?.increment()
     }
 
     fun incrementClockOut() {
-        clockOutCounter.increment()
+        clockOutCounter?.increment()
     }
 }

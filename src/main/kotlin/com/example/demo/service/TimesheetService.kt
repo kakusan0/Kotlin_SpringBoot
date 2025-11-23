@@ -26,6 +26,7 @@ class TimesheetService(
                 // 補完: startTime 未設定ならセット
                 val updated = existing.copy(startTime = now)
                 timesheetEntryMapper.updateTimes(updated)
+                metricsConfig.incrementClockIn()
                 return updated
             }
             if (existing.endTime == null) {
@@ -52,6 +53,7 @@ class TimesheetService(
             } else if (latest.startTime == null) {
                 val updated = latest.copy(startTime = now)
                 timesheetEntryMapper.updateTimes(updated)
+                metricsConfig.incrementClockIn()
                 updated
             } else {
                 latest
