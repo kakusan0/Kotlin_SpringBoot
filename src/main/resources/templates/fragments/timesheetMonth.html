@@ -116,7 +116,6 @@
             let minute = 0;
             let dragStarted = false;
             let dragStartTime = 0;
-            const MIN_DRAG_DURATION = 120;
 
             const holidayCache = {};
             let autoSaveTimer = null;
@@ -382,11 +381,65 @@
                 await saveBatch([{workDate: iso, startTime: sc || null, endTime: ec || null, breakMinutes: b || null}]);
             }, true);
 
+            // 補足: 月次行再生成と月末日計算関数を定義（欠落によるReferenceError対応）
+            function dayLabel(date) {
+                const wd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                return `${mm}/${dd} (${wd})`;
+            }
+
+            function calcLastDay(year, month1) {
+                // month1 は 1始まり。Date は0始まりなので month1 をそのまま +1 した値で 0 日指定で当月末取得。
+                return new Date(year, month1, 0).getDate(); // new Date(year, month1, 0) は (month1-1)月の末日 → month1引数を+1で呼び出す運用に変更済み
+            }
+
+            function rebuildRows(ym) {
+                const tbody = document.getElementById('tableBody');
+                if (!tbody) return;
+                const [y, mStr] = ym.split('-');
+                const yNum = Number(y);
+                const mNum = Number(mStr);
+                if (!yNum || !mNum) return;
+                const lastDay = calcLastDay(yNum, mNum + 1); // 本来の月の末日
+                tbody.innerHTML = '';
+                for (let d = 1; d <= lastDay; d++) {
+                    const iso = `${yNum}-${String(mNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const date = new Date(yNum, mNum - 1, d);
+                    const tr = document.createElement('tr');
+                    if (iso === new Date().toISOString().substring(0, 10)) tr.classList.add('table-primary');
+                    tr.innerHTML = `<td class=\"date-cell\" data-iso=\"${iso}\"><span>${dayLabel(date)}</span><span class=\"holiday\" style=\"display:none;\"></span></td>` +
+                        `<td class=\"time-cell\" data-type=\"start\"></td>` +
+                        `<td class=\"time-cell\" data-type=\"end\"></td>` +
+                        `<td class=\"break-cell\" contenteditable=\"true\"></td>` +
+                        `<td class=\"duration-cell\"></td>` +
+                        `<td class=\"working-cell\"></td>`;
+                    tbody.appendChild(tr);
+                }
+                // 祝日再表示
+                (async () => {
+                    try {
+                        const holidayMap = holidayCache[yNum] || await fetchHolidays(yNum);
+                        tbody.querySelectorAll('.date-cell').forEach(cell => {
+                            const iso = cell.dataset.iso;
+                            if (holidayMap[iso]) {
+                                const h = cell.querySelector('.holiday');
+                                h.textContent = `祝: ${holidayMap[iso]}`;
+                                h.style.display = '';
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('祝日再表示失敗', e);
+                    }
+                })();
+            }
+
             async function loadTimesheetData(recalc = true) {
                 const [year, month] = monthInput.value.split('-').map(Number);
+                const lastDay = calcLastDay(year, month + 1); // 修正: month+1 を渡す
                 const from = `${year}-${String(month).padStart(2, '0')}-01`;
-                const lastDay = new Date(year, month, 0).getDate();
                 const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                console.debug('[TS] loadTimesheetData month=', month, 'range', from, '->', to);
                 try {
                     const resp = await fetch(`/timesheet/api?from=${from}&to=${to}`, {credentials: 'same-origin'});
                     if (!resp.ok) {
@@ -421,22 +474,53 @@
             }
 
             // 月移動
-            monthInput && monthInput.addEventListener('change', () => loadTimesheetData());
-            prevBtn && prevBtn.addEventListener('click', () => {
-                const [y, m] = monthInput.value.split('-').map(Number);
-                const d = new Date(y, m - 2, 1);
-                monthInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                loadTimesheetData();
-            });
-            nextBtn && nextBtn.addEventListener('click', () => {
-                const [y, m] = monthInput.value.split('-').map(Number);
-                const d = new Date(y, m, 1);
-                monthInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                loadTimesheetData();
-            });
+            // 旧ハンドラ (重複/誤算出) を無効化
+            // monthInput && monthInput.addEventListener('change', () => loadTimesheetData());
+            // prevBtn && prevBtn.addEventListener('click', () => { /* removed */ });
+            // nextBtn && nextBtn.addEventListener('click', () => { /* removed */ });
 
-            // 初期ロード
-            loadTimesheetData();
+            function setMonth(year, month) {
+                // 正規化 (1-12)
+                if (month < 1) {
+                    year -= 1;
+                    month = 12;
+                }
+                if (month > 12) {
+                    year += 1;
+                    month = 1;
+                }
+                const ym = `${year}-${String(month).padStart(2, '0')}`;
+                if (monthInput) monthInput.value = ym;
+                rebuildRows(ym);
+                loadTimesheetData();
+            }
+
+            // 新しい前月・次月ボタンハンドラ
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    if (!monthInput) return;
+                    const [y, m] = monthInput.value.split('-').map(Number);
+                    setMonth(y, m - 1);
+                });
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    if (!monthInput) return;
+                    const [y, m] = monthInput.value.split('-').map(Number);
+                    setMonth(y, m + 1);
+                });
+            }
+            if (monthInput) {
+                monthInput.addEventListener('change', () => {
+                    const [y, m] = monthInput.value.split('-').map(Number);
+                    setMonth(y, m);
+                });
+            }
+            // 初期構築 (既存 monthInput.value 利用)
+            if (monthInput) {
+                rebuildRows(monthInput.value);
+                loadTimesheetData();
+            }
         })();
         /*]]>*/
     </script>

@@ -14,28 +14,11 @@ class TimesheetNotFoundException(message: String) : RuntimeException(message)
 class TimesheetService(
     private val timesheetEntryMapper: TimesheetEntryMapper
 ) {
-    // 稼働/実働再計算共通
-    private fun recalc(entry: TimesheetEntry): TimesheetEntry {
-        val st = entry.startTime
-        val et = entry.endTime
-        val breakMinRaw = entry.breakMinutes ?: 0
-        var duration: Int? = null
-        if (st != null && et != null) {
-            val startTotal = st.hour * 60 + st.minute
-            val endTotal = et.hour * 60 + et.minute
-            duration = if (endTotal >= startTotal) {
-                endTotal - startTotal
-            } else {
-                // 終了時刻が開始より前の場合は翌日跨ぎとみなし 24h 加算 (最大24h内勤務想定)
-                val wrapped = endTotal + 1440 - startTotal
-                // 異常 (24時間超) は null として扱う
-                if (wrapped in 1..1440) wrapped else null
-            }
-        }
-        // 休憩が負数なら 0 に矯正、稼働未確定時はそのまま
-        val breakMin = if (breakMinRaw < 0) 0 else breakMinRaw
-        val working = duration?.let { (it - breakMin).coerceAtLeast(0) }
-        return entry.copy(durationMinutes = duration, workingMinutes = working, breakMinutes = breakMin)
+    private fun applyCalc(entry: TimesheetEntry): TimesheetEntry {
+        val result = TimesheetValidator.validate(entry.startTime, entry.endTime, entry.breakMinutes)
+        if (!result.isValid) throw TimesheetValidationException(result.errors.joinToString(";"))
+        val calc = TimesheetCalculation.compute(entry.startTime, entry.endTime, entry.breakMinutes)
+        return entry.copy(durationMinutes = calc.durationMinutes, workingMinutes = calc.workingMinutes)
     }
 
     @Transactional
@@ -45,7 +28,7 @@ class TimesheetService(
         if (existing != null) {
             if (existing.startTime == null) {
                 // 補完: startTime 未設定ならセット
-                val updated = recalc(existing.copy(startTime = now))
+                val updated = applyCalc(existing.copy(startTime = now))
                 timesheetEntryMapper.updateTimes(updated)
                 return updated
             }
@@ -55,7 +38,7 @@ class TimesheetService(
             // 当日完了済 -> そのまま返却
             return existing
         }
-        val entry = recalc(TimesheetEntry(workDate = today, userName = userName, startTime = now))
+        val entry = applyCalc(TimesheetEntry(workDate = today, userName = userName, startTime = now))
         timesheetEntryMapper.insert(entry)
         return entry
     }
@@ -71,7 +54,7 @@ class TimesheetService(
         if (existing.startTime == null) {
             throw TimesheetConflictException("clock-in が未実施です")
         }
-        val updated = recalc(existing.copy(endTime = now))
+        val updated = applyCalc(existing.copy(endTime = now))
         timesheetEntryMapper.updateTimes(updated)
         return updated
     }
@@ -109,7 +92,7 @@ class TimesheetService(
                 endTime = endTime ?: existing.endTime,
                 breakMinutes = breakMinutes ?: existing.breakMinutes
             )
-            val recalced = recalc(merged)
+            val recalced = applyCalc(merged)
             timesheetEntryMapper.updateTimes(recalced)
             recalced
         } else {
@@ -120,7 +103,7 @@ class TimesheetService(
                 endTime = endTime,
                 breakMinutes = breakMinutes
             )
-            val created = recalc(createdBase)
+            val created = applyCalc(createdBase)
             timesheetEntryMapper.insert(created)
             created
         }

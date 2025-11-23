@@ -16,7 +16,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 @RestController
 @RequestMapping("/timesheet/api")
 class TimesheetController(
-    private val timesheetService: TimesheetService
+    private val timesheetService: TimesheetService,
+    private val summaryService: com.example.demo.service.TimesheetSummaryService
 ) {
     private val emitters = CopyOnWriteArrayList<SseEmitter>()
 
@@ -147,5 +148,14 @@ class TimesheetController(
         }
 
         return mapOf("saved" to saved, "total" to entries.size)
+    }
+
+    @GetMapping("/summary")
+    fun summary(
+        auth: Authentication,
+        @RequestParam month: String
+    ): com.example.demo.service.TimesheetSummaryService.Summary {
+        val ym = java.time.YearMonth.parse(month)
+        return summaryService.summarize(auth.name, ym)
     }
 }
