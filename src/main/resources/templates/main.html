@@ -47,16 +47,26 @@
      tabindex="-1">
     <div class="offcanvas-body p-0">
         <ul class="nav flex-column">
-            <!-- サーバー側で渡された visibleMenus を表示（Homeでは画面に割り当てられているメニューのみ） -->
-            <li class="nav-item" th:each="m : ${visibleMenus}">
-                <a class="nav-link text-dark content-item" href="#" th:attr="data-screen-name=${m.name}">
-                    <i class="bi bi-folder"></i>
-                    <span th:text="${m.name}">Menu</span>
+            <li class="nav-item">
+                <a class="nav-link text-dark"
+                   th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/tools')} ? ' active'"
+                   th:href="@{/tools}">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                    <span>ツール</span>
                 </a>
             </li>
-
             <li class="nav-item">
-                <a class="nav-link text-dark" href="/manage">
+                <a class="nav-link text-dark"
+                   th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/timesheet')} ? ' active'"
+                   th:href="@{/timesheet}">
+                    <i class="bi bi-calendar3"></i>
+                    <span>勤務表</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-dark"
+                   th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/manage')} ? ' active'"
+                   th:href="@{/manage}">
                     <i class="bi bi-tools"></i>
                     <span>管理</span>
                 </a>
@@ -76,14 +86,16 @@
         </div>
         <!-- フォールバック表示: エラーが無く、かつコンテンツが指定されていないときだけ表示 -->
         <div th:if="${(errorMessage == null or errorMessage == '') and (currentScreenPath == null or currentScreenPath == '')}">
-            <p>メニュー選択ボタンから選択してください。</p>
+            <div class="text-center mt-5">
+                <h2>ようこそ</h2>
+                <p class="text-muted">サイドバーから「ツール」または「管理」を選択してください。</p>
+            </div>
         </div>
     </div>
 </main>
 
 <!-- モーダル -->
 <div th:replace="~{fragments/modals/errorModal :: content}"></div>
-<div th:replace="~{fragments/modals/contentModal :: content}"></div>
 
 
 </body>

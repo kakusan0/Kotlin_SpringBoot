@@ -95,8 +95,9 @@ class SecurityConfig(
                     // Actuatorエンドポイントは制限を検討
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").denyAll() // その他のactuatorエンドポイントは拒否
-                    // /home はログイン必須
-                    .requestMatchers("/home/**", "/manage/**", "/content/**").authenticated()
+                    // /home, /tools, /timesheet, /manage, /content はログイン必須
+                    .requestMatchers("/home/**", "/tools/**", "/timesheet/**", "/manage/**", "/content/**")
+                    .authenticated()
                     // その他は全て許可（将来的に認証を追加する場合はここを変更）
                     .anyRequest().permitAll()
             }
