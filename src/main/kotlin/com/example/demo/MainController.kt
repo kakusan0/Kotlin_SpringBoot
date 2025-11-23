@@ -18,6 +18,7 @@ class MainController(
     private val contentItemService: ContentItemService
 ) {
     @GetMapping(ApplicationConstants.ROOT)
+    @Suppress("SpringMVCViewInspection")
     fun index(): String = "${ApplicationConstants.REDIRECT}${ApplicationConstants.HOME}"
 
     @GetMapping(ApplicationConstants.HOME)

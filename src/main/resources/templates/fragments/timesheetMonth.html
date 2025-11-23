@@ -5,12 +5,14 @@
         <!-- controls -->
         <div class="controls mb-3 d-flex gap-3 align-items-center flex-wrap">
             <div class="d-flex gap-2 align-items-center">
-                <label class="form-label mb-0 small">出勤デフォルト：</label>
-                <input class="form-control form-control-sm" id="defaultStart" style="width:110px;" type="time"
-                       value="09:00">
-                <label class="form-label mb-0 small">退勤デフォルト：</label>
-                <input class="form-control form-control-sm" id="defaultEnd" style="width:110px;" type="time"
-                       value="18:00">
+                <label class="form-label mb-0 small" for="defaultStart">出勤デフォルト：</label>
+                <input class="form-control form-control-sm" id="defaultStart" style="width:110px;"
+                       title="出勤時刻のデフォルト値"
+                       type="time" value="09:00">
+                <label class="form-label mb-0 small" for="defaultEnd">退勤デフォルト：</label>
+                <input class="form-control form-control-sm" id="defaultEnd" style="width:110px;"
+                       title="退勤時刻のデフォルト値"
+                       type="time" value="18:00">
                 <button class="btn btn-sm btn-secondary" id="applyDefaults">空セルに適用</button>
             </div>
         </div>
@@ -65,147 +67,11 @@
         </div>
     </div>
 
-    <style>
-        .controls .group {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .date-cell {
-            padding-left: 12px !important;
-        }
-
-        .time-cell {
-            cursor: pointer;
-            background: #fafafa;
-            text-align: center;
-        }
-
-        .time-cell.active {
-            box-shadow: inset 0 0 0 2px rgba(0, 120, 212, 0.4);
-            background: #e3f2fd;
-        }
-
-        .holiday {
-            color: #c00;
-            font-size: 12px;
-            margin-left: 10px;
-            font-weight: 600;
-        }
-
-        .weekday-sun {
-            color: #c33;
-            font-weight: 600;
-        }
-
-        .weekday-sat {
-            color: #116;
-            font-weight: 600;
-        }
-
-        /* Time Picker UI */
-        .time-picker {
-            position: absolute;
-            width: 280px;
-            padding: 12px;
-            background: white;
-            border: 1px solid #aaa;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-            z-index: 9999;
-        }
-
-        .picker-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        .selected-date {
-            font-size: 13px;
-            color: #333;
-            font-weight: 600;
-        }
-
-        .selected-holiday {
-            font-size: 12px;
-            color: #c00;
-            margin-left: 8px;
-            font-weight: 600;
-        }
-
-        .display {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 8px;
-            text-align: center;
-            color: #0066cc;
-        }
-
-        .mode {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 14px;
-            color: #555;
-        }
-
-        .clock {
-            width: 200px;
-            height: 200px;
-            border: 2px solid #0066cc;
-            border-radius: 50%;
-            margin: auto;
-            position: relative;
-            background: #f8f9fa;
-        }
-
-        .hand {
-            width: 3px;
-            height: 80px;
-            background: #0066cc;
-            position: absolute;
-            top: 20px;
-            left: 98.5px;
-            transform-origin: bottom;
-            pointer-events: none;
-            transition: transform 0.06s linear;
-            border-radius: 2px;
-        }
-
-        .center-dot {
-            width: 12px;
-            height: 12px;
-            background: #0066cc;
-            border-radius: 50%;
-            position: absolute;
-            top: 94px;
-            left: 94px;
-            border: 2px solid white;
-        }
-
-        .drag-area {
-            width: 200px;
-            height: 200px;
-            position: absolute;
-            top: 0;
-            left: 0;
-            cursor: pointer;
-        }
-
-        .label-small {
-            font-size: 13px;
-            color: #444;
-        }
-    </style>
-
     <script th:inline="javascript">
+        /*<![CDATA[*/
         (function () {
             'use strict';
 
-            const tableBody = document.getElementById('tableBody');
             const defaultStart = document.getElementById('defaultStart');
             const defaultEnd = document.getElementById('defaultEnd');
             const applyDefaultsBtn = document.getElementById('applyDefaults');
@@ -229,12 +95,14 @@
 
             const holidayCache = {};
 
-            // 祝日取得
             async function fetchHolidays(year) {
                 if (holidayCache[year]) return holidayCache[year];
                 try {
                     const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/JP`);
-                    if (!res.ok) throw new Error('holiday API error');
+                    if (!res.ok) {
+                        holidayCache[year] = {};
+                        return {};
+                    }
                     const data = await res.json();
                     const map = {};
                     for (const h of data) {
@@ -249,7 +117,6 @@
                 }
             }
 
-            // 初期化：祝日を表示
             (async function init() {
                 const year = new Date().getFullYear();
                 const holidayMap = await fetchHolidays(year);
@@ -266,7 +133,6 @@
                 });
             })();
 
-            // デフォルト適用
             applyDefaultsBtn.addEventListener('click', () => {
                 const startVal = defaultStart.value;
                 const endVal = defaultEnd.value;
@@ -277,7 +143,6 @@
                 });
             });
 
-            // セルクリック
             document.getElementById('workTable').addEventListener('click', (e) => {
                 const cell = e.target.closest('td.time-cell');
                 if (!cell) return;
@@ -304,15 +169,11 @@
 
                 const init = cell.textContent.trim();
                 if (/^\d\d:\d\d$/.test(init)) {
-                    const [h, m] = init.split(":").map(Number);
-                    hour = h;
-                    minute = m;
+                    [hour, minute] = init.split(":").map(Number);
                 } else {
                     const def = (cell.dataset.type === 'start') ? defaultStart.value : defaultEnd.value;
                     if (/^\d\d:\d\d$/.test(def)) {
-                        const [h, m] = def.split(":").map(Number);
-                        hour = h;
-                        minute = m;
+                        [hour, minute] = def.split(":").map(Number);
                     } else {
                         hour = 0;
                         minute = 0;
@@ -340,11 +201,9 @@
 
             function angleToTime(angle, isHourMode) {
                 if (isHourMode) {
-                    const h = Math.round(angle / 30) % 12;
-                    hour = h;
+                    hour = Math.round(angle / 30) % 12;
                 } else {
-                    const m = Math.round(angle / 6) % 60;
-                    minute = m;
+                    minute = Math.round(angle / 6) % 60;
                 }
                 updateDisplay();
             }
@@ -358,12 +217,11 @@
                 hand.style.transform = `rotate(${angle}deg)`;
             }
 
-            dragArea.addEventListener('mousedown', (e) => {
+            dragArea.addEventListener('mousedown', () => {
                 dragStarted = false;
                 dragStartTime = Date.now();
                 document.addEventListener('mousemove', onDrag);
                 document.addEventListener('mouseup', onDrop);
-                e.preventDefault();
             });
 
             function onDrag(e) {
@@ -373,12 +231,12 @@
                 const cy = rect.top + rect.height / 2;
                 const dx = e.clientX - cx;
                 const dy = e.clientY - cy;
-                let angle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
+                const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
                 hand.style.transform = `rotate(${angle}deg)`;
                 angleToTime(angle, selectingHour);
             }
 
-            function onDrop(e) {
+            function onDrop() {
                 document.removeEventListener('mousemove', onDrag);
                 document.removeEventListener('mouseup', onDrop);
                 const dragDuration = Date.now() - dragStartTime;
@@ -413,6 +271,7 @@
                 }
             });
         })();
+        /*]]>*/
     </script>
 </div>
 
