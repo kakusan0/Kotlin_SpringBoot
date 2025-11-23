@@ -29,7 +29,12 @@
             </div>
         </div>
 
-        <div class="table-responsive">
+        <div class="alert alert-success py-2 px-3 mb-3 d-flex align-items-center gap-2" role="alert">
+            <i class="bi bi-check-circle"></i>
+            <small><strong>リアルタイム保存有効：</strong> 時刻を設定すると自動的に保存されます</small>
+        </div>
+
+        <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow-y: auto;">
             <table class="table table-sm table-bordered table-hover" id="workTable">
                 <thead class="table-light">
                 <tr>
@@ -109,6 +114,8 @@
             const MIN_DRAG_DURATION = 120;
 
             const holidayCache = {};
+            let autoSaveTimer = null;
+            const AUTO_SAVE_DELAY = 800; // 0.8秒後に自動保存
 
             async function fetchHolidays(year) {
                 if (holidayCache[year]) return holidayCache[year];
@@ -269,6 +276,8 @@
                     if (currentCell) {
                         currentCell.textContent = display.textContent;
                         currentCell.classList.remove('active');
+                        // リアルタイム自動保存をトリガー
+                        scheduleAutoSave(currentCell);
                     }
                     picker.style.display = "none";
                     picker.setAttribute('aria-hidden', 'true');
@@ -307,6 +316,129 @@
                 const d = new Date(y, m, 1);
                 changeMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
             });
+
+            // 登録・読込機能
+            function getCsrf() {
+                const token = document.querySelector('meta[name="_csrf"]');
+                const header = document.querySelector('meta[name="_csrf_header"]');
+                return token && header ? {token: token.content, header: header.content} : null;
+            }
+
+            function scheduleAutoSave(cell) {
+                if (autoSaveTimer) {
+                    clearTimeout(autoSaveTimer);
+                }
+
+                // セルに保存中インジケータを追加
+                cell.classList.add('saving');
+
+                autoSaveTimer = setTimeout(async () => {
+                    await performAutoSave(cell);
+                }, AUTO_SAVE_DELAY);
+            }
+
+            async function performAutoSave(cell) {
+                const row = cell.parentElement;
+                const dateCell = row.querySelector('td.date-cell');
+                const startCell = row.querySelectorAll('td.time-cell')[0];
+                const endCell = row.querySelectorAll('td.time-cell')[1];
+
+                const workDate = dateCell ? dateCell.dataset.iso : null;
+                const startTime = startCell ? startCell.textContent.trim() : '';
+                const endTime = endCell ? endCell.textContent.trim() : '';
+
+                if (!workDate) {
+                    cell.classList.remove('saving');
+                    return;
+                }
+
+                const csrf = getCsrf();
+                const headers = {'Content-Type': 'application/json'};
+                if (csrf) headers[csrf.header] = csrf.token;
+
+                try {
+                    const resp = await fetch('/timesheet/api/batch', {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({
+                            entries: [{
+                                workDate,
+                                startTime: startTime || null,
+                                endTime: endTime || null
+                            }]
+                        }),
+                        credentials: 'same-origin'
+                    });
+
+                    if (resp.ok) {
+                        cell.classList.remove('saving');
+                        cell.classList.add('saved');
+                        setTimeout(() => cell.classList.remove('saved'), 1500);
+                        console.log('自動保存成功:', workDate);
+                    } else {
+                        cell.classList.remove('saving');
+                        cell.classList.add('save-error');
+                        setTimeout(() => cell.classList.remove('save-error'), 2000);
+                        console.error('自動保存失敗:', resp.status);
+                    }
+                } catch (err) {
+                    cell.classList.remove('saving');
+                    cell.classList.add('save-error');
+                    setTimeout(() => cell.classList.remove('save-error'), 2000);
+                    console.error('自動保存エラー:', err);
+                }
+            }
+
+            // ページ読み込み時に自動でデータを読み込む
+            async function loadTimesheetData() {
+                const [year, month] = monthInput.value.split('-').map(Number);
+                const from = `${year}-${String(month).padStart(2, '0')}-01`;
+                const lastDay = new Date(year, month, 0).getDate();
+                const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+                try {
+                    const resp = await fetch(`/timesheet/api?from=${from}&to=${to}`, {
+                        credentials: 'same-origin'
+                    });
+
+                    if (!resp.ok) {
+                        if (resp.status !== 404) {
+                            console.warn(`データ読込失敗: ${resp.status}`);
+                        }
+                        return;
+                    }
+
+                    const entries = await resp.json();
+                    const entryMap = {};
+                    entries.forEach(e => {
+                        entryMap[e.workDate] = {start: e.startTime, end: e.endTime};
+                    });
+
+                    document.querySelectorAll('#tableBody tr').forEach(row => {
+                        const dateCell = row.querySelector('td.date-cell');
+                        const startCell = row.querySelectorAll('td.time-cell')[0];
+                        const endCell = row.querySelectorAll('td.time-cell')[1];
+
+                        const workDate = dateCell ? dateCell.dataset.iso : null;
+                        if (workDate && entryMap[workDate]) {
+                            const data = entryMap[workDate];
+                            if (startCell) startCell.textContent = data.start || '';
+                            if (endCell) endCell.textContent = data.end || '';
+                        }
+                    });
+
+                    if (entries.length > 0) {
+                        console.log(`${entries.length}件のデータを読み込みました`);
+                    }
+                } catch (err) {
+                    console.error('データ読込エラー:', err);
+                }
+            }
+
+            // 初期化時に自動読み込み
+            (async function autoLoad() {
+                await loadTimesheetData();
+            })();
         })();
         /*]]>*/
     </script>

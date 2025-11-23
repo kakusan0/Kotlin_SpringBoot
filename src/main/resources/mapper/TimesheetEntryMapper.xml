@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.TimesheetEntryMapper">
+
+    <resultMap id="TimesheetEntryResult" type="com.example.demo.model.TimesheetEntry">
+        <id property="id" column="id"/>
+        <result property="workDate" column="work_date"/>
+        <result property="userName" column="user_name"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="note" column="note"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectByUserAndDate" resultMap="TimesheetEntryResult">
+        SELECT
+            *
+        FROM
+            timesheet_entries
+        WHERE
+            user_name = #{userName}
+            AND work_date = #{workDate}
+    </select>
+
+    <select id="selectByUserAndRange" resultMap="TimesheetEntryResult">
+        SELECT
+            *
+        FROM
+            timesheet_entries
+        WHERE
+            user_name = #{userName}
+            AND work_date BETWEEN #{from} AND #{to}
+        ORDER BY
+            work_date ASC
+    </select>
+
+    <insert id="insert" parameterType="com.example.demo.model.TimesheetEntry" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO
+            timesheet_entries (work_date, user_name, start_time, end_time, note)
+        VALUES
+            (#{workDate}, #{userName}, #{startTime}, #{endTime}, #{note})
+    </insert>
+
+    <update id="updateTimes" parameterType="com.example.demo.model.TimesheetEntry">
+        UPDATE timesheet_entries
+        SET
+            start_time   = #{startTime}
+            , end_time   = #{endTime}
+            , updated_at = NOW()
+        WHERE
+            id = #{id}
+    </update>
+
+    <update id="updateNote">
+        UPDATE timesheet_entries
+        SET
+            note         = #{note}
+            , updated_at = NOW()
+        WHERE
+            id = #{id}
+    </update>
+
+</mapper>

@@ -45,7 +45,7 @@ class SecurityConfig(
             append("style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; ")
             append("img-src 'self' data: https:; ")
             append("font-src 'self' data: https://cdn.jsdelivr.net; ")
-            append("connect-src ").append(cspConnectSrc).append("; ")
+            append("connect-src 'self' https://date.nager.at ").append(cspConnectSrc).append("; ")
             append("frame-ancestors 'none'; ")
             append("base-uri 'self'; ")
             append("form-action 'self'")
