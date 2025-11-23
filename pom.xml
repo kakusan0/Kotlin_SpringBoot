@@ -24,7 +24,7 @@
         <!-- テスト不要のため常時スキップ -->
         <skipTests>true</skipTests>
         <flyway.version>11.7.2</flyway.version>
-        <postgresql.version>42.7.4</postgresql.version>
+        <postgresql.version>42.7.7</postgresql.version>
     </properties>
 
     <dependencies>
