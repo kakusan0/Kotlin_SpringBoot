@@ -22,13 +22,6 @@
         };
     };
 
-    // Utility: fetch with timeout using AbortController
-    const fetchWithTimeout = (resource, options = {}, timeout = 10000) => {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
-        const signal = controller.signal;
-        return fetch(resource, Object.assign({}, options, {signal})).finally(() => clearTimeout(id));
-    };
 
     // runWhenIdle: ページがアイドルになったら初期化処理を実行するヘルパ
     const runWhenIdle = (fn) => {
