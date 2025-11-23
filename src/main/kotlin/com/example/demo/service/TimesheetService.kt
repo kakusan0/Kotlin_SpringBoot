@@ -2,7 +2,6 @@ package com.example.demo.service
 
 import com.example.demo.mapper.TimesheetEntryMapper
 import com.example.demo.model.TimesheetEntry
-import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -15,6 +14,30 @@ class TimesheetNotFoundException(message: String) : RuntimeException(message)
 class TimesheetService(
     private val timesheetEntryMapper: TimesheetEntryMapper
 ) {
+    // 稼働/実働再計算共通
+    private fun recalc(entry: TimesheetEntry): TimesheetEntry {
+        val st = entry.startTime
+        val et = entry.endTime
+        val breakMinRaw = entry.breakMinutes ?: 0
+        var duration: Int? = null
+        if (st != null && et != null) {
+            val startTotal = st.hour * 60 + st.minute
+            val endTotal = et.hour * 60 + et.minute
+            duration = if (endTotal >= startTotal) {
+                endTotal - startTotal
+            } else {
+                // 終了時刻が開始より前の場合は翌日跨ぎとみなし 24h 加算 (最大24h内勤務想定)
+                val wrapped = endTotal + 1440 - startTotal
+                // 異常 (24時間超) は null として扱う
+                if (wrapped in 1..1440) wrapped else null
+            }
+        }
+        // 休憩が負数なら 0 に矯正、稼働未確定時はそのまま
+        val breakMin = if (breakMinRaw < 0) 0 else breakMinRaw
+        val working = duration?.let { (it - breakMin).coerceAtLeast(0) }
+        return entry.copy(durationMinutes = duration, workingMinutes = working, breakMinutes = breakMin)
+    }
+
     @Transactional
     fun clockIn(userName: String, now: LocalTime = LocalTime.now()): TimesheetEntry {
         val today = LocalDate.now()
@@ -22,7 +45,7 @@ class TimesheetService(
         if (existing != null) {
             if (existing.startTime == null) {
                 // 補完: startTime 未設定ならセット
-                val updated = existing.copy(startTime = now)
+                val updated = recalc(existing.copy(startTime = now))
                 timesheetEntryMapper.updateTimes(updated)
                 return updated
             }
@@ -32,28 +55,9 @@ class TimesheetService(
             // 当日完了済 -> そのまま返却
             return existing
         }
-        val entry = TimesheetEntry(
-            workDate = today,
-            userName = userName,
-            startTime = now
-        )
-        return try {
-            timesheetEntryMapper.insert(entry)
-            entry
-        } catch (e: DuplicateKeyException) {
-            // 競合（同時INSERT）時は再取得して整合状態に合わせる
-            val latest = timesheetEntryMapper.selectByUserAndDate(userName, today)
-                ?: throw e
-            if (latest.endTime == null && latest.startTime != null) {
-                latest
-            } else if (latest.startTime == null) {
-                val updated = latest.copy(startTime = now)
-                timesheetEntryMapper.updateTimes(updated)
-                updated
-            } else {
-                latest
-            }
-        }
+        val entry = recalc(TimesheetEntry(workDate = today, userName = userName, startTime = now))
+        timesheetEntryMapper.insert(entry)
+        return entry
     }
 
     @Transactional
@@ -67,7 +71,7 @@ class TimesheetService(
         if (existing.startTime == null) {
             throw TimesheetConflictException("clock-in が未実施です")
         }
-        val updated = existing.copy(endTime = now)
+        val updated = recalc(existing.copy(endTime = now))
         timesheetEntryMapper.updateTimes(updated)
         return updated
     }
@@ -95,28 +99,30 @@ class TimesheetService(
         userName: String,
         workDate: LocalDate,
         startTime: LocalTime?,
-        endTime: LocalTime?
+        endTime: LocalTime?,
+        breakMinutes: Int? = null
     ): TimesheetEntry {
         val existing = timesheetEntryMapper.selectByUserAndDate(userName, workDate)
-
-        if (existing != null) {
-            // 既存レコードを更新
-            val updated = existing.copy(
+        return if (existing != null) {
+            val merged = existing.copy(
                 startTime = startTime ?: existing.startTime,
-                endTime = endTime ?: existing.endTime
+                endTime = endTime ?: existing.endTime,
+                breakMinutes = breakMinutes ?: existing.breakMinutes
             )
-            timesheetEntryMapper.updateTimes(updated)
-            return updated
+            val recalced = recalc(merged)
+            timesheetEntryMapper.updateTimes(recalced)
+            recalced
         } else {
-            // 新規作成
-            val entry = TimesheetEntry(
+            val createdBase = TimesheetEntry(
                 workDate = workDate,
                 userName = userName,
                 startTime = startTime,
-                endTime = endTime
+                endTime = endTime,
+                breakMinutes = breakMinutes
             )
-            timesheetEntryMapper.insert(entry)
-            return entry
+            val created = recalc(createdBase)
+            timesheetEntryMapper.insert(created)
+            created
         }
     }
 }

@@ -25,6 +25,9 @@
                 <input class="form-control form-control-sm" id="defaultEnd" style="width:110px;"
                        title="退勤時刻のデフォルト値"
                        type="time" value="18:00">
+                <label class="form-label mb-0 small" for="defaultBreak">休憩(分)デフォルト：</label>
+                <input class="form-control form-control-sm" id="defaultBreak" min="0" style="width:90px;" type="number"
+                       value="60">
                 <button class="btn btn-sm btn-secondary" id="applyDefaults">空セルに適用</button>
             </div>
         </div>
@@ -34,27 +37,29 @@
             <small><strong>リアルタイム保存有効：</strong> 時刻を設定すると自動的に保存されます</small>
         </div>
 
+        <!-- テーブルヘッダ拡張 -->
         <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow-y: auto;">
             <table class="table table-sm table-bordered table-hover" id="workTable">
                 <thead class="table-light">
                 <tr>
-                    <th style="width:280px;">日付</th>
-                    <th style="width:100px;">出勤</th>
-                    <th style="width:100px;">退勤</th>
+                    <th style="width:220px;">日付</th>
+                    <th style="width:90px;">出勤</th>
+                    <th style="width:90px;">退勤</th>
+                    <th style="width:80px;">休憩</th>
+                    <th style="width:90px;">稼働</th>
+                    <th style="width:90px;">実働</th>
                 </tr>
                 </thead>
                 <tbody id="tableBody">
-                <tr th:classappend="${d == T(java.time.LocalDate).now()} ? 'table-primary' : ''"
-                    th:each="d : ${dates}">
-                    <td class="date-cell text-start"
-                        th:data-iso="${#temporals.format(d, 'yyyy-MM-dd')}"
-                        th:title="${#temporals.format(d, 'yyyy-MM-dd')}">
-                        <span th:classappend="${#temporals.dayOfWeek(d) == 7} ? 'weekday-sun' : (${#temporals.dayOfWeek(d) == 6} ? 'weekday-sat' : '')"
-                              th:text="${#temporals.format(d, 'MM/dd (E)')}">11/23 (土)</span>
-                        <span class="holiday" style="display:none;"></span>
+                <tr th:classappend="${d == T(java.time.LocalDate).now()} ? 'table-primary' : ''" th:each="d : ${dates}">
+                    <td class="date-cell" th:data-iso="${#temporals.format(d,'yyyy-MM-dd')}">
+                        <span th:text="${#temporals.format(d,'MM/dd (E)')}">11/24 (月)</span>
                     </td>
                     <td class="time-cell" data-type="start"></td>
                     <td class="time-cell" data-type="end"></td>
+                    <td class="break-cell" contenteditable="true"></td>
+                    <td class="duration-cell"></td>
+                    <td class="working-cell"></td>
                 </tr>
                 </tbody>
             </table>
@@ -87,10 +92,10 @@
     <script th:inline="javascript">
         /*<![CDATA[*/
         (function () {
-            'use strict';
-
+            // 既存変数取得
             const defaultStart = document.getElementById('defaultStart');
             const defaultEnd = document.getElementById('defaultEnd');
+            const defaultBreak = document.getElementById('defaultBreak');
             const applyDefaultsBtn = document.getElementById('applyDefaults');
             const picker = document.getElementById('timePicker');
             const display = document.getElementById('timeDisplay');
@@ -155,90 +160,139 @@
                 });
             })();
 
-            applyDefaultsBtn.addEventListener('click', () => {
-                const startVal = defaultStart.value;
-                const endVal = defaultEnd.value;
-                document.querySelectorAll('td.time-cell').forEach(cell => {
-                    if (cell.textContent.trim() === '') {
-                        cell.textContent = (cell.dataset.type === 'start') ? startVal : endVal;
+            function computeDuration(start, end) {
+                if (!start || !end) return '';
+                if (!/^\d\d:\d\d$/.test(start) || !/^\d\d:\d\d$/.test(end)) return '';
+                const [sh, sm] = start.split(':').map(Number);
+                const [eh, em] = end.split(':').map(Number);
+                const diff = (eh * 60 + em) - (sh * 60 + sm);
+                return diff >= 0 ? diff : '';
+            }
+
+            function fmtHM(m) {
+                if (m == null || m === '') return '';
+                const v = parseInt(m, 10);
+                if (isNaN(v)) return '';
+                const h = Math.floor(v / 60);
+                const mm = v % 60;
+                return `${h}時間${mm}分`;
+            }
+
+            // updateRowMetrics 内の表示を修正
+            function updateRowMetrics(row) {
+                const start = row.querySelector('.time-cell[data-type="start"]').textContent.trim();
+                const end = row.querySelector('.time-cell[data-type="end"]').textContent.trim();
+                const breakVal = parseInt(row.querySelector('.break-cell').textContent.trim() || '0', 10);
+                const duration = computeDuration(start, end);
+                const working = duration !== '' ? Math.max(duration - breakVal, 0) : '';
+                row.querySelector('.duration-cell').textContent = duration !== '' ? fmtHM(duration) : '';
+                row.querySelector('.working-cell').textContent = working !== '' ? fmtHM(working) : '';
+            }
+
+            // loadTimesheetData 内で既存値埋め時にもフォーマット反映
+            const _origLoad = typeof loadTimesheetData === 'function' ? loadTimesheetData : null;
+            if (_origLoad) {
+                loadTimesheetData = async function (recalc = true) {
+                    await _origLoad(recalc);
+                    if (recalc) {
+                        document.querySelectorAll('#tableBody tr').forEach(updateRowMetrics);
                     }
+                };
+            }
+
+            applyDefaultsBtn.addEventListener('click', async () => {
+                const s = defaultStart.value;
+                const e = defaultEnd.value;
+                const b = defaultBreak.value.trim();
+                const batch = [];
+                document.querySelectorAll('#tableBody tr').forEach(row => {
+                    const sc = row.querySelector('.time-cell[data-type="start"]');
+                    const ec = row.querySelector('.time-cell[data-type="end"]');
+                    const bc = row.querySelector('.break-cell');
+                    if (sc.textContent.trim() === '') sc.textContent = s;
+                    if (ec.textContent.trim() === '') ec.textContent = e;
+                    if (bc.textContent.trim() === '' && b !== '') bc.textContent = b;
+                    updateRowMetrics(row);
+                    const iso = row.querySelector('.date-cell').dataset.iso;
+                    batch.push({
+                        workDate: iso,
+                        startTime: sc.textContent.trim() || null,
+                        endTime: ec.textContent.trim() || null,
+                        breakMinutes: bc.textContent.trim() || null
+                    });
                 });
+                if (batch.length > 0) {
+                    await saveBatch(batch);
+                }
             });
 
-            document.getElementById('workTable').addEventListener('click', (e) => {
+            function getCsrf() {
+                const t = document.querySelector('meta[name="_csrf"]');
+                const h = document.querySelector('meta[name="_csrf_header"]');
+                return t && h ? {token: t.content, header: h.content} : null;
+            }
+
+            async function saveBatch(entries) {
+                const csrf = getCsrf();
+                const headers = {'Content-Type': 'application/json'};
+                if (csrf) headers[csrf.header] = csrf.token;
+                try {
+                    const resp = await fetch('/timesheet/api/batch', {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({entries}),
+                        credentials: 'same-origin'
+                    });
+                    if (!resp.ok) {
+                        console.warn('一括保存失敗', resp.status);
+                    }
+                } catch (e) {
+                    console.error('一括保存エラー', e);
+                }
+            }
+
+            // 時刻セルクリック (既存が途中まで記述されていた場合補完)
+            document.getElementById('workTable').addEventListener('click', e => {
                 const cell = e.target.closest('td.time-cell');
                 if (!cell) return;
-
                 document.querySelectorAll('td.time-cell.active').forEach(c => c.classList.remove('active'));
                 cell.classList.add('active');
                 currentCell = cell;
-
+                const type = cell.dataset.type;
                 const row = cell.parentElement;
-                const dateCell = row.querySelector('td.date-cell');
-                const dateText = dateCell ? dateCell.querySelector('span')?.textContent || dateCell.textContent : '—';
-
-                selectedDateLabel.textContent = `日付: ${dateText}`;
-                cellTypeLabel.textContent = `種類: ${cell.dataset.type === 'start' ? '出勤' : '退勤'}`;
-
-                const hspan = dateCell ? dateCell.querySelector('.holiday') : null;
-                if (hspan && hspan.textContent) {
-                    holidayLabel.textContent = hspan.textContent.replace(/^祝:\s*/, '');
-                    holidayLabel.style.display = '';
-                } else {
-                    holidayLabel.textContent = '';
-                    holidayLabel.style.display = 'none';
-                }
-
+                const dateCell = row.querySelector('.date-cell');
+                const iso = dateCell ? dateCell.dataset.iso : '';
+                selectedDateLabel.textContent = '日付: ' + iso;
+                cellTypeLabel.textContent = '種類: ' + (type === 'start' ? '出勤' : '退勤');
+                holidayLabel.style.display = 'none';
                 const init = cell.textContent.trim();
                 if (/^\d\d:\d\d$/.test(init)) {
-                    [hour, minute] = init.split(":").map(Number);
+                    [hour, minute] = init.split(':').map(Number);
                 } else {
-                    const def = (cell.dataset.type === 'start') ? defaultStart.value : defaultEnd.value;
+                    const def = (type === 'start' ? defaultStart.value : defaultEnd.value);
                     if (/^\d\d:\d\d$/.test(def)) {
-                        [hour, minute] = def.split(":").map(Number);
+                        [hour, minute] = def.split(':').map(Number);
                     } else {
-                        hour = 0;
+                        hour = 9;
                         minute = 0;
                     }
                 }
-
                 selectingHour = true;
-                modeLabel.textContent = "時を設定してください (0-23)";
+                modeLabel.textContent = '時を設定してください (0-23)';
                 updateDisplay();
-                setHandPositionFromTime();
-
-                const rect = cell.getBoundingClientRect();
-                const left = Math.max(8, rect.left);
-                let top = rect.bottom + 6;
-                const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-                if (top + picker.offsetHeight > viewportHeight - 8) {
-                    top = rect.top - picker.offsetHeight - 6;
-                }
-
-                picker.style.left = left + 'px';
-                picker.style.top = top + 'px';
+                setHand();
+                const r = cell.getBoundingClientRect();
+                picker.style.left = Math.max(8, r.left) + 'px';
+                picker.style.top = (r.bottom + 6) + 'px';
                 picker.style.display = 'block';
                 picker.setAttribute('aria-hidden', 'false');
             });
-
-            // 24時間制対応ロジック ---------------------------------
-            function angleToTime(angle, isHourMode) {
-                if (isHourMode) {
-                    // 360度を24分割 => 15度/時。丸めて0-23に正規化
-                    hour = Math.round(angle / 15) % 24;
-                } else {
-                    // 分は従来通り 6度/分 (60分)
-                    minute = Math.round(angle / 6) % 60;
-                }
-                updateDisplay();
-            }
 
             function updateDisplay() {
                 display.textContent = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
             }
 
-            function setHandPositionFromTime() {
-                // 時モード: 15度 * 時 (0-23)。分モード: 6度 * 分
+            function setHand() {
                 const angle = selectingHour ? (hour % 24) * 15 : minute * 6;
                 hand.style.transform = `rotate(${angle}deg)`;
             }
@@ -250,195 +304,139 @@
                 document.addEventListener('mouseup', onDrop);
             });
 
-            function onDrag(e) {
+            function onDrag(ev) {
                 dragStarted = true;
                 const rect = clock.getBoundingClientRect();
                 const cx = rect.left + rect.width / 2;
                 const cy = rect.top + rect.height / 2;
-                const dx = e.clientX - cx;
-                const dy = e.clientY - cy;
+                const dx = ev.clientX - cx;
+                const dy = ev.clientY - cy;
                 const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
                 hand.style.transform = `rotate(${angle}deg)`;
-                angleToTime(angle, selectingHour);
+                if (selectingHour) {
+                    hour = Math.round(angle / 15) % 24;
+                } else {
+                    minute = Math.round(angle / 6) % 60;
+                }
+                updateDisplay();
             }
 
             function onDrop() {
                 document.removeEventListener('mousemove', onDrag);
                 document.removeEventListener('mouseup', onDrop);
-                const dragDuration = Date.now() - dragStartTime;
-                if (dragDuration < MIN_DRAG_DURATION && !dragStarted) return;
-
                 if (selectingHour) {
                     selectingHour = false;
-                    modeLabel.textContent = "分を設定してください (0-59)";
-                    setHandPositionFromTime();
-                } else {
-                    if (currentCell) {
-                        currentCell.textContent = display.textContent;
-                        currentCell.classList.remove('active');
-                        // リアルタイム自動保存をトリガー
-                        scheduleAutoSave(currentCell);
-                    }
-                    picker.style.display = "none";
-                    picker.setAttribute('aria-hidden', 'true');
+                    modeLabel.textContent = '分を設定してください (0-59)';
+                    setHand();
+                    return;
                 }
-            }
-
-            // -----------------------------------------------------
-
-            document.addEventListener('mousedown', (e) => {
-                if (picker.contains(e.target) || e.target.closest('td.time-cell')) return;
-                document.querySelectorAll('td.time-cell.active').forEach(c => c.classList.remove('active'));
+                if (currentCell) {
+                    currentCell.textContent = display.textContent;
+                    currentCell.classList.remove('active');
+                    updateRowMetrics(currentCell.parentElement);
+                    scheduleAutoSave(currentCell);
+                }
                 picker.style.display = 'none';
                 picker.setAttribute('aria-hidden', 'true');
-            });
+            }
 
-            document.addEventListener('keydown', (e) => {
+            document.addEventListener('keydown', e => {
                 if (e.key === 'Escape') {
-                    document.querySelectorAll('td.time-cell.active').forEach(c => c.classList.remove('active'));
                     picker.style.display = 'none';
                     picker.setAttribute('aria-hidden', 'true');
+                    document.querySelectorAll('td.time-cell.active').forEach(c => c.classList.remove('active'));
                 }
             });
-
-            function changeMonth(value) {
-                if (value) window.location.href = `/timesheet?month=${value}`;
-            }
-
-            monthInput && monthInput.addEventListener('change', e => changeMonth(e.target.value));
-            prevBtn && prevBtn.addEventListener('click', () => {
-                const [y, m] = monthInput.value.split('-').map(Number);
-                const d = new Date(y, m - 2, 1);
-                changeMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+            document.addEventListener('mousedown', e => {
+                if (picker.contains(e.target) || e.target.closest('td.time-cell')) return;
+                picker.style.display = 'none';
+                picker.setAttribute('aria-hidden', 'true');
+                document.querySelectorAll('td.time-cell.active').forEach(c => c.classList.remove('active'));
             });
-            nextBtn && nextBtn.addEventListener('click', () => {
-                const [y, m] = monthInput.value.split('-').map(Number);
-                const d = new Date(y, m, 1);
-                changeMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-            });
-
-            // 登録・読込機能
-            function getCsrf() {
-                const token = document.querySelector('meta[name="_csrf"]');
-                const header = document.querySelector('meta[name="_csrf_header"]');
-                return token && header ? {token: token.content, header: header.content} : null;
-            }
 
             function scheduleAutoSave(cell) {
-                if (autoSaveTimer) {
-                    clearTimeout(autoSaveTimer);
-                }
-
-                // セルに保存中インジケータを追加
-                cell.classList.add('saving');
-
-                autoSaveTimer = setTimeout(async () => {
-                    await performAutoSave(cell);
-                }, AUTO_SAVE_DELAY);
+                if (autoSaveTimer) clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(() => performAutoSave(cell), AUTO_SAVE_DELAY);
             }
 
             async function performAutoSave(cell) {
                 const row = cell.parentElement;
-                const dateCell = row.querySelector('td.date-cell');
-                const startCell = row.querySelectorAll('td.time-cell')[0];
-                const endCell = row.querySelectorAll('td.time-cell')[1];
-
-                const workDate = dateCell ? dateCell.dataset.iso : null;
-                const startTime = startCell ? startCell.textContent.trim() : '';
-                const endTime = endCell ? endCell.textContent.trim() : '';
-
-                if (!workDate) {
-                    cell.classList.remove('saving');
-                    return;
-                }
-
-                const csrf = getCsrf();
-                const headers = {'Content-Type': 'application/json'};
-                if (csrf) headers[csrf.header] = csrf.token;
-
-                try {
-                    const resp = await fetch('/timesheet/api/batch', {
-                        method: 'POST',
-                        headers,
-                        body: JSON.stringify({
-                            entries: [{
-                                workDate,
-                                startTime: startTime || null,
-                                endTime: endTime || null
-                            }]
-                        }),
-                        credentials: 'same-origin'
-                    });
-
-                    if (resp.ok) {
-                        cell.classList.remove('saving');
-                        cell.classList.add('saved');
-                        setTimeout(() => cell.classList.remove('saved'), 1500);
-                        console.log('自動保存成功:', workDate);
-                    } else {
-                        cell.classList.remove('saving');
-                        cell.classList.add('save-error');
-                        setTimeout(() => cell.classList.remove('save-error'), 2000);
-                        console.error('自動保存失敗:', resp.status);
-                    }
-                } catch (err) {
-                    cell.classList.remove('saving');
-                    cell.classList.add('save-error');
-                    setTimeout(() => cell.classList.remove('save-error'), 2000);
-                    console.error('自動保存エラー:', err);
-                }
+                const iso = row.querySelector('.date-cell').dataset.iso;
+                const sc = row.querySelector('.time-cell[data-type="start"]').textContent.trim();
+                const ec = row.querySelector('.time-cell[data-type="end"]').textContent.trim();
+                const b = row.querySelector('.break-cell').textContent.trim();
+                await saveBatch([{workDate: iso, startTime: sc || null, endTime: ec || null, breakMinutes: b || null}]);
+                loadTimesheetData(false);
             }
 
-            // ページ読み込み時に自動でデータを読み込む
-            async function loadTimesheetData() {
+            // 休憩セル編集後保存
+            document.getElementById('workTable').addEventListener('blur', async e => {
+                const cell = e.target.closest('.break-cell');
+                if (!cell) return;
+                updateRowMetrics(cell.parentElement);
+                const row = cell.parentElement;
+                const iso = row.querySelector('.date-cell').dataset.iso;
+                const sc = row.querySelector('.time-cell[data-type="start"]').textContent.trim();
+                const ec = row.querySelector('.time-cell[data-type="end"]').textContent.trim();
+                const b = cell.textContent.trim();
+                await saveBatch([{workDate: iso, startTime: sc || null, endTime: ec || null, breakMinutes: b || null}]);
+            }, true);
+
+            async function loadTimesheetData(recalc = true) {
                 const [year, month] = monthInput.value.split('-').map(Number);
                 const from = `${year}-${String(month).padStart(2, '0')}-01`;
                 const lastDay = new Date(year, month, 0).getDate();
                 const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-
                 try {
-                    const resp = await fetch(`/timesheet/api?from=${from}&to=${to}`, {
-                        credentials: 'same-origin'
-                    });
-
+                    const resp = await fetch(`/timesheet/api?from=${from}&to=${to}`, {credentials: 'same-origin'});
                     if (!resp.ok) {
-                        if (resp.status !== 404) {
-                            console.warn(`データ読込失敗: ${resp.status}`);
-                        }
+                        if (resp.status !== 404) console.warn('読込失敗', resp.status);
                         return;
                     }
-
                     const entries = await resp.json();
-                    const entryMap = {};
+                    const map = {};
                     entries.forEach(e => {
-                        entryMap[e.workDate] = {start: e.startTime, end: e.endTime};
+                        map[e.workDate] = {
+                            start: e.startTime,
+                            end: e.endTime,
+                            break: e.breakMinutes,
+                            duration: e.durationMinutes,
+                            working: e.workingMinutes
+                        };
                     });
-
                     document.querySelectorAll('#tableBody tr').forEach(row => {
-                        const dateCell = row.querySelector('td.date-cell');
-                        const startCell = row.querySelectorAll('td.time-cell')[0];
-                        const endCell = row.querySelectorAll('td.time-cell')[1];
-
-                        const workDate = dateCell ? dateCell.dataset.iso : null;
-                        if (workDate && entryMap[workDate]) {
-                            const data = entryMap[workDate];
-                            if (startCell) startCell.textContent = data.start || '';
-                            if (endCell) endCell.textContent = data.end || '';
-                        }
+                        const iso = row.querySelector('.date-cell').dataset.iso;
+                        const data = map[iso];
+                        if (!data) return;
+                        if (data.start) row.querySelector('.time-cell[data-type="start"]').textContent = data.start;
+                        if (data.end) row.querySelector('.time-cell[data-type="end"]').textContent = data.end;
+                        if (data.break != null) row.querySelector('.break-cell').textContent = data.break;
+                        row.querySelector('.duration-cell').textContent = data.duration != null ? data.duration : '';
+                        row.querySelector('.working-cell').textContent = data.working != null ? data.working : '';
+                        if (recalc) updateRowMetrics(row);
                     });
-
-                    if (entries.length > 0) {
-                        console.log(`${entries.length}件のデータを読み込みました`);
-                    }
-                } catch (err) {
-                    console.error('データ読込エラー:', err);
+                } catch (e) {
+                    console.error('読込エラー', e);
                 }
             }
 
-            // 初期化時に自動読み込み
-            (async function autoLoad() {
-                await loadTimesheetData();
-            })();
+            // 月移動
+            monthInput && monthInput.addEventListener('change', () => loadTimesheetData());
+            prevBtn && prevBtn.addEventListener('click', () => {
+                const [y, m] = monthInput.value.split('-').map(Number);
+                const d = new Date(y, m - 2, 1);
+                monthInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                loadTimesheetData();
+            });
+            nextBtn && nextBtn.addEventListener('click', () => {
+                const [y, m] = monthInput.value.split('-').map(Number);
+                const d = new Date(y, m, 1);
+                monthInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                loadTimesheetData();
+            });
+
+            // 初期ロード
+            loadTimesheetData();
         })();
         /*]]>*/
     </script>

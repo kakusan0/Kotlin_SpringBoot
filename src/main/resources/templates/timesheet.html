@@ -42,12 +42,24 @@
         <i class="bi bi-save"></i> メモ保存
     </button>
 </div>
+<div class="row mb-3">
+    <div class="col-auto">
+        <label class="form-label" for="breakMinutesInput">休憩(分)</label>
+        <input class="form-control" id="breakMinutesInput" min="0" style="width:120px;" type="number" value="60"/>
+    </div>
+    <div class="col d-flex align-items-end">
+        <button class="btn btn-outline-secondary" id="breakApplyBtn">休憩を保存</button>
+    </div>
+</div>
 <table class="table table-sm" id="historyTable">
     <thead>
     <tr>
         <th>日付</th>
         <th>開始</th>
         <th>終了</th>
+        <th>休憩(分)</th>
+        <th>稼働(分)</th>
+        <th>実働(分)</th>
         <th>メモ</th>
     </tr>
     </thead>
@@ -62,6 +74,8 @@
     const registerBtn = document.getElementById('registerBtn');
     const noteInput = document.getElementById('noteInput');
     const noteSaveBtn = document.getElementById('noteSaveBtn');
+    const breakMinutesInput = document.getElementById('breakMinutesInput');
+    const breakApplyBtn = document.getElementById('breakApplyBtn');
 
     let currentEntry = null; // 現在の勤怠レコード保持
 
@@ -69,11 +83,76 @@
         return t ? t : ''
     }
 
+    function fmtHM(m) {
+        if (m == null || m === '') return '';
+        const v = parseInt(m, 10);
+        if (isNaN(v)) return '';
+        const h = Math.floor(v / 60);
+        const mm = v % 60;
+        return `${h}時間${mm}分`;
+    }
+
     function renderRow(entry) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${entry.workDate}</td><td>${fmt(entry.startTime)}</td><td>${fmt(entry.endTime)}</td><td>${entry.note || ''}</td>`;
+        const duration = entry.durationMinutes ?? (entry.startTime && entry.endTime ? diffMinutes(entry.startTime, entry.endTime) : null);
+        const working = entry.workingMinutes ?? (duration != null ? Math.max(duration - (entry.breakMinutes || 0), 0) : null);
+        tr.innerHTML = `<td>${entry.workDate}</td>` +
+            `<td>${fmt(entry.startTime)}</td>` +
+            `<td>${fmt(entry.endTime)}</td>` +
+            `<td>${entry.breakMinutes ?? ''}</td>` +
+            `<td>${duration != null ? fmtHM(duration) : ''}</td>` +
+            `<td>${working != null ? fmtHM(working) : ''}</td>` +
+            `<td>${entry.note || ''}</td>`;
         return tr;
     }
+
+    function diffMinutes(start, end) {
+        if (!start || !end) return null;
+        if (!/^\d\d:\d\d$/.test(start) || !/^\d\d:\d\d$/.test(end)) return null;
+        const [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        const s = sh * 60 + sm;
+        const e = eh * 60 + em;
+        let d = e - s;
+        if (d < 0) {
+            // 翌日跨ぎ想定 (最大24h)
+            d = e + 1440 - s;
+            if (d <= 0 || d > 1440) return null;
+        }
+        return d;
+    }
+
+    // リアルタイム表示更新
+    function updateRealtimeMetrics() {
+        if (!currentEntry) return;
+        const start = currentEntry.startTime;
+        const end = currentEntry.endTime;
+        const breakVal = parseInt(breakMinutesInput.value || '0', 10);
+        let duration = null;
+        let working = null;
+        if (start && end) {
+            duration = diffMinutes(start, end);
+            if (duration != null) working = Math.max(duration - breakVal, 0);
+        }
+        const extra = duration != null
+            ? ` / 稼働:${fmtHM(duration)} 実働:${working != null ? fmtHM(working) : ''} 休憩:${breakVal}分`
+            : ` / 休憩:${breakVal}分`;
+        if (statusEl.dataset.base) {
+            statusEl.innerHTML = statusEl.dataset.base + extra;
+        } else {
+            statusEl.dataset.base = statusEl.innerHTML;
+            statusEl.innerHTML = statusEl.dataset.base + extra;
+        }
+    }
+
+    // 既存 updateStatus の末尾で base キャッシュ化を追加
+    const _origUpdateStatus = updateStatus;
+    updateStatus = function (entry) {
+        _origUpdateStatus(entry);
+        // base 再設定
+        statusEl.dataset.base = statusEl.innerHTML;
+        updateRealtimeMetrics();
+    };
 
     async function loadRange() {
         const today = new Date().toISOString().substring(0, 10);
@@ -260,10 +339,11 @@
         let backoff = 1000; // 1s から指数的に
         es.addEventListener('heartbeat', () => {/* no-op keepalive */
         });
-        ['clock-in', 'clock-out', 'note'].forEach(ev => {
+        ['clock-in', 'clock-out', 'note', 'break'].forEach(ev => {
             es.addEventListener(ev, e => {
                 try {
                     const data = JSON.parse(e.data);
+                    currentEntry = data;
                     updateStatus(data);
                     handleIncoming(data);
                     loadRange();
@@ -289,6 +369,35 @@
     openStream();
     loadRange();
     loadToday();
+
+    breakMinutesInput.addEventListener('input', () => {
+        updateRealtimeMetrics();
+        scheduleBreakAutoSave();
+    });
+    let breakTimer = null;
+
+    function scheduleBreakAutoSave() {
+        if (breakTimer) clearTimeout(breakTimer);
+        breakTimer = setTimeout(async () => {
+            await saveBreak();
+        }, 800); // 0.8秒デバウンス
+    }
+
+    async function saveBreak() {
+        const minutes = parseInt(breakMinutesInput.value || '0', 10);
+        try {
+            const updated = await doPost('/timesheet/api/break', {minutes});
+            currentEntry = updated; // 休憩更新後の最新
+            loadRange();
+            updateRealtimeMetrics();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    breakApplyBtn.addEventListener('click', async () => {
+        await saveBreak();
+    });
 </script>
 </body>
 </html>

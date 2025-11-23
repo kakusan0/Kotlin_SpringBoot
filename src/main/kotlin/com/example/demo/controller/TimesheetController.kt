@@ -62,6 +62,16 @@ class TimesheetController(
         return entry
     }
 
+    @PostMapping("/break")
+    fun updateBreak(auth: Authentication, @RequestBody body: Map<String, Int>): TimesheetEntry {
+        val minutes = body["minutes"] ?: 0
+        val today = LocalDate.now()
+        val existing = timesheetService.getToday(auth.name)
+        val updated = timesheetService.saveOrUpdate(auth.name, today, existing?.startTime, existing?.endTime, minutes)
+        broadcast("break", updated)
+        return updated
+    }
+
     @GetMapping(path = ["/stream"], produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun stream(): SseEmitter {
         val emitter = SseEmitter(0L)
@@ -122,13 +132,14 @@ class TimesheetController(
             val workDateStr = entry["workDate"] ?: return@forEach
             val startTimeStr = entry["startTime"]
             val endTimeStr = entry["endTime"]
-
+            val breakStr = entry["breakMinutes"]
             try {
                 val workDate = LocalDate.parse(workDateStr)
                 val startTime = startTimeStr?.let { java.time.LocalTime.parse(it) }
                 val endTime = endTimeStr?.let { java.time.LocalTime.parse(it) }
+                val breakMinutes = breakStr?.toIntOrNull()
 
-                timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime)
+                timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes)
                 saved++
             } catch (_: Exception) {
                 // スキップして次へ

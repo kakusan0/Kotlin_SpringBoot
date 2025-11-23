@@ -19,6 +19,6 @@ interface TimesheetEntryMapper {
     ): List<TimesheetEntry>
 
     fun insert(entry: TimesheetEntry): Int
-    fun updateTimes(entry: TimesheetEntry): Int
+    fun updateTimes(entry: TimesheetEntry): Int // break/duration/working 追加後も同名で利用
     fun updateNote(@Param("id") id: Long, @Param("note") note: String): Int
 }
