@@ -45,14 +45,24 @@ class MainController(
     }
 
     @GetMapping("/timesheet")
-    fun timesheet(model: Model): String {
-        val yearMonth = YearMonth.now()
+    fun timesheet(
+        @RequestParam(name = "month", required = false) monthParam: String?,
+        model: Model
+    ): String {
+        val yearMonth = monthParam
+            ?.takeIf { it.matches(Regex("\\d{4}-\\d{2}")) }
+            ?.let {
+                runCatching { YearMonth.parse(it) }.getOrElse { YearMonth.now() }
+            } ?: YearMonth.now()
         val dates = TimesheetGenerator.generateDates(yearMonth)
-        model.addAttribute("currentScreen", "timesheet")
-        model.addAttribute("selectedScreenName", "勤務表")
-        model.addAttribute("currentScreenPath", "timesheetMonth")
-        model.addAttribute("monthDisplay", TimesheetGenerator.formatYearMonth(yearMonth))
-        model.addAttribute("dates", dates)
+        model.apply {
+            addAttribute("currentScreen", "timesheet")
+            addAttribute("selectedScreenName", "勤務表")
+            addAttribute("currentScreenPath", "timesheetMonth")
+            addAttribute("monthDisplay", TimesheetGenerator.formatYearMonth(yearMonth))
+            addAttribute("yearMonthValue", yearMonth.toString())
+            addAttribute("dates", dates)
+        }
         return "main"
     }
 

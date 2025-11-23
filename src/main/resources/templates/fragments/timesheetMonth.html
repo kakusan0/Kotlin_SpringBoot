@@ -1,6 +1,18 @@
 <div th:fragment="content">
     <div class="container-fluid">
-        <h2 class="mb-3" th:text="${monthDisplay}">2025年11月</h2>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h2 class="mb-0" th:text="${monthDisplay}">2025年11月</h2>
+            <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-sm btn-outline-secondary" id="prevMonth" title="前の月" type="button">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <input class="form-control form-control-sm" id="monthInput" style="width:160px;"
+                       th:value="${yearMonthValue}" title="表示する月" type="month">
+                <button class="btn btn-sm btn-outline-secondary" id="nextMonth" title="次の月" type="button">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
 
         <!-- controls -->
         <div class="controls mb-3 d-flex gap-3 align-items-center flex-wrap">
@@ -84,6 +96,9 @@
             const selectedDateLabel = document.getElementById('selectedDateLabel');
             const cellTypeLabel = document.getElementById('cellTypeLabel');
             const holidayLabel = document.getElementById('holidayLabel');
+            const monthInput = document.getElementById('monthInput');
+            const prevBtn = document.getElementById('prevMonth');
+            const nextBtn = document.getElementById('nextMonth');
 
             let currentCell = null;
             let selectingHour = true;
@@ -275,6 +290,22 @@
                     picker.style.display = 'none';
                     picker.setAttribute('aria-hidden', 'true');
                 }
+            });
+
+            function changeMonth(value) {
+                if (value) window.location.href = `/timesheet?month=${value}`;
+            }
+
+            monthInput && monthInput.addEventListener('change', e => changeMonth(e.target.value));
+            prevBtn && prevBtn.addEventListener('click', () => {
+                const [y, m] = monthInput.value.split('-').map(Number);
+                const d = new Date(y, m - 2, 1);
+                changeMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+            });
+            nextBtn && nextBtn.addEventListener('click', () => {
+                const [y, m] = monthInput.value.split('-').map(Number);
+                const d = new Date(y, m, 1);
+                changeMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
             });
         })();
         /*]]>*/

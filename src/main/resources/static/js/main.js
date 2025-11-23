@@ -120,95 +120,47 @@
         on('.content-item', 'click', function (e) {
             e.preventDefault();
             const screenName = this.dataset.screenName;
-            const clickedMenuName = (this.dataset && this.dataset.menuName) ? this.dataset.menuName : (selectedSidebarMenu || '');
             if (!screenName) return;
             const url = new URL(window.location.href);
             url.pathname = '/content';
             url.searchParams.set('screenName', screenName);
 
             fetchWithTimeout(url.toString(), {credentials: 'same-origin'}, 10000)
-                .then(resp => {
-                    if (!resp.ok) {
-                        // レスポンスが正常でない場合はフルナビゲーションへフォールバック
-                        return Promise.reject('network');
-                    }
-                    return resp.text();
+                .then(r => {
+                    if (!r.ok) throw 0;
+                    return r.text();
                 })
-                .then(responseText => {
-                    try {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(responseText, 'text/html');
-                        const newMain = doc.querySelector('main.main-content');
-                        const newSelectedName = (doc.querySelector('#selectedItemName') || {}).textContent || screenName;
-                        if (newMain) {
-                            const oldMain = document.querySelector('main.main-content');
-                            if (oldMain) oldMain.replaceWith(newMain);
-                            const selectedEl = document.getElementById('selectedItemName');
-                            if (selectedEl) {
-                                // Prefer the clicked menuName (if available) to show menu name in the header; otherwise use server-provided value
-                                selectedEl.textContent = clickedMenuName || newSelectedName;
-                            }
-                            const modalEl = document.getElementById('scrollableModal');
-                            if (modalEl && window.bootstrap && bootstrap.Modal) {
-                                const modalInst = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
-                                modalInst.hide();
-                            }
-                            // Load fragment scripts, wait for pwgen elements, then initialize
-                            (async function () {
-                                await loadAndRunScriptsFromFragment(newMain);
-                                try {
-                                    // call init immediately and schedule retries to catch late DOM insertion
-                                    try {
-                                        if (typeof initPwgen === 'function') initPwgen();
-                                    } catch (_) {
-                                    }
-                                    setTimeout(() => {
-                                        try {
-                                            if (typeof initPwgen === 'function') initPwgen();
-                                        } catch (_) {
-                                        }
-                                    }, 120);
-                                    setTimeout(() => {
-                                        try {
-                                            if (typeof initPwgen === 'function') initPwgen();
-                                        } catch (_) {
-                                        }
-                                    }, 350);
-                                } catch (err) { /* initPwgen failed (silently) */
-                                }
-                            })();
-                            // Keep menuName in history state so popstate can restore header label correctly
-                            history.pushState({screenName, menuName: clickedMenuName}, '', url.toString());
-                            return;
-                        }
-                    } catch (err) {
-                        // パース失敗時はフル遷移
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const newMain = doc.querySelector('main.main-content');
+                    if (newMain) {
+                        const old = document.querySelector('main.main-content');
+                        old && old.replaceWith(newMain);
+                        loadAndRunScriptsFromFragment(newMain);
+                        history.pushState({screenName}, '', url.toString());
+                    } else {
+                        window.location.href = url.toString();
                     }
-                    window.location.href = url.toString();
                 })
-                .catch(() => {
-                    window.location.href = url.toString();
-                });
+                .catch(() => window.location.href = url.toString());
         });
 
         // 戻る/進むで main コンテンツを再取得
-        window.addEventListener('popstate', function (event) {
-            const state = event.state || {};
-            const screenName = state.screenName || null;
-            if (!screenName) return;
+        window.addEventListener('popstate', ev => {
+            const sn = (ev.state || {}).screenName;
+            if (!sn) return;
             const url = new URL(window.location.href);
             url.pathname = '/content';
-            url.searchParams.set('screenName', screenName);
+            url.searchParams.set('screenName', sn);
             fetchWithTimeout(url.toString(), {credentials: 'same-origin'}, 10000)
-                .then(resp => resp.text())
-                .then(responseText => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(responseText, 'text/html');
-                    const newMain = doc.querySelector('main.main-content');
-                    if (newMain) {
-                        const oldMain = document.querySelector('main.main-content');
-                        if (oldMain) oldMain.replaceWith(newMain);
-                        loadAndRunScriptsFromFragment(newMain);
+                .then(r => r.text())
+                .then(t => {
+                    const doc = new DOMParser().parseFromString(t, 'text/html');
+                    const nm = doc.querySelector('main.main-content');
+                    if (nm) {
+                        const om = document.querySelector('main.main-content');
+                        om && om.replaceWith(nm);
+                        loadAndRunScriptsFromFragment(nm);
                     }
                 })
                 .catch(() => {
