@@ -1,5 +1,6 @@
 package com.example.demo.config
 
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean
 import org.springframework.context.annotation.Bean
@@ -14,12 +15,16 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.provisioning.InMemoryUserDetailsManager
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
 import org.springframework.security.web.header.writers.StaticHeadersWriter
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter
 import org.springframework.security.web.session.HttpSessionEventPublisher
+import org.springframework.session.FindByIndexNameSessionRepository
+import org.springframework.session.Session
+import org.springframework.session.security.SpringSessionBackedSessionRegistry
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
@@ -27,7 +32,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
-    private val customAuthenticationFailureHandler: CustomAuthenticationFailureHandler,
+    private val customAuthenticationFailureHandler: AuthenticationFailureHandler,
     private val loginRateLimitFilter: LoginRateLimitFilter
 ) {
 
@@ -42,7 +47,7 @@ class SecurityConfig(
     }
 
     @Bean
-    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+    fun filterChain(http: HttpSecurity, sessionRegistry: SessionRegistry): SecurityFilterChain {
         val cspPolicy = buildString {
             append("default-src 'self'; ")
             append("script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; ")
@@ -137,7 +142,7 @@ class SecurityConfig(
                 sess.maximumSessions(1)
                     .maxSessionsPreventsLogin(false)
                     .expiredUrl("/login")
-                    .sessionRegistry(sessionRegistry())
+                    .sessionRegistry(sessionRegistry)
             }
 
         return http.build()
@@ -176,7 +181,13 @@ class SecurityConfig(
     }
 
     @Bean
-    fun sessionRegistry(): SessionRegistry = SessionRegistryImpl()
+    fun sessionRegistry(repoProvider: ObjectProvider<FindByIndexNameSessionRepository<out Session>>? = null): SessionRegistry {
+        val repo = repoProvider?.ifAvailable
+        if (repo != null) {
+            return SpringSessionBackedSessionRegistry(repo)
+        }
+        return SessionRegistryImpl()
+    }
 
     @Bean
     fun httpSessionEventPublisher(): ServletListenerRegistrationBean<HttpSessionEventPublisher> {
