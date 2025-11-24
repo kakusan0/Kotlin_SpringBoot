@@ -20,5 +20,6 @@ interface TimesheetEntryMapper {
 
     fun insert(entry: TimesheetEntry): Int
     fun updateTimes(entry: TimesheetEntry): Int // break/duration/working 追加後も同名で利用
+    fun updateTimesForce(entry: TimesheetEntry): Int
     fun updateNote(@Param("id") id: Long, @Param("note") note: String): Int
 }

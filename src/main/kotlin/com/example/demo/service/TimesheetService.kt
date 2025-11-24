@@ -37,7 +37,8 @@ class TimesheetService(
             if (existing.startTime == null) {
                 // 補完: startTime 未設定ならセット
                 val updated = applyCalc(existing.copy(startTime = now))
-                timesheetEntryMapper.updateTimes(updated)
+                val updatedCount = timesheetEntryMapper.updateTimes(updated)
+                if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
                 return updated
             }
             if (existing.endTime == null) {
@@ -47,7 +48,23 @@ class TimesheetService(
             return applyCalc(existing)
         }
         val entry = applyCalc(TimesheetEntry(workDate = today, userName = userName, startTime = now))
-        timesheetEntryMapper.insert(entry)
+        try {
+            timesheetEntryMapper.insert(entry)
+        } catch (ex: Exception) {
+            // 競合で同一 user+date が挿入されていた場合、既存レコードを取得して再試行
+            val nowExisting = timesheetEntryMapper.selectByUserAndDate(userName, today)
+                ?: throw ex
+            if (nowExisting.startTime == null) {
+                val updated = applyCalc(nowExisting.copy(startTime = now))
+                val updatedCount = timesheetEntryMapper.updateTimes(updated)
+                if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
+                return updated
+            }
+            if (nowExisting.endTime == null) {
+                throw TimesheetConflictException("既に勤務中です: clock-out が必要")
+            }
+            return applyCalc(nowExisting)
+        }
         eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, today))
         return entry
     }
@@ -64,7 +81,8 @@ class TimesheetService(
             throw TimesheetConflictException("clock-in が未実施です")
         }
         val updated = applyCalc(existing.copy(endTime = now))
-        timesheetEntryMapper.updateTimes(updated)
+        val updatedCount = timesheetEntryMapper.updateTimes(updated)
+        if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
         eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, today))
         return updated
     }
@@ -114,7 +132,8 @@ class TimesheetService(
         workDate: LocalDate,
         startTime: LocalTime?,
         endTime: LocalTime?,
-        breakMinutes: Int? = null
+        breakMinutes: Int? = null,
+        force: Boolean = false
     ): TimesheetEntry {
         val existing = timesheetEntryMapper.selectByUserAndDate(userName, workDate)
         return if (existing != null) {
@@ -124,7 +143,11 @@ class TimesheetService(
                 breakMinutes = breakMinutes ?: existing.breakMinutes
             )
             val recalced = applyCalc(merged)
-            timesheetEntryMapper.updateTimes(recalced)
+            val updatedCount =
+                if (force) timesheetEntryMapper.updateTimesForce(recalced) else timesheetEntryMapper.updateTimes(
+                    recalced
+                )
+            if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
             eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
             recalced
         } else {
@@ -136,7 +159,26 @@ class TimesheetService(
                 breakMinutes = breakMinutes
             )
             val created = applyCalc(createdBase)
-            timesheetEntryMapper.insert(created)
+            try {
+                timesheetEntryMapper.insert(created)
+            } catch (ex: Exception) {
+                // 競合で既にレコードが挿入されていた場合は、再取得して update を試みる
+                val nowExisting = timesheetEntryMapper.selectByUserAndDate(userName, workDate)
+                    ?: throw ex
+                val merged = nowExisting.copy(
+                    startTime = startTime ?: nowExisting.startTime,
+                    endTime = endTime ?: nowExisting.endTime,
+                    breakMinutes = breakMinutes ?: nowExisting.breakMinutes
+                )
+                val recalced = applyCalc(merged)
+                val updatedCount =
+                    if (force) timesheetEntryMapper.updateTimesForce(recalced) else timesheetEntryMapper.updateTimes(
+                        recalced
+                    )
+                if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
+                eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
+                return recalced
+            }
             eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
             created
         }

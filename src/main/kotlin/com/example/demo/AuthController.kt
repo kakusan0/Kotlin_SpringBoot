@@ -37,6 +37,13 @@ class AuthController {
                 model.addAttribute("username", username)
             }
         }
+        // 特別なメッセージキー: sessionExpired を解釈して分かりやすい説明を表示
+        if (message == "sessionExpired") {
+            model.addAttribute(
+                "error",
+                "セッションの有効期限が切れました（同一ユーザで別の端末からログインされた可能性があります）。再度ログインしてください。"
+            )
+        }
         return "login"
     }
 }

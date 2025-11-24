@@ -1,10 +1,13 @@
 package com.example.demo.config
 
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.web.servlet.ServletListenerRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.core.session.SessionRegistry
+import org.springframework.security.core.session.SessionRegistryImpl
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
@@ -16,6 +19,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
 import org.springframework.security.web.header.writers.StaticHeadersWriter
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter
+import org.springframework.security.web.session.HttpSessionEventPublisher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
@@ -123,6 +127,16 @@ class SecurityConfig(
                 it.permitAll()
             }
 
+            // セッション管理: セッション無効（タイムアウトや強制ログアウト）時のリダイレクト先
+            .sessionManagement { sm ->
+                sm.invalidSessionUrl("/login")
+            }
+
+            // セッション管理: 同一ユーザ最大セッション数を 1 にして古いセッションを切断（新ログインを許可）
+            .sessionManagement { sess ->
+                sess.maximumSessions(1).maxSessionsPreventsLogin(false).sessionRegistry(sessionRegistry())
+            }
+
         return http.build()
     }
 
@@ -156,5 +170,13 @@ class SecurityConfig(
             .roles("USER")
             .build()
         return InMemoryUserDetailsManager(user1)
+    }
+
+    @Bean
+    fun sessionRegistry(): SessionRegistry = SessionRegistryImpl()
+
+    @Bean
+    fun httpSessionEventPublisher(): ServletListenerRegistrationBean<HttpSessionEventPublisher> {
+        return ServletListenerRegistrationBean(HttpSessionEventPublisher())
     }
 }

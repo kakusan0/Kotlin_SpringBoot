@@ -20,4 +20,5 @@ data class TimesheetEntry(
     val breakMinutes: Int? = null,          // 休憩(分)
     val durationMinutes: Int? = null,       // 稼働(開始〜終了, 分)
     val workingMinutes: Int? = null,        // 実働(稼働 - 休憩, 分)
+    val version: Int = 0                     // 楽観ロック用バージョン
 )

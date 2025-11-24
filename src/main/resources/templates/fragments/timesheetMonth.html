@@ -84,5 +84,26 @@
         </div>
     </div>
 
+    <!-- Conflict Modal -->
+    <div aria-hidden="true" class="modal fade" id="conflictModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">競合が発生しました</h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <p>他の端末で同じ日付が更新されました。どうしますか？</p>
+                    <p class="small text-muted">
+                        再読み込みすると最新データを取得します。強制上書きを選ぶと現在の編集内容で上書きします。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="conflictReload" type="button">再読み込み</button>
+                    <button class="btn btn-danger" id="conflictForce" type="button">強制上書き</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script defer th:src="@{/js/timesheetMonth.js}"></script>
 </div>

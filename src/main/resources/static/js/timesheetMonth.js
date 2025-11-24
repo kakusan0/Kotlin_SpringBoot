@@ -387,6 +387,71 @@
     // デバウンス用 map
     const saveTimers = new Map();
 
+    // Conflict modal helpers
+    const conflictModalEl = document.getElementById('conflictModal');
+    const conflictReloadBtn = document.getElementById('conflictReload');
+    const conflictForceBtn = document.getElementById('conflictForce');
+    let pendingConflict = null; // { row, payload }
+
+    function showConflictModal(row, payload) {
+        pendingConflict = {row, payload};
+        if (typeof bootstrap !== 'undefined' && conflictModalEl) {
+            const m = new bootstrap.Modal(conflictModalEl);
+            m.show();
+        } else if (conflictModalEl) {
+            conflictModalEl.style.display = 'block';
+        }
+    }
+
+    if (conflictReloadBtn) {
+        conflictReloadBtn.addEventListener('click', () => {
+            // モーダルを閉じて最新データを取得
+            if (typeof bootstrap !== 'undefined' && conflictModalEl) {
+                bootstrap.Modal.getInstance(conflictModalEl)?.hide();
+            } else if (conflictModalEl) {
+                conflictModalEl.style.display = 'none';
+            }
+            pendingConflict = null;
+            loadTimesheetData();
+        });
+    }
+
+    if (conflictForceBtn) {
+        conflictForceBtn.addEventListener('click', async () => {
+            // force=true で現在の payload を再送
+            if (!pendingConflict) return;
+            if (typeof bootstrap !== 'undefined' && conflictModalEl) {
+                bootstrap.Modal.getInstance(conflictModalEl)?.hide();
+            } else if (conflictModalEl) {
+                conflictModalEl.style.display = 'none';
+            }
+            const {row, payload} = pendingConflict;
+            pendingConflict = null;
+            try {
+                const csrf = getCsrf();
+                const headers = {'Content-Type': 'application/json'};
+                if (csrf) headers[csrf.header] = csrf.token;
+                const resp = await fetch('/timesheet/api/entry', {
+                    method: 'POST',
+                    headers,
+                    credentials: 'same-origin',
+                    body: JSON.stringify(Object.assign({}, payload, {force: true}))
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (!resp.ok || !json.success) {
+                    console.warn('[TS] 強制上書き失敗', json);
+                    alert('強制上書きに失敗しました。');
+                } else {
+                    // 成功: 行を更新
+                    loadTimesheetData();
+                }
+            } catch (e) {
+                console.error('[TS] 強制上書きエラー', e);
+                alert('ネットワークエラーが発生しました。');
+            }
+        });
+    }
+
     function autoSaveRow(row) {
         const iso = row.querySelector('.date-cell').dataset.iso;
         const start = row.querySelector('.time-cell[data-type="start"]').textContent.trim();
@@ -398,6 +463,8 @@
         if (saveTimers.has(iso)) clearTimeout(saveTimers.get(iso));
         // CSRF ヘッダ
         const csrf = getCsrf();
+        // 準備するペイロード
+        const payload = {workDate: iso, startTime: start || null, endTime: end || null, breakMinutes: breakVal || null};
         // 即時保存（短い遅延でバッチ化）
         const t = setTimeout(async () => {
             try {
@@ -407,13 +474,13 @@
                     method: 'POST',
                     headers,
                     credentials: 'same-origin',
-                    body: JSON.stringify({
-                        workDate: iso,
-                        startTime: start || null,
-                        endTime: end || null,
-                        breakMinutes: breakVal || null
-                    })
+                    body: JSON.stringify(payload)
                 });
+                if (resp.status === 409) {
+                    // 競合発生: モーダルを表示して対応を促す
+                    showConflictModal(row, payload);
+                    return;
+                }
                 const json = await resp.json().catch(() => ({}));
                 if (!resp.ok || !json.success) {
                     console.warn('[TS] 自動保存失敗', json);

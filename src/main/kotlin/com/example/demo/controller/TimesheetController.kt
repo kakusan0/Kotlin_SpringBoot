@@ -171,7 +171,8 @@ class TimesheetController(
             val endTime =
                 body["endTime"]?.takeIf { it.isNotBlank() }?.let { LocalTime.parse(it).withSecond(0).withNano(0) }
             val breakMinutes = body["breakMinutes"]?.takeIf { it.isNotBlank() }?.toIntOrNull()
-            val saved = timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes)
+            val force = body["force"]?.toBoolean() ?: false
+            val saved = timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes, force)
             // ブロードキャストして（同一ユーザの）他クライアントへ反映
             broadcast("timesheet-updated", saved, auth.name)
             return mapOf("success" to true, "entry" to saved)
