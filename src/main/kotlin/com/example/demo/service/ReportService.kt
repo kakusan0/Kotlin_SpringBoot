@@ -11,6 +11,7 @@ import org.apache.pdfbox.pdmodel.font.PDType0Font
 import org.apache.pdfbox.pdmodel.font.PDType1Font
 import org.apache.poi.ss.usermodel.HorizontalAlignment
 import org.apache.poi.ss.usermodel.VerticalAlignment
+import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -134,21 +135,7 @@ class ReportService(
         val entries = timesheetService.list(username, from, to)
         val baos = ByteArrayOutputStream()
         XSSFWorkbook().use { wb ->
-            val sheet = wb.createSheet("勤務表")
-
-            // Title rows: YearMonth 勤務表 / Company / Name
-            val titleFont = wb.createFont().apply { bold = true; fontHeightInPoints = 14 }
-            val titleStyle = wb.createCellStyle().apply { setFont(titleFont) }
-            var rowIdx = 0
-            val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月　勤務表"
-            sheet.createRow(rowIdx++).createCell(0).apply { setCellValue(ymTitle); cellStyle = titleStyle }
-            sheet.createRow(rowIdx++).createCell(0).setCellValue("会社名　ユーニスイースト")
-            sheet.createRow(rowIdx++).createCell(0).setCellValue("氏名　${username}")
-            // empty row
-            rowIdx++
-
-            // Header — build based on configured holidayPosition
-            val headerRow = sheet.createRow(rowIdx++)
+            // build headers early so we can merge title across the correct number of columns
             val baseBefore = listOf("日付", "曜日")
             val baseAfter = listOf("出勤時間", "退勤時間", "休憩", "稼働時間", "実働")
             val headers = when (holidayPosition) {
@@ -156,6 +143,45 @@ class ReportService(
                 HolidayPosition.END -> baseBefore + baseAfter + listOf("祝日")
                 else -> baseBefore + listOf("祝日") + baseAfter
             }
+
+            val sheet = wb.createSheet(username) // sheet name = username
+
+            // Title rows: YearMonth 勤務表 / Company / Name
+            val titleFont = wb.createFont().apply { bold = true; fontHeightInPoints = 14 }
+            val titleStyle = wb.createCellStyle().apply {
+                setFont(titleFont); alignment = HorizontalAlignment.CENTER; verticalAlignment = VerticalAlignment.CENTER
+            }
+            var rowIdx = 0
+            val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月度　勤務表"
+            val cols = headers.size
+            // merged title across all header columns
+            val titleRow = sheet.createRow(rowIdx++)
+            titleRow.createCell(0).apply { setCellValue(ymTitle); cellStyle = titleStyle }
+            if (cols > 1) sheet.addMergedRegion(CellRangeAddress(0, 0, 0, cols - 1))
+
+            // insert one blank row between title and info
+            sheet.createRow(rowIdx++)
+
+            // single info row: company name merged across columns (except last), left-aligned with underline;
+            // name placed at last column, right-aligned with underline
+            val infoFont = wb.createFont().apply { underline = org.apache.poi.ss.usermodel.Font.U_SINGLE }
+            val leftStyle = wb.createCellStyle().apply {
+                alignment = HorizontalAlignment.LEFT; verticalAlignment = VerticalAlignment.CENTER; setFont(infoFont)
+            }
+            val rightStyle = wb.createCellStyle().apply {
+                alignment = HorizontalAlignment.RIGHT; verticalAlignment = VerticalAlignment.CENTER; setFont(infoFont)
+            }
+            rowIdx
+            val infoRow = sheet.createRow(rowIdx++)
+            // company cell: do NOT merge — keep in first column only so auto-size works for other columns
+            infoRow.createCell(0).apply { setCellValue("会社名：ユーニスイースト株式会社"); cellStyle = leftStyle }
+            // name cell at last column
+            infoRow.createCell(maxOf(0, cols - 1)).apply { setCellValue("氏名：${username}"); cellStyle = rightStyle }
+            // empty row after info
+            rowIdx++
+
+            // Header row (after title/company/name)
+            val headerRow = sheet.createRow(rowIdx++)
             val headerFont = wb.createFont().apply { bold = true }
             val headerStyle = wb.createCellStyle().apply {
                 setFont(headerFont)
@@ -163,25 +189,41 @@ class ReportService(
                 verticalAlignment = VerticalAlignment.CENTER
                 fillForegroundColor = org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.index
                 fillPattern = org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND
+                borderTop = org.apache.poi.ss.usermodel.BorderStyle.THIN
+                borderBottom = org.apache.poi.ss.usermodel.BorderStyle.THIN
+                borderLeft = org.apache.poi.ss.usermodel.BorderStyle.THIN
+                borderRight = org.apache.poi.ss.usermodel.BorderStyle.THIN
             }
             for (i in headers.indices) {
                 headerRow.createCell(i).apply { setCellValue(headers[i]); cellStyle = headerStyle }
             }
 
-            // styles
+            // styles: create a base cell style that contains the thin borders so clones inherit borders
             val df = wb.creationHelper.createDataFormat()
-            // day-only style (center)
-            val dayOnlyStyle = wb.createCellStyle()
-                .apply { alignment = HorizontalAlignment.CENTER; verticalAlignment = VerticalAlignment.CENTER }
+            val baseCellStyle = wb.createCellStyle().apply {
+                verticalAlignment = VerticalAlignment.CENTER
+                borderTop = org.apache.poi.ss.usermodel.BorderStyle.THIN
+                borderBottom = org.apache.poi.ss.usermodel.BorderStyle.THIN
+                borderLeft = org.apache.poi.ss.usermodel.BorderStyle.THIN
+                borderRight = org.apache.poi.ss.usermodel.BorderStyle.THIN
+            }
+            // day-only style (center) clones from base to inherit borders
+            val dayOnlyStyle =
+                wb.createCellStyle().apply { cloneStyleFrom(baseCellStyle); alignment = HorizontalAlignment.CENTER }
             // centered text style for time strings
-            val timeTextStyle = wb.createCellStyle()
-                .apply { alignment = HorizontalAlignment.CENTER; verticalAlignment = VerticalAlignment.CENTER }
+            val timeTextStyle =
+                wb.createCellStyle().apply { cloneStyleFrom(baseCellStyle); alignment = HorizontalAlignment.CENTER }
             val intStyle = wb.createCellStyle().apply {
+                cloneStyleFrom(baseCellStyle)
                 dataFormat = df.getFormat("#,##0")
                 alignment = HorizontalAlignment.RIGHT
-                verticalAlignment = VerticalAlignment.CENTER
             }
-            wb.createCellStyle().apply { wrapText = true; verticalAlignment = VerticalAlignment.TOP }
+            // a simple default style for plain text (e.g., weekday, holiday name)
+            val defaultTextStyle =
+                wb.createCellStyle().apply { cloneStyleFrom(baseCellStyle); alignment = HorizontalAlignment.LEFT }
+            // ensure wraps and vertical top where needed
+            wb.createCellStyle()
+                .apply { cloneStyleFrom(baseCellStyle); wrapText = true; verticalAlignment = VerticalAlignment.TOP }
 
             // fetch holidays between years (map date -> holiday name)
             val holidayMap = fetchHolidayDates(from.year, to.year)
@@ -223,6 +265,7 @@ class ReportService(
                 // weekday
                 val wdCell = row.createCell(wdIdx)
                 wdCell.setCellValue(jpWeek[d.dayOfWeek])
+                wdCell.cellStyle = dayOnlyStyle
 
                 // holiday name column
                 val holCell = row.createCell(holIdx)
@@ -232,12 +275,15 @@ class ReportService(
                 } else {
                     holCell.setCellValue("")
                 }
+                holCell.cellStyle = defaultTextStyle
 
                 // times as strings (HH:mm:ss)
                 val sc = row.createCell(scIdx)
                 sc.setCellValue(e?.startTime?.toString() ?: "")
+                sc.cellStyle = timeTextStyle
                 val ec = row.createCell(ecIdx)
                 ec.setCellValue(e?.endTime?.toString() ?: "")
+                ec.cellStyle = timeTextStyle
 
                 val breakCell = row.createCell(breakIdx)
                 if (e?.breakMinutes != null) {
@@ -255,20 +301,22 @@ class ReportService(
                 } else workCell.setCellValue("")
 
                 // shade weekend/holiday across all used columns
-                val isWeekend = d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
                 val isHoliday = holidayMap.containsKey(d)
-                if (isWeekend || isHoliday) {
-                    // choose color: weekend -> gray, holiday -> soft pink; set text color accordingly
+                if (isHoliday || d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY) {
+                    // if holiday or Sunday -> rose (red) with white text; otherwise (Saturday) -> light blue with black text
+                    val isRed = isHoliday || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
                     val fillColor =
-                        if (isHoliday) org.apache.poi.ss.usermodel.IndexedColors.ROSE.index else org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.index
+                        if (isRed) org.apache.poi.ss.usermodel.IndexedColors.ROSE.index else org.apache.poi.ss.usermodel.IndexedColors.LIGHT_CORNFLOWER_BLUE.index
                     val fontForFill = wb.createFont().apply {
                         color =
-                            if (isHoliday) org.apache.poi.ss.usermodel.IndexedColors.WHITE.index else org.apache.poi.ss.usermodel.IndexedColors.BLACK.index
+                            if (isRed) org.apache.poi.ss.usermodel.IndexedColors.WHITE.index else org.apache.poi.ss.usermodel.IndexedColors.BLACK.index
                     }
                     for (c in 0 until headers.size) {
                         val cell = row.getCell(c) ?: row.createCell(c)
+                        // ensure we start from the cell's existing style or baseCellStyle so borders are preserved
+                        val src = cell.cellStyle ?: baseCellStyle
                         val newStyle = wb.createCellStyle().apply {
-                            cloneStyleFrom(cell.cellStyle ?: wb.createCellStyle())
+                            cloneStyleFrom(src)
                             fillForegroundColor = fillColor
                             fillPattern = org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND
                             setFont(fontForFill)
