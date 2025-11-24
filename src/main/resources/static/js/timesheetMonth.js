@@ -520,8 +520,42 @@
         return `${mm}/${dd} (${wd})`;
     }
 
+    function shortDay(date) {
+        return ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+    }
+
     function calcLastDay(year, month1) {
         return new Date(year, month1, 0).getDate();
+    }
+
+    function isHolidayIso(iso) {
+        try {
+            const y = Number(iso.split('-')[0]);
+            const map = holidayCache[y];
+            return map && map[iso];
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function isWeekendIso(iso) {
+        try {
+            const d = new Date(iso + 'T00:00:00');
+            const wd = d.getDay();
+            return wd === 0 || wd === 6;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function applyRowShade(tr) {
+        // remove previous shading
+        tr.classList.remove('table-secondary');
+        const iso = tr.querySelector('.date-cell')?.dataset?.iso;
+        if (!iso) return;
+        if (isHolidayIso(iso) || isWeekendIso(iso)) {
+            tr.classList.add('table-secondary');
+        }
     }
 
     function rebuildRows(ym) {
@@ -539,12 +573,14 @@
             const tr = document.createElement('tr');
             if (iso === new Date().toISOString().substring(0, 10)) tr.classList.add('table-primary');
             tr.innerHTML = `<td class="date-cell" data-iso="${iso}"><span>${dayLabel(date)}</span><span class="holiday" style="display:none;"></span></td>` +
+                `<td class="weekday-cell">${shortDay(date)}</td>` +
                 `<td class="time-cell" data-type="start"></td>` +
                 `<td class="time-cell" data-type="end"></td>` +
                 `<td class="break-cell" contenteditable="true"></td>` +
                 `<td class="duration-cell"></td>` +
                 `<td class="working-cell"></td>`;
             tbody.appendChild(tr);
+            applyRowShade(tr);
         }
         (async () => {
             try {
@@ -555,6 +591,8 @@
                         const h = cell.querySelector('.holiday');
                         h.textContent = `祝: ${holidayMap[iso]}`;
                         h.style.display = '';
+                        const tr = cell.closest('tr');
+                        if (tr) applyRowShade(tr);
                     }
                 });
             } catch (e) {
@@ -580,7 +618,7 @@
             }
             const entries = await resp.json();
             const map = {};
-            entries.forEach(e => map[e.workDate] = e);
+            for (const e of entries) map[e.workDate] = e;
             document.querySelectorAll('#tableBody tr').forEach(row => {
                 const iso = row.querySelector('.date-cell').dataset.iso;
                 const data = map[iso];
@@ -590,6 +628,13 @@
                     row.querySelector('.break-cell').textContent = '';
                     row.querySelector('.duration-cell').textContent = '';
                     row.querySelector('.working-cell').textContent = '';
+                    // set weekday from date
+                    const date = new Date(iso + 'T00:00:00');
+                    const wd = shortDay(date);
+                    const wdEl = row.querySelector('.weekday-cell');
+                    if (wdEl) wdEl.textContent = wd;
+                    // ensure shading according to weekend/holiday
+                    applyRowShade(row);
                     return;
                 }
                 row.querySelector('.time-cell[data-type="start"]').textContent = data.startTime ? ensureSeconds(data.startTime) : '';
@@ -597,6 +642,13 @@
                 row.querySelector('.break-cell').textContent = data.breakMinutes != null ? data.breakMinutes : '';
                 row.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
                 row.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
+                // ensure weekday shown
+                const date = new Date(iso + 'T00:00:00');
+                const wd = shortDay(date);
+                const wdEl = row.querySelector('.weekday-cell');
+                if (wdEl) wdEl.textContent = wd;
+                // update shading
+                applyRowShade(row);
             });
 
         } catch (e) {
@@ -643,4 +695,58 @@
         rebuildRows(monthInput.value);
         loadTimesheetData();
     }
+
+    // Ensure report download buttons work: CSV / PDF / XLSX
+    async function downloadReport(format, btn) {
+        const msgEl = document.getElementById('reportMessage');
+        if (btn) {
+            btn.disabled = true;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 生成中';
+            try {
+                if (msgEl) msgEl.textContent = 'レポートを生成しています...';
+                const ym = (monthInput && monthInput.value) ? monthInput.value : (new Date().toISOString().substring(0, 7));
+                const [y, m] = ym.split('-').map(Number);
+                const from = `${y}-${String(m).padStart(2, '0')}-01`;
+                const last = new Date(y, m, 0).getDate();
+                const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+                const username = (window.currentUserName || 'user1');
+                const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
+                const resp = await fetch(url, {credentials: 'same-origin'});
+                if (!resp.ok) {
+                    const text = await resp.text().catch(() => '');
+                    if (msgEl) msgEl.textContent = `レポート生成失敗 (${resp.status})`;
+                    throw new Error('report fetch failed ' + resp.status + ' ' + text);
+                }
+                const blob = await resp.blob();
+                // derive filename
+                const disposition = resp.headers.get('Content-Disposition') || '';
+                const fnMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
+                const filename = fnMatch ? decodeURIComponent(fnMatch[1].replace(/"/g, '')) : `timesheet_${from}_to_${to}.${format}`;
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                if (msgEl) msgEl.textContent = 'ダウンロード完了';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        }
+    }
+
+    // Attach handlers if buttons exist
+    try {
+        const csvBtn = document.getElementById('downloadCsvBtn');
+        const pdfBtn = document.getElementById('downloadPdfBtn');
+        const xlsxBtn = document.getElementById('downloadXlsxBtn');
+        if (csvBtn) csvBtn.addEventListener('click', () => downloadReport('csv', csvBtn));
+        if (pdfBtn) pdfBtn.addEventListener('click', () => downloadReport('pdf', pdfBtn));
+        if (xlsxBtn) xlsxBtn.addEventListener('click', () => downloadReport('xlsx', xlsxBtn));
+    } catch (e) {
+        console.warn('report button handlers init failed', e);
+    }
+
 })();

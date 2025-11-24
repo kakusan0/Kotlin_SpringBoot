@@ -1,5 +1,7 @@
 package com.example.demo.service
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
@@ -115,17 +117,22 @@ class ReportService(
         val entries = timesheetService.list(username, from, to)
         val baos = ByteArrayOutputStream()
         XSSFWorkbook().use { wb ->
-            val sheet = wb.createSheet("Timesheet")
-            val header = sheet.createRow(0)
-            val headers = listOf(
-                "work_date",
-                "start_time",
-                "end_time",
-                "break_minutes",
-                "duration_minutes",
-                "working_minutes",
-                "note"
-            )
+            val sheet = wb.createSheet("勤務表")
+
+            // Title rows: YearMonth 勤務表 / Company / Name
+            val titleFont = wb.createFont().apply { bold = true; fontHeightInPoints = 14 }
+            val titleStyle = wb.createCellStyle().apply { setFont(titleFont) }
+            var rowIdx = 0
+            val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月　勤務表"
+            sheet.createRow(rowIdx++).createCell(0).apply { setCellValue(ymTitle); cellStyle = titleStyle }
+            sheet.createRow(rowIdx++).createCell(0).setCellValue("会社名　ユーニスイースト")
+            sheet.createRow(rowIdx++).createCell(0).setCellValue("氏名　${username}")
+            // empty row
+            rowIdx++
+
+            // Header
+            val headerRow = sheet.createRow(rowIdx++)
+            val headers = listOf("日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働")
             val headerFont = wb.createFont().apply { bold = true }
             val headerStyle = wb.createCellStyle().apply {
                 setFont(headerFont)
@@ -135,11 +142,10 @@ class ReportService(
                 fillPattern = org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND
             }
             for (i in headers.indices) {
-                val cell = header.createCell(i)
-                cell.setCellValue(headers[i])
-                cell.cellStyle = headerStyle
+                headerRow.createCell(i).apply { setCellValue(headers[i]); cellStyle = headerStyle }
             }
-            sheet.createFreezePane(0, 1)
+
+            // styles
             val df = wb.creationHelper.createDataFormat()
             val dateStyle = wb.createCellStyle().apply { dataFormat = df.getFormat("yyyy-mm-dd") }
             val intStyle = wb.createCellStyle().apply {
@@ -147,42 +153,109 @@ class ReportService(
                 alignment = HorizontalAlignment.RIGHT
                 verticalAlignment = VerticalAlignment.CENTER
             }
-            val noteStyle = wb.createCellStyle().apply {
-                wrapText = true
-                verticalAlignment = VerticalAlignment.TOP
-            }
-            var r = 1
+            wb.createCellStyle().apply { wrapText = true; verticalAlignment = VerticalAlignment.TOP }
+
+            // fetch holidays between years
+            val holidaySet = fetchHolidayDates(from.year, to.year)
+
+            // Japanese weekday map
+            val jpWeek = mapOf(
+                java.time.DayOfWeek.MONDAY to "月",
+                java.time.DayOfWeek.TUESDAY to "火",
+                java.time.DayOfWeek.WEDNESDAY to "水",
+                java.time.DayOfWeek.THURSDAY to "木",
+                java.time.DayOfWeek.FRIDAY to "金",
+                java.time.DayOfWeek.SATURDAY to "土",
+                java.time.DayOfWeek.SUNDAY to "日"
+            )
+
+            var r = rowIdx
             for (e in entries) {
                 val row = sheet.createRow(r++)
+                // date
                 val dateCell = row.createCell(0)
                 dateCell.setCellValue(java.sql.Date.valueOf(e.workDate))
                 dateCell.cellStyle = dateStyle
-                row.createCell(1).setCellValue(e.startTime?.toString() ?: "")
-                row.createCell(2).setCellValue(e.endTime?.toString() ?: "")
-                val breakCell = row.createCell(3)
+                // weekday (Japanese)
+                val wdCell = row.createCell(1)
+                wdCell.setCellValue(jpWeek[e.workDate.dayOfWeek])
+
+                // times as strings (HH:mm:ss)
+                val sc = row.createCell(2)
+                sc.setCellValue(e.startTime?.toString() ?: "")
+                val ec = row.createCell(3)
+                ec.setCellValue(e.endTime?.toString() ?: "")
+
+                val breakCell = row.createCell(4)
                 if (e.breakMinutes != null) {
                     breakCell.setCellValue(e.breakMinutes.toDouble()); breakCell.cellStyle = intStyle
                 } else breakCell.setCellValue("")
-                val durCell = row.createCell(4)
+
+                val durCell = row.createCell(5)
                 if (e.durationMinutes != null) {
                     durCell.setCellValue(e.durationMinutes.toDouble()); durCell.cellStyle = intStyle
                 } else durCell.setCellValue("")
-                val workCell = row.createCell(5)
+
+                val workCell = row.createCell(6)
                 if (e.workingMinutes != null) {
                     workCell.setCellValue(e.workingMinutes.toDouble()); workCell.cellStyle = intStyle
                 } else workCell.setCellValue("")
-                val noteCell = row.createCell(6)
-                noteCell.setCellValue(e.note ?: "")
-                noteCell.cellStyle = noteStyle
+
+                // shade weekend/holiday
+                val isWeekend =
+                    e.workDate.dayOfWeek == java.time.DayOfWeek.SATURDAY || e.workDate.dayOfWeek == java.time.DayOfWeek.SUNDAY
+                val isHoliday = holidaySet.contains(e.workDate)
+                if (isWeekend || isHoliday) {
+                    for (c in 0..6) {
+                        val cell = row.getCell(c) ?: row.createCell(c)
+                        val newStyle = wb.createCellStyle().apply {
+                            cloneStyleFrom(cell.cellStyle ?: wb.createCellStyle())
+                            fillForegroundColor = org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.index
+                            fillPattern = org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND
+                        }
+                        cell.cellStyle = newStyle
+                    }
+                }
             }
-            for (i in 0 until headers.size) {
+
+            for (i in 0..6) {
                 sheet.autoSizeColumn(i)
                 val current = sheet.getColumnWidth(i)
                 val min = 256 * 10
                 if (current < min) sheet.setColumnWidth(i, min)
             }
+
             wb.write(baos)
         }
         return baos.toByteArray()
+    }
+
+    private fun fetchHolidayDates(fromYear: Int, toYear: Int): Set<LocalDate> {
+        val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().registerKotlinModule()
+        val set = mutableSetOf<LocalDate>()
+        for (y in fromYear..toYear) {
+            try {
+                val url = java.net.URL("https://date.nager.at/api/v3/PublicHolidays/$y/JP")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.connectTimeout = 3000
+                conn.readTimeout = 3000
+                if (conn.responseCode == 200) {
+                    val text = conn.inputStream.bufferedReader().use { it.readText() }
+                    val list: List<Map<String, Any>> =
+                        mapper.readValue(text, object : TypeReference<List<Map<String, Any>>>() {})
+                    for (m in list) {
+                        val dateStr = m["date"] as? String ?: continue
+                        try {
+                            set.add(LocalDate.parse(dateStr))
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                // best-effort: ignore network issues
+            }
+        }
+        return set
     }
 }
