@@ -147,7 +147,12 @@ class ReportService(
 
             // styles
             val df = wb.creationHelper.createDataFormat()
-            val dateStyle = wb.createCellStyle().apply { dataFormat = df.getFormat("yyyy-mm-dd") }
+            // day-only style (center)
+            val dayOnlyStyle = wb.createCellStyle()
+                .apply { alignment = HorizontalAlignment.CENTER; verticalAlignment = VerticalAlignment.CENTER }
+            // centered text style for time strings
+            val timeTextStyle = wb.createCellStyle()
+                .apply { alignment = HorizontalAlignment.CENTER; verticalAlignment = VerticalAlignment.CENTER }
             val intStyle = wb.createCellStyle().apply {
                 dataFormat = df.getFormat("#,##0")
                 alignment = HorizontalAlignment.RIGHT
@@ -170,41 +175,46 @@ class ReportService(
             )
 
             var r = rowIdx
-            for (e in entries) {
+            // map entries by date for quick lookup
+            val entryMap = entries.associateBy { it.workDate }
+            var d = from
+            while (!d.isAfter(to)) {
                 val row = sheet.createRow(r++)
-                // date
+                val e = entryMap[d]
+
+                // date as "〇日" string
                 val dateCell = row.createCell(0)
-                dateCell.setCellValue(java.sql.Date.valueOf(e.workDate))
-                dateCell.cellStyle = dateStyle
+                dateCell.setCellValue("${d.dayOfMonth}日")
+                dateCell.cellStyle = dayOnlyStyle
+
                 // weekday (Japanese)
                 val wdCell = row.createCell(1)
-                wdCell.setCellValue(jpWeek[e.workDate.dayOfWeek])
+                wdCell.setCellValue(jpWeek[d.dayOfWeek])
 
                 // times as strings (HH:mm:ss)
                 val sc = row.createCell(2)
-                sc.setCellValue(e.startTime?.toString() ?: "")
+                sc.setCellValue(e?.startTime?.toString() ?: "")
                 val ec = row.createCell(3)
-                ec.setCellValue(e.endTime?.toString() ?: "")
+                ec.setCellValue(e?.endTime?.toString() ?: "")
 
                 val breakCell = row.createCell(4)
-                if (e.breakMinutes != null) {
+                if (e?.breakMinutes != null) {
                     breakCell.setCellValue(e.breakMinutes.toDouble()); breakCell.cellStyle = intStyle
                 } else breakCell.setCellValue("")
 
                 val durCell = row.createCell(5)
-                if (e.durationMinutes != null) {
-                    durCell.setCellValue(e.durationMinutes.toDouble()); durCell.cellStyle = intStyle
+                if (e?.durationMinutes != null) {
+                    durCell.setCellValue(formatMinutesToHM(e.durationMinutes)); durCell.cellStyle = timeTextStyle
                 } else durCell.setCellValue("")
 
                 val workCell = row.createCell(6)
-                if (e.workingMinutes != null) {
-                    workCell.setCellValue(e.workingMinutes.toDouble()); workCell.cellStyle = intStyle
+                if (e?.workingMinutes != null) {
+                    workCell.setCellValue(formatMinutesToHM(e.workingMinutes)); workCell.cellStyle = timeTextStyle
                 } else workCell.setCellValue("")
 
-                // shade weekend/holiday
-                val isWeekend =
-                    e.workDate.dayOfWeek == java.time.DayOfWeek.SATURDAY || e.workDate.dayOfWeek == java.time.DayOfWeek.SUNDAY
-                val isHoliday = holidaySet.contains(e.workDate)
+                // shade weekend/holiday across all used columns
+                val isWeekend = d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
+                val isHoliday = holidaySet.contains(d)
                 if (isWeekend || isHoliday) {
                     for (c in 0..6) {
                         val cell = row.getCell(c) ?: row.createCell(c)
@@ -216,12 +226,14 @@ class ReportService(
                         cell.cellStyle = newStyle
                     }
                 }
+
+                d = d.plusDays(1)
             }
 
             for (i in 0..6) {
                 sheet.autoSizeColumn(i)
                 val current = sheet.getColumnWidth(i)
-                val min = 256 * 10
+                val min = 256 * 6
                 if (current < min) sheet.setColumnWidth(i, min)
             }
 
@@ -257,5 +269,13 @@ class ReportService(
             }
         }
         return set
+    }
+
+    // helper to format minutes to H:mm (e.g., 90 -> "1:30")
+    fun formatMinutesToHM(minutes: Int?): String {
+        if (minutes == null) return ""
+        val h = minutes / 60
+        val m = minutes % 60
+        return String.format("%d:%02d", h, m)
     }
 }
