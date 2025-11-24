@@ -1,7 +1,5 @@
 package com.example.demo.service
 
-import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
@@ -230,20 +228,58 @@ class ReportService(
                 d = d.plusDays(1)
             }
 
+            // Try to auto-size columns. If POI provides the overload with useMergedCells, prefer that.
             for (i in 0..6) {
-                sheet.autoSizeColumn(i)
-                val current = sheet.getColumnWidth(i)
-                val min = 256 * 6
-                if (current < min) sheet.setColumnWidth(i, min)
+                try {
+                    // reflection: call autoSizeColumn(int, boolean) if available to consider merged cells
+                    val m =
+                        sheet::class.java.methods.firstOrNull { it.name == "autoSizeColumn" && it.parameterCount == 2 }
+                    if (m != null) {
+                        // some POI versions accept a boolean second arg to consider merged regions
+                        m.invoke(sheet, i, java.lang.Boolean.TRUE)
+                    } else {
+                        sheet.autoSizeColumn(i)
+                    }
+                } catch (ex: Exception) {
+                    try {
+                        sheet.autoSizeColumn(i)
+                    } catch (_: Throwable) {
+                        // ignore
+                    }
+                }
+                var current = sheet.getColumnWidth(i)
+                // fallback minimum widths (in character units * 256)
+                val minChars = when (i) {
+                    0 -> 6 // 日付
+                    1 -> 4 // 曜日
+                    2, 3 -> 10 // 時刻
+                    4 -> 6 // 休憩
+                    5, 6 -> 8 // 稼働/実働
+                    else -> 8
+                }
+                val min = 256 * minChars
+                if (current < min) current = min
+                val max = 256 * 40
+                if (current > max) current = max
+                sheet.setColumnWidth(i, current)
             }
 
+            // write workbook to bytes
             wb.write(baos)
         }
         return baos.toByteArray()
     }
 
+    // utility: format minutes -> H:MM (e.g. 90 -> "1:30"), null -> empty string
+    fun formatMinutesToHM(minutes: Int?): String {
+        if (minutes == null) return ""
+        val h = minutes / 60
+        val m = minutes % 60
+        return String.format("%d:%02d", h, m)
+    }
+
+    // fetch holiday dates between two years (inclusive). Best-effort: network errors are ignored and an empty set may be returned.
     private fun fetchHolidayDates(fromYear: Int, toYear: Int): Set<LocalDate> {
-        val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().registerKotlinModule()
         val set = mutableSetOf<LocalDate>()
         for (y in fromYear..toYear) {
             try {
@@ -254,28 +290,21 @@ class ReportService(
                 conn.readTimeout = 3000
                 if (conn.responseCode == 200) {
                     val text = conn.inputStream.bufferedReader().use { it.readText() }
-                    val list: List<Map<String, Any>> =
-                        mapper.readValue(text, object : TypeReference<List<Map<String, Any>>>() {})
-                    for (m in list) {
-                        val dateStr = m["date"] as? String ?: continue
+                    // extract "date":"YYYY-MM-DD" occurrences without pulling in a JSON library
+                    val re = """"date"\s*:\s*"(\d{4}-\d{2}-\d{2})"""".toRegex()
+                    for (m in re.findAll(text)) {
+                        val ds = m.groupValues[1]
                         try {
-                            set.add(LocalDate.parse(dateStr))
+                            set.add(LocalDate.parse(ds))
                         } catch (_: Exception) {
                         }
                     }
                 }
             } catch (_: Exception) {
-                // best-effort: ignore network issues
+                // ignore network/parse errors — best-effort
             }
         }
         return set
     }
 
-    // helper to format minutes to H:mm (e.g., 90 -> "1:30")
-    fun formatMinutesToHM(minutes: Int?): String {
-        if (minutes == null) return ""
-        val h = minutes / 60
-        val m = minutes % 60
-        return String.format("%d:%02d", h, m)
-    }
 }
