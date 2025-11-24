@@ -6,6 +6,19 @@
     const applyDefaultsBtn = document.getElementById('applyDefaults');
     // saveButton 削除: テンプレートから削除されたため参照しない
     const picker = document.getElementById('timePicker');
+    // 動的にオーバーレイを用意（テンプレートに無ければ作る）
+    const OVERLAY_ID = 'timePickerOverlay';
+    let overlay = document.getElementById(OVERLAY_ID);
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = OVERLAY_ID;
+        overlay.style.display = 'none';
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = 'rgba(0,0,0,0.25)';
+        overlay.style.zIndex = '9998';
+        document.body.appendChild(overlay);
+    }
     const display = document.getElementById('timeDisplay');
     const hand = document.getElementById('hand');
     const modeLabel = document.getElementById('modeLabel');
@@ -284,6 +297,8 @@
         picker.style.top = (r.bottom + 6) + 'px';
         picker.style.display = 'block';
         picker.setAttribute('aria-hidden', 'false');
+        // オーバーレイ表示
+        if (overlay) overlay.style.display = 'block';
     });
 
     function updateDisplay() {
@@ -340,9 +355,34 @@
             // 自動保存: ドロップ後にサーバへ保存
             autoSaveRow(currentCell.parentElement);
         }
-        picker.style.display = 'none';
-        picker.setAttribute('aria-hidden', 'true');
+        // 共通の閉じ処理を使う
+        closePicker();
     }
+
+    // 共通: ピッカーを閉じる処理
+    function closePicker() {
+        if (currentCell) {
+            currentCell.classList.remove('active');
+            currentCell = null;
+        }
+        if (picker) {
+            picker.style.display = 'none';
+            picker.setAttribute('aria-hidden', 'true');
+        }
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    // Escape キーでピッカーを閉じる
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+            closePicker();
+        }
+    });
+
+    // オーバーレイクリックで閉じる
+    overlay.addEventListener('mousedown', () => {
+        closePicker();
+    });
 
     // デバウンス用 map
     const saveTimers = new Map();

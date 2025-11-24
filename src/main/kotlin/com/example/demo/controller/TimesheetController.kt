@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 @RestController
@@ -16,19 +17,20 @@ class TimesheetController(
     private val timesheetService: TimesheetService,
     private val summaryService: com.example.demo.service.TimesheetSummaryService
 ) {
-    private val emitters = CopyOnWriteArrayList<SseEmitter>()
+    // ユーザ毎に複数のエミッターを保持
+    private val emitters = ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>>()
 
     @PostMapping("/clock-in")
     fun clockIn(auth: Authentication): TimesheetEntry {
         val entry = timesheetService.clockIn(auth.name)
-        broadcast("clock-in", entry)
+        broadcast("clock-in", entry, auth.name)
         return entry
     }
 
     @PostMapping("/clock-out")
     fun clockOut(auth: Authentication): TimesheetEntry {
         val entry = timesheetService.clockOut(auth.name)
-        broadcast("clock-out", entry)
+        broadcast("clock-out", entry, auth.name)
         return entry
     }
 
@@ -50,7 +52,7 @@ class TimesheetController(
     fun updateNote(auth: Authentication, @RequestBody body: Map<String, String>): TimesheetEntry {
         val note = body["note"] ?: ""
         val entry = timesheetService.updateNote(auth.name, note)
-        broadcast("note", entry)
+        broadcast("note", entry, auth.name)
         return entry
     }
 
@@ -59,7 +61,7 @@ class TimesheetController(
         val safe = note ?: ""
         val entry = timesheetService.updateNote(auth.name, safe)
         // beaconではSSE broadcastは省略しても良いが、即時反映のため送信
-        broadcast("note", entry)
+        broadcast("note", entry, auth.name)
         return entry
     }
 
@@ -69,16 +71,17 @@ class TimesheetController(
         val today = LocalDate.now()
         val existing = timesheetService.getToday(auth.name)
         val updated = timesheetService.saveOrUpdate(auth.name, today, existing?.startTime, existing?.endTime, minutes)
-        broadcast("break", updated)
+        broadcast("break", updated, auth.name)
         return updated
     }
 
     @GetMapping(path = ["/stream"], produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
-    fun stream(): SseEmitter {
+    fun stream(auth: Authentication): SseEmitter {
         val emitter = SseEmitter(0L)
-        emitters.add(emitter)
-        emitter.onCompletion { emitters.remove(emitter) }
-        emitter.onTimeout { emitters.remove(emitter) }
+        val list = emitters.computeIfAbsent(auth.name) { CopyOnWriteArrayList() }
+        list.add(emitter)
+        emitter.onCompletion { list.remove(emitter) }
+        emitter.onTimeout { list.remove(emitter) }
         // 心拍送信: 30秒毎
         val heartbeat = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
         val future = heartbeat.scheduleAtFixedRate({
@@ -94,16 +97,17 @@ class TimesheetController(
         return emitter
     }
 
-    private fun broadcast(event: String, data: Any) {
+    private fun broadcast(event: String, data: Any, userName: String) {
+        val list = emitters[userName] ?: return
         val dead = mutableListOf<SseEmitter>()
-        emitters.forEach { em ->
+        list.forEach { em ->
             try {
                 em.send(SseEmitter.event().name(event).data(data))
             } catch (_: Exception) {
                 dead.add(em)
             }
         }
-        emitters.removeAll(dead)
+        list.removeAll(dead)
     }
 
     @PostMapping("/batch")
@@ -125,7 +129,9 @@ class TimesheetController(
                     endTimeStr?.let { if (it.isNotBlank()) LocalTime.parse(it).withSecond(0).withNano(0) else null }
                 val breakMinutes = breakStr?.let { if (it.isNotBlank()) it.toIntOrNull() else null }
 
-                timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes)
+                val savedEntry = timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes)
+                // 個別保存なら user 宛に通知
+                broadcast("timesheet-updated", savedEntry, auth.name)
                 saved++
             } catch (ex: Exception) {
                 failures += mapOf(
@@ -166,8 +172,8 @@ class TimesheetController(
                 body["endTime"]?.takeIf { it.isNotBlank() }?.let { LocalTime.parse(it).withSecond(0).withNano(0) }
             val breakMinutes = body["breakMinutes"]?.takeIf { it.isNotBlank() }?.toIntOrNull()
             val saved = timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes)
-            // ブロードキャストして他クライアントへ反映
-            broadcast("timesheet-updated", saved)
+            // ブロードキャストして（同一ユーザの）他クライアントへ反映
+            broadcast("timesheet-updated", saved, auth.name)
             return mapOf("success" to true, "entry" to saved)
         } catch (ex: Exception) {
             return mapOf("success" to false, "message" to (ex.message ?: "save error"))
