@@ -2,7 +2,7 @@
  Table: access_logs
  Purpose: Store every HTTP request for auditing and analysis.
 */
-CREATE TABLE access_logs
+CREATE TABLE IF NOT EXISTS access_logs
 (
     id             BIGSERIAL PRIMARY KEY,
     created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -19,16 +19,16 @@ CREATE TABLE access_logs
     request_bytes  BIGINT,
     response_bytes BIGINT
 );
-CREATE INDEX idx_access_logs_created_at ON access_logs (created_at);
-CREATE INDEX idx_access_logs_remote_ip ON access_logs (remote_ip);
-CREATE INDEX idx_access_logs_user_agent ON access_logs USING BTREE(user_agent);
-CREATE INDEX idx_access_logs_path ON access_logs (path);
+CREATE INDEX IF NOT EXISTS idx_access_logs_created_at ON access_logs (created_at);
+CREATE INDEX IF NOT EXISTS idx_access_logs_remote_ip ON access_logs (remote_ip);
+CREATE INDEX IF NOT EXISTS idx_access_logs_user_agent ON access_logs USING BTREE(user_agent);
+CREATE INDEX IF NOT EXISTS idx_access_logs_path ON access_logs (path);
 
 /*
  Table: blacklist_events
  Purpose: Record events that triggered blacklist actions.
 */
-CREATE TABLE blacklist_events
+CREATE TABLE IF NOT EXISTS blacklist_events
 (
     id         BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -42,14 +42,14 @@ CREATE TABLE blacklist_events
     reason     VARCHAR(512) NOT NULL,
     source     VARCHAR(128) NOT NULL
 );
-CREATE INDEX idx_blacklist_events_ip ON blacklist_events (ip_address);
-CREATE INDEX idx_blacklist_events_created ON blacklist_events (created_at);
+CREATE INDEX IF NOT EXISTS idx_blacklist_events_ip ON blacklist_events (ip_address);
+CREATE INDEX IF NOT EXISTS idx_blacklist_events_created ON blacklist_events (created_at);
 
 /*
  Table: blacklist_ips
  Purpose: Track IP addresses that are blacklisted plus count of occurrences.
 */
-CREATE TABLE blacklist_ips
+CREATE TABLE IF NOT EXISTS blacklist_ips
 (
     id         BIGSERIAL PRIMARY KEY,
     ip_address VARCHAR(64) NOT NULL UNIQUE,
@@ -57,13 +57,13 @@ CREATE TABLE blacklist_ips
     deleted    BOOLEAN     NOT NULL DEFAULT FALSE,
     times      INTEGER     NOT NULL DEFAULT 1
 );
-CREATE INDEX idx_blacklist_ips_deleted ON blacklist_ips (deleted);
+CREATE INDEX IF NOT EXISTS idx_blacklist_ips_deleted ON blacklist_ips (deleted);
 
 /*
  Table: whitelist_ips
  Purpose: Track IP addresses explicitly whitelisted with blacklist stats.
 */
-CREATE TABLE whitelist_ips
+CREATE TABLE IF NOT EXISTS whitelist_ips
 (
     id                BIGSERIAL PRIMARY KEY,
     ip_address        VARCHAR(64) NOT NULL UNIQUE,
@@ -71,13 +71,13 @@ CREATE TABLE whitelist_ips
     blacklisted       BOOLEAN              DEFAULT FALSE,
     blacklisted_count INTEGER              DEFAULT 0
 );
-CREATE INDEX idx_whitelist_ips_blacklisted ON whitelist_ips (blacklisted);
+CREATE INDEX IF NOT EXISTS idx_whitelist_ips_blacklisted ON whitelist_ips (blacklisted);
 
 /*
  Table: ua_blacklist_rules
  Purpose: User-Agent pattern rules for blacklist (pattern matching types: EXACT / PREFIX / REGEX)
 */
-CREATE TABLE ua_blacklist_rules
+CREATE TABLE IF NOT EXISTS ua_blacklist_rules
 (
     id         BIGSERIAL PRIMARY KEY,
     pattern    VARCHAR(512) NOT NULL,
@@ -86,13 +86,13 @@ CREATE TABLE ua_blacklist_rules
     created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_ua_blacklist_rules_deleted ON ua_blacklist_rules (deleted);
-CREATE INDEX idx_ua_blacklist_rules_pattern ON ua_blacklist_rules (pattern);
+CREATE INDEX IF NOT EXISTS idx_ua_blacklist_rules_deleted ON ua_blacklist_rules (deleted);
+CREATE INDEX IF NOT EXISTS idx_ua_blacklist_rules_pattern ON ua_blacklist_rules (pattern);
 
 /*
  Table: timesheet_entries (future use for勤務表機能; currently UI is client-side only)
 */
-CREATE TABLE timesheet_entries
+CREATE TABLE IF NOT EXISTS timesheet_entries
 (
     id         BIGSERIAL PRIMARY KEY,
     work_date  DATE         NOT NULL,
@@ -104,4 +104,4 @@ CREATE TABLE timesheet_entries
     updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_timesheet_user_date UNIQUE (user_name, work_date)
 );
-CREATE INDEX idx_timesheet_entries_work_date ON timesheet_entries (work_date);
+CREATE INDEX IF NOT EXISTS idx_timesheet_entries_work_date ON timesheet_entries (work_date);
