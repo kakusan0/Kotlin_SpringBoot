@@ -27,6 +27,9 @@
 
     const holidayCache = {};
 
+    // タッチ端末判定
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+
     // 秒付き(常に00)へ正規化するヘルパ
     function ensureSeconds(t) {
         if (!t) return t;
@@ -34,6 +37,56 @@
         if (/^\d\d:\d\d:00$/.test(t)) return t;
         // 想定外フォーマットはそのまま返す
         return t;
+    }
+
+    // タッチ端末向け: ネイティブ time input を表示して結果をセルへ反映
+    function showNativeTimePicker(cell, type) {
+        const row = cell.parentElement;
+        const rect = cell.getBoundingClientRect();
+        // 初期値から秒を取り除く（HH:mm）
+        let init = cell.textContent.trim();
+        if (/^\d\d:\d\d:\d\d$/.test(init)) init = init.split(':').slice(0, 2).join(':');
+        const def = (type === 'start' ? defaultStart.value : defaultEnd.value) || '09:00';
+        const inputVal = (/^\d\d:\d\d$/.test(init) ? init : (/^\d\d:\d\d$/.test(def) ? def : '09:00'));
+
+        const input = document.createElement('input');
+        input.type = 'time';
+        input.step = '60'; // 秒は60秒単位（秒は使わない）
+        input.value = inputVal;
+        input.className = 'native-time-input';
+        // 簡易スタイル
+        input.style.position = 'absolute';
+        input.style.zIndex = 9999;
+        // 画面内に収まるよう配置
+        const left = Math.max(8, rect.left);
+        const top = Math.min(window.innerHeight - 56, rect.bottom + 6);
+        input.style.left = left + 'px';
+        input.style.top = top + 'px';
+        document.body.appendChild(input);
+        input.focus();
+        // 一部ブラウザは showPicker() サポート
+        if (typeof input.showPicker === 'function') {
+            try {
+                input.showPicker();
+            } catch (err) { /* ignore */
+            }
+        }
+
+        function applyAndRemove() {
+            const v = input.value; // HH:mm
+            if (v && /^\d\d:\d\d$/.test(v)) {
+                cell.textContent = ensureSeconds(v);
+                updateRowMetrics(row);
+                autoSaveRow(row);
+            }
+            input.remove();
+        }
+
+        input.addEventListener('change', () => applyAndRemove());
+        // ブラウザにより blur のタイミングが勝手なので両方で対応
+        input.addEventListener('blur', () => setTimeout(() => {
+            if (document.body.contains(input)) applyAndRemove();
+        }, 150));
     }
 
     async function fetchHolidays(year) {
@@ -195,6 +248,13 @@
         cellTypeLabel.textContent = '種類: ' + (type === 'start' ? '出勤' : '退勤');
         holidayLabel.style.display = 'none';
         const init = cell.textContent.trim();
+
+        // タッチ端末ではネイティブ time input を使う
+        if (isTouchDevice) {
+            showNativeTimePicker(cell, type);
+            return;
+        }
+
         const timePattern = /^(\d\d):(\d\d)(?::(\d\d))?$/;
         let parsed = false;
         if (timePattern.test(init)) {
