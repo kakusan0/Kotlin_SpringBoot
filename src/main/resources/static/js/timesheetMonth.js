@@ -208,44 +208,6 @@
         return t && h ? {token: t.content, header: h.content} : null;
     }
 
-    async function saveBatch() {
-        const entries = [];
-        document.querySelectorAll('#tableBody tr').forEach(row => {
-            const iso = row.querySelector('.date-cell').dataset.iso;
-            const startTime = row.querySelector('.time-cell[data-type="start"]').textContent.trim();
-            const endTime = row.querySelector('.time-cell[data-type="end"]').textContent.trim();
-            const breakMinutes = row.querySelector('.break-cell').textContent.trim();
-            entries.push({
-                workDate: iso,
-                startTime: startTime || null,
-                endTime: endTime || null,
-                breakMinutes: breakMinutes || null
-            });
-        });
-
-        const csrf = getCsrf();
-        const headers = {'Content-Type': 'application/json'};
-        if (csrf) headers[csrf.header] = csrf.token;
-        try {
-            const resp = await fetch('/timesheet/api/batch', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({entries}),
-                credentials: 'same-origin'
-            });
-            if (!resp.ok) {
-                console.warn('一括保存失敗', resp.status);
-                alert('保存に失敗しました。');
-            } else {
-                alert('保存しました。');
-                loadTimesheetData();
-            }
-        } catch (e) {
-            console.error('一括保存エラー', e);
-            alert('保存中にエラーが発生しました。');
-        }
-    }
-
     // 時刻セルクリック
     document.getElementById('workTable').addEventListener('click', e => {
         const cell = e.target.closest('td.time-cell');
@@ -425,7 +387,7 @@
             } else if (conflictModalEl) {
                 conflictModalEl.style.display = 'none';
             }
-            const {row, payload} = pendingConflict;
+            const payload = pendingConflict.payload;
             pendingConflict = null;
             try {
                 const csrf = getCsrf();
@@ -529,7 +491,7 @@
                     console.warn('SSE parse error', err);
                 }
             });
-            es.addEventListener('break', e => {
+            es.addEventListener('break', () => {
                 // 個別イベントを無視して summary 等で一括更新する仕組みに任せる
             });
             es.addEventListener('error', _ => {
