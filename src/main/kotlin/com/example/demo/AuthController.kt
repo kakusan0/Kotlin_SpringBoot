@@ -1,6 +1,5 @@
 package com.example.demo
 
-import com.example.demo.constants.ApplicationConstants
 import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
@@ -23,7 +22,7 @@ class AuthController {
         val auth: Authentication? = SecurityContextHolder.getContext().authentication
         val isAuthenticated = auth != null && auth.isAuthenticated && auth !is AnonymousAuthenticationToken
         if (isAuthenticated && (logout != true) && (error != true)) {
-            return "${ApplicationConstants.REDIRECT}${ApplicationConstants.HOME}"
+            return "redirect:/home"
         }
         if (logout == true) {
             model.addAttribute("message", "ログアウトしました")
