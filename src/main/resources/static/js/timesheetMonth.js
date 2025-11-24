@@ -482,11 +482,20 @@
                     const row = document.querySelector(`#tableBody tr .date-cell[data-iso="${iso}"]`);
                     if (!row) return;
                     const tr = row.closest('tr');
-                    tr.querySelector('.time-cell[data-type="start"]').textContent = data.startTime ? ensureSeconds(data.startTime) : '';
-                    tr.querySelector('.time-cell[data-type="end"]').textContent = data.endTime ? ensureSeconds(data.endTime) : '';
-                    tr.querySelector('.break-cell').textContent = data.breakMinutes != null ? data.breakMinutes : '';
-                    tr.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
-                    tr.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
+                    // mark to suppress auto-save for programmatic update
+                    tr.dataset.suppressAutoSave = '1';
+                    try {
+                        tr.querySelector('.time-cell[data-type="start"]').textContent = data.startTime ? ensureSeconds(data.startTime) : '';
+                        tr.querySelector('.time-cell[data-type="end"]').textContent = data.endTime ? ensureSeconds(data.endTime) : '';
+                        tr.querySelector('.break-cell').textContent = data.breakMinutes != null ? data.breakMinutes : '';
+                        tr.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
+                        tr.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
+                    } finally {
+                        // remove suppression after microtask to allow any downstream DOM changes to settle
+                        setTimeout(() => {
+                            delete tr.dataset.suppressAutoSave;
+                        }, 0);
+                    }
                 } catch (err) {
                     console.warn('SSE parse error', err);
                 }
@@ -503,6 +512,36 @@
         } catch (err) {
             console.warn('SSE unsupported', err);
         }
+    })();
+
+    // MutationObserver: tableBody 下の任意のセルのテキストが変わったら自動保存をトリガー
+    (function setupAutoSaveObserver() {
+        const tbody = document.getElementById('tableBody');
+        if (!tbody) return;
+        const observer = new MutationObserver(mutations => {
+            const rowsToSave = new Set();
+            for (const m of mutations) {
+                // 変更元ノードから該当行を探す
+                let target = m.target;
+                // characterData の場合 target is text node -> parentElement
+                if (target.nodeType === Node.TEXT_NODE) target = target.parentElement;
+                if (!target) continue;
+                const tr = target.closest('tr');
+                if (!tr) continue;
+                // suppress programmatic updates marked by dataset flag
+                if (tr.dataset.suppressAutoSave) continue;
+                rowsToSave.add(tr);
+            }
+            // call autoSaveRow for each unique row (autoSaveRow debounces internally)
+            for (const tr of rowsToSave) {
+                try {
+                    autoSaveRow(tr);
+                } catch (e) {
+                    console.error('autoSaveObserver error', e);
+                }
+            }
+        });
+        observer.observe(tbody, {subtree: true, characterData: true, childList: true});
     })();
 
     // 月初期化
@@ -622,33 +661,42 @@
             document.querySelectorAll('#tableBody tr').forEach(row => {
                 const iso = row.querySelector('.date-cell').dataset.iso;
                 const data = map[iso];
-                if (!data) {
-                    row.querySelector('.time-cell[data-type="start"]').textContent = '';
-                    row.querySelector('.time-cell[data-type="end"]').textContent = '';
-                    row.querySelector('.break-cell').textContent = '';
-                    row.querySelector('.duration-cell').textContent = '';
-                    row.querySelector('.working-cell').textContent = '';
-                    // set weekday from date
+                // suppress observer-triggered auto-save for this programmatic update
+                row.dataset.suppressAutoSave = '1';
+                try {
+                    if (!data) {
+                        row.querySelector('.time-cell[data-type="start"]').textContent = '';
+                        row.querySelector('.time-cell[data-type="end"]').textContent = '';
+                        row.querySelector('.break-cell').textContent = '';
+                        row.querySelector('.duration-cell').textContent = '';
+                        row.querySelector('.working-cell').textContent = '';
+                        // set weekday from date
+                        const date = new Date(iso + 'T00:00:00');
+                        const wd = shortDay(date);
+                        const wdEl = row.querySelector('.weekday-cell');
+                        if (wdEl) wdEl.textContent = wd;
+                        // ensure shading according to weekend/holiday
+                        applyRowShade(row);
+                        return;
+                    }
+                    row.querySelector('.time-cell[data-type="start"]').textContent = data.startTime ? ensureSeconds(data.startTime) : '';
+                    row.querySelector('.time-cell[data-type="end"]').textContent = data.endTime ? ensureSeconds(data.endTime) : '';
+                    row.querySelector('.break-cell').textContent = data.breakMinutes != null ? data.breakMinutes : '';
+                    row.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
+                    row.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
+                    // ensure weekday shown
                     const date = new Date(iso + 'T00:00:00');
                     const wd = shortDay(date);
                     const wdEl = row.querySelector('.weekday-cell');
                     if (wdEl) wdEl.textContent = wd;
-                    // ensure shading according to weekend/holiday
+                    // update shading
                     applyRowShade(row);
-                    return;
+                } finally {
+                    // remove suppression after microtask to allow MutationObserver to ignore this programmatic change
+                    setTimeout(() => {
+                        delete row.dataset.suppressAutoSave;
+                    }, 0);
                 }
-                row.querySelector('.time-cell[data-type="start"]').textContent = data.startTime ? ensureSeconds(data.startTime) : '';
-                row.querySelector('.time-cell[data-type="end"]').textContent = data.endTime ? ensureSeconds(data.endTime) : '';
-                row.querySelector('.break-cell').textContent = data.breakMinutes != null ? data.breakMinutes : '';
-                row.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
-                row.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
-                // ensure weekday shown
-                const date = new Date(iso + 'T00:00:00');
-                const wd = shortDay(date);
-                const wdEl = row.querySelector('.weekday-cell');
-                if (wdEl) wdEl.textContent = wd;
-                // update shading
-                applyRowShade(row);
             });
 
         } catch (e) {
