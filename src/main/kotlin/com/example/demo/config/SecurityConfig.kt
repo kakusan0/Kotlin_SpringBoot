@@ -134,7 +134,10 @@ class SecurityConfig(
 
             // セッション管理: 同一ユーザ最大セッション数を 1 にして古いセッションを切断（新ログインを許可）
             .sessionManagement { sess ->
-                sess.maximumSessions(1).maxSessionsPreventsLogin(false).sessionRegistry(sessionRegistry())
+                sess.maximumSessions(1)
+                    .maxSessionsPreventsLogin(false)
+                    .expiredUrl("/login")
+                    .sessionRegistry(sessionRegistry())
             }
 
         return http.build()
