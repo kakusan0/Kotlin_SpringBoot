@@ -10,6 +10,27 @@
             color: #28a745;
             font-weight: bold;
         }
+
+        /* Ensure report buttons are positioned relative to the table and visible */
+        .table-with-controls {
+            position: relative;
+        }
+
+        #reportButtons {
+            position: absolute;
+            right: 0;
+            top: -2.2rem;
+            z-index: 999;
+        }
+
+        @media (max-width: 767px) {
+            #reportButtons {
+                position: static;
+                top: auto;
+                right: auto;
+                margin-bottom: .5rem;
+            }
+        }
     </style>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
@@ -51,20 +72,43 @@
         <button class="btn btn-outline-secondary" id="breakApplyBtn">休憩を保存</button>
     </div>
 </div>
-<table class="table table-sm" id="historyTable">
-    <thead>
-    <tr>
-        <th>日付</th>
-        <th>開始</th>
-        <th>終了</th>
-        <th>休憩(分)</th>
-        <th>稼働(分)</th>
-        <th>実働(分)</th>
-        <th>メモ</th>
-    </tr>
-    </thead>
-    <tbody></tbody>
-</table>
+
+<!-- wrap table so buttons can be absolutely positioned to its top-right -->
+<div class="table-with-controls">
+    <div class="mb-3 d-flex justify-content-end" id="reportButtons">
+        <div class="d-flex gap-2 flex-wrap flex-md-nowrap align-items-center">
+            <button class="btn btn-primary" id="downloadCsvBtn" style="min-width:110px;" type="button">CSV
+                ダウンロード
+            </button>
+            <button class="btn btn-secondary" id="downloadPdfBtn" style="min-width:110px;" type="button">PDF
+                ダウンロード
+            </button>
+            <button class="btn btn-success" id="downloadXlsxBtn" style="min-width:120px;" type="button">Excel
+                ダウンロード
+            </button>
+        </div>
+    </div>
+    <div class="mb-2 w-100" id="reportMessageContainer">
+        <div class="text-muted small" id="reportMessage"></div>
+    </div>
+    <!-- spacer for mobile -->
+    <div class="clearfix"></div>
+
+    <table class="table table-sm" id="historyTable">
+        <thead>
+        <tr>
+            <th>日付</th>
+            <th>開始</th>
+            <th>終了</th>
+            <th>休憩(分)</th>
+            <th>稼働(分)</th>
+            <th>実働(分)</th>
+            <th>メモ</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
 <script src="/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js"></script>
 <script>
     const statusEl = document.getElementById('status');
@@ -398,6 +442,111 @@
     breakApplyBtn.addEventListener('click', async () => {
         await saveBreak();
     });
+
+    async function downloadReport(format) {
+        try {
+            const ym = new Date().toISOString().substring(0, 7); // YYYY-MM
+            const [y, m] = ym.split('-').map(Number);
+            const from = `${y}-${String(m).padStart(2, '0')}-01`;
+            const last = new Date(y, m, 0).getDate();
+            const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+            const username = (window.currentUserName || 'user1'); // ensure backend gets username
+            const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
+            const resp = await fetch(url, {credentials: 'same-origin'});
+            if (!resp.ok) {
+                alert('レポートの取得に失敗しました');
+                return;
+            }
+            const blob = await resp.blob();
+            const disposition = resp.headers.get('Content-Disposition') || '';
+            const filenameMatch = /filename=(.+)$/.exec(disposition);
+            const filename = filenameMatch ? filenameMatch[1] : `timesheet.${format}`;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename.replace(/"/g, '');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error('ダウンロード失敗', err);
+            alert('ダウンロードに失敗しました');
+        }
+    }
+
+    // Ensure report buttons are visible and attach improved handlers
+    (function ensureReportButtons() {
+        try {
+            const container = document.getElementById('reportButtons');
+            const messageEl = document.getElementById('reportMessage');
+            if (!container) return;
+            // Make sure it's visible and on top (position comes from CSS so absolute works)
+            container.style.display = 'block';
+            container.style.zIndex = 999;
+            if (messageEl) {
+                messageEl.textContent = '';
+            }
+
+            const setMsg = (txt, kind) => {
+                if (!messageEl) return;
+                messageEl.textContent = txt;
+                messageEl.className = 'mt-2 ' + (kind === 'error' ? 'text-danger' : (kind === 'ok' ? 'text-success' : 'text-muted'));
+            };
+
+            const csvBtn = document.getElementById('downloadCsvBtn');
+            const pdfBtn = document.getElementById('downloadPdfBtn');
+            const xlsxBtn = document.getElementById('downloadXlsxBtn');
+
+            const attach = (btn, fmt) => {
+                if (!btn) return;
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    btn.disabled = true;
+                    const origText = btn.innerHTML;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 生成中';
+                    setMsg('レポートを生成しています...', 'info');
+                    try {
+                        await downloadReport(fmt);
+                        setMsg('ダウンロード完了', 'ok');
+                    } catch (err) {
+                        console.error(err);
+                        setMsg('ダウンロードに失敗しました', 'error');
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = origText;
+                    }
+                });
+            };
+
+            attach(csvBtn, 'csv');
+            attach(pdfBtn, 'pdf');
+            attach(xlsxBtn, 'xlsx');
+        } catch (e) {
+            console.warn('report buttons init failed', e);
+        }
+    })();
+
+    // Debug / safety: on DOMContentLoaded ensure buttons exist and are visible
+    window.addEventListener('DOMContentLoaded', () => {
+        try {
+            const ids = ['downloadCsvBtn', 'downloadPdfBtn', 'downloadXlsxBtn'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) {
+                    console.warn(`Report button not found: ${id}`);
+                    return;
+                }
+                // remove common hiding classes and force visible
+                el.classList.remove('d-none');
+                el.style.display = el.style.display || 'inline-block';
+                el.style.visibility = 'visible';
+                el.setAttribute('aria-hidden', 'false');
+                console.info(`Report button present: ${id}`);
+            });
+        } catch (e) {
+            console.error('report buttons visibility check failed', e);
+        }
+    });
+
 </script>
 </body>
 </html>
