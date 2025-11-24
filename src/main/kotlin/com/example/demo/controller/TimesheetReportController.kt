@@ -21,51 +21,6 @@ class TimesheetReportController(
     private val reportService: com.example.demo.service.ReportService
 ) {
 
-    @GetMapping("/csv")
-    fun csv(
-        @RequestParam username: String,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
-        principal: Principal
-    ): ResponseEntity<ByteArray> {
-        // Authorization: allow if same user or has ROLE_ADMIN
-        if (principal.name != username) {
-            // Check roles via SecurityContext if needed
-            val auth = org.springframework.security.core.context.SecurityContextHolder.getContext().authentication
-            val hasAdmin = auth?.authorities?.any { it.authority == "ROLE_ADMIN" } ?: false
-            if (!hasAdmin) return ResponseEntity.status(403).build()
-        }
-
-        val bytes = reportService.generateCsvBytes(username, from, to)
-        val headers = HttpHeaders()
-        headers.contentType = MediaType.parseMediaType("text/csv; charset=UTF-8")
-        val safeName =
-            URLEncoder.encode("timesheet_${username}_${from}_to_${to}.csv", StandardCharsets.UTF_8.toString())
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
-        return ResponseEntity.ok().headers(headers).body(bytes)
-    }
-
-    @GetMapping("/pdf")
-    fun pdf(
-        @RequestParam username: String,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
-        principal: Principal
-    ): ResponseEntity<ByteArray> {
-        if (principal.name != username) {
-            val auth = org.springframework.security.core.context.SecurityContextHolder.getContext().authentication
-            val hasAdmin = auth?.authorities?.any { it.authority == "ROLE_ADMIN" } ?: false
-            if (!hasAdmin) return ResponseEntity.status(403).build()
-        }
-        val bytes = reportService.generatePdfBytes(username, from, to)
-        val headers = HttpHeaders()
-        headers.contentType = MediaType.APPLICATION_PDF
-        val safeNamePdf =
-            URLEncoder.encode("timesheet_${username}_${from}_to_${to}.pdf", StandardCharsets.UTF_8.toString())
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeNamePdf")
-        return ResponseEntity.ok().headers(headers).body(bytes)
-    }
-
     @GetMapping("/xlsx")
     fun xlsx(
         @RequestParam username: String,
@@ -88,7 +43,7 @@ class TimesheetReportController(
         return ResponseEntity.ok().headers(headers).body(bytes)
     }
 
-    // Submit job endpoint for large ranges (or generate synchronously for small ranges)
+    // Submit job endpoint for large ranges (only xlsx supported now)
     @GetMapping("/submit")
     fun submit(
         @RequestParam username: String,
@@ -104,20 +59,14 @@ class TimesheetReportController(
         }
         val days = ChronoUnit.DAYS.between(from, to) + 1
         if (days <= 31) {
-            val bytes = when (format.lowercase()) {
-                "csv" -> reportService.generateCsvBytes(username, from, to)
-                "pdf" -> reportService.generatePdfBytes(username, from, to)
-                "xlsx" -> reportService.generateXlsxBytes(username, from, to)
-                else -> return ResponseEntity.badRequest().body("unsupported format")
-            }
+            // only xlsx is supported for direct generation
+            if (format.lowercase() != "xlsx") return ResponseEntity.badRequest().body("unsupported format")
+            val bytes = reportService.generateXlsxBytes(username, from, to)
             val headers = HttpHeaders()
-            headers.contentType = when (format.lowercase()) {
-                "csv" -> MediaType.parseMediaType("text/csv; charset=UTF-8")
-                "pdf" -> MediaType.APPLICATION_PDF
-                else -> MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            }
+            headers.contentType =
+                MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             val safeName =
-                URLEncoder.encode("timesheet_${username}_${from}_to_${to}.${format}", StandardCharsets.UTF_8.toString())
+                URLEncoder.encode("timesheet_${username}_${from}_to_${to}.xlsx", StandardCharsets.UTF_8.toString())
             headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
             return ResponseEntity.ok().headers(headers).body(bytes)
         }
@@ -156,20 +105,15 @@ class TimesheetReportController(
         if (!f.exists()) return ResponseEntity.notFound().build()
         val bytes = f.readBytes()
         val headers = HttpHeaders()
-        val ext = when (job.format.lowercase()) {
-            "csv" -> "csv"; "pdf" -> "pdf"; else -> "xlsx"
-        }
-        val mime = when (ext) {
-            "csv" -> MediaType.parseMediaType("text/csv; charset=UTF-8")
-            "pdf" -> MediaType.APPLICATION_PDF
-            else -> MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        }
-        headers.contentType = mime
+        // force xlsx as only supported format for download
+        headers.contentType =
+            MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         val safeName = URLEncoder.encode(f.name, StandardCharsets.UTF_8.toString())
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
         return ResponseEntity.ok().headers(headers).body(bytes)
     }
 
+    // keep helper csvBytes if used elsewhere, but it's okay to keep for now
     fun csvBytes(username: String, from: LocalDate, to: LocalDate): ByteArray {
         val entries = timesheetService.list(username, from, to)
         val sb = StringBuilder()

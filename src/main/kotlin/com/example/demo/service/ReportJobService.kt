@@ -39,17 +39,12 @@ class ReportJobService(
                     "errorMessage" to null
                 )
             )
-            val bytes = when (job.format.lowercase()) {
-                "csv" -> reportService.generateCsvBytes(job.username, job.fromDate, job.toDate)
-                "pdf" -> reportService.generatePdfBytes(job.username, job.fromDate, job.toDate)
-                "xlsx" -> reportService.generateXlsxBytes(job.username, job.fromDate, job.toDate)
-                else -> throw IllegalArgumentException("unsupported format: ${job.format}")
-            }
+            // Only XLSX generation is supported now. If job.format is not xlsx, still generate xlsx but record original format.
+            val bytes = reportService.generateXlsxBytes(job.username, job.fromDate, job.toDate)
+
             val df = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
             val fname =
-                "timesheet_${job.username}_${job.fromDate}_${job.toDate}_" + df.format(java.time.OffsetDateTime.now()) + when (job.format.lowercase()) {
-                    "csv" -> ".csv"; "pdf" -> ".pdf"; else -> ".xlsx"
-                }
+                "timesheet_${job.username}_${job.fromDate}_${job.toDate}_" + df.format(java.time.OffsetDateTime.now()) + ".xlsx"
             val dir = File(reportDir)
             if (!dir.exists()) dir.mkdirs()
             val f = File(dir, fname)
