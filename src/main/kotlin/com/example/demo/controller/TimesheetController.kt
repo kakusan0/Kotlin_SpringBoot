@@ -1,16 +1,13 @@
 package com.example.demo.controller
 
 import com.example.demo.model.TimesheetEntry
-import com.example.demo.service.TimesheetConflictException
-import com.example.demo.service.TimesheetNotFoundException
 import com.example.demo.service.TimesheetService
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.concurrent.CopyOnWriteArrayList
 
 @RestController
@@ -39,10 +36,13 @@ class TimesheetController(
     fun today(auth: Authentication): TimesheetEntry? = timesheetService.getToday(auth.name)
 
     @GetMapping
-    fun list(auth: Authentication, @RequestParam from: String, @RequestParam to: String): List<TimesheetEntry> {
-        // 互換性維持のため旧パス(GET /timesheet/api?from=...&to=...)も利用可能
+    fun list(
+        auth: Authentication,
+        @RequestParam from: String,
+        @RequestParam(required = false) to: String?
+    ): List<TimesheetEntry> {
         val fromDate = LocalDate.parse(from)
-        val toDate = LocalDate.parse(to)
+        val toDate = LocalDate.parse(to ?: from)
         return timesheetService.list(auth.name, fromDate, toDate)
     }
 
@@ -106,28 +106,11 @@ class TimesheetController(
         emitters.removeAll(dead)
     }
 
-    @ExceptionHandler(TimesheetConflictException::class)
-    fun handleConflict(ex: TimesheetConflictException): ResponseEntity<Map<String, Any>> {
-        val body = mapOf<String, Any>(
-            "code" to "CONFLICT",
-            "message" to (ex.message ?: "")
-        )
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body)
-    }
-
-    @ExceptionHandler(TimesheetNotFoundException::class)
-    fun handleNotFound(ex: TimesheetNotFoundException): ResponseEntity<Map<String, Any>> {
-        val body = mapOf<String, Any>(
-            "code" to "NOT_FOUND",
-            "message" to (ex.message ?: "")
-        )
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body)
-    }
-
     @PostMapping("/batch")
     fun batchSave(auth: Authentication, @RequestBody body: Map<String, List<Map<String, String?>>>): Map<String, Any> {
         val entries = body["entries"] ?: emptyList()
         var saved = 0
+        val failures = mutableListOf<Map<String, Any?>>()
 
         entries.forEach { entry ->
             val workDateStr = entry["workDate"] ?: return@forEach
@@ -136,18 +119,31 @@ class TimesheetController(
             val breakStr = entry["breakMinutes"]
             try {
                 val workDate = LocalDate.parse(workDateStr)
-                val startTime = startTimeStr?.let { java.time.LocalTime.parse(it) }
-                val endTime = endTimeStr?.let { java.time.LocalTime.parse(it) }
-                val breakMinutes = breakStr?.toIntOrNull()
+                val startTime =
+                    startTimeStr?.let { if (it.isNotBlank()) LocalTime.parse(it).withSecond(0).withNano(0) else null }
+                val endTime =
+                    endTimeStr?.let { if (it.isNotBlank()) LocalTime.parse(it).withSecond(0).withNano(0) else null }
+                val breakMinutes = breakStr?.let { if (it.isNotBlank()) it.toIntOrNull() else null }
 
                 timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes)
                 saved++
-            } catch (_: Exception) {
-                // スキップして次へ
+            } catch (ex: Exception) {
+                failures += mapOf(
+                    "workDate" to workDateStr,
+                    "error" to (ex.message ?: "parse/save error"),
+                    "startTime" to startTimeStr,
+                    "endTime" to endTimeStr,
+                    "breakMinutes" to breakStr
+                )
             }
         }
 
-        return mapOf("saved" to saved, "total" to entries.size)
+        return mapOf(
+            "saved" to saved,
+            "total" to entries.size,
+            "failed" to failures.size,
+            "failures" to failures
+        )
     }
 
     @GetMapping("/summary")
@@ -157,5 +153,24 @@ class TimesheetController(
     ): com.example.demo.service.TimesheetSummaryService.Summary {
         val ym = java.time.YearMonth.parse(month)
         return summaryService.summarize(auth.name, ym)
+    }
+
+    @PostMapping("/entry")
+    fun saveEntry(auth: Authentication, @RequestBody body: Map<String, String?>): Map<String, Any> {
+        val workDateStr = body["workDate"] ?: return mapOf("success" to false, "message" to "workDate required")
+        try {
+            val workDate = LocalDate.parse(workDateStr)
+            val startTime =
+                body["startTime"]?.takeIf { it.isNotBlank() }?.let { LocalTime.parse(it).withSecond(0).withNano(0) }
+            val endTime =
+                body["endTime"]?.takeIf { it.isNotBlank() }?.let { LocalTime.parse(it).withSecond(0).withNano(0) }
+            val breakMinutes = body["breakMinutes"]?.takeIf { it.isNotBlank() }?.toIntOrNull()
+            val saved = timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes)
+            // ブロードキャストして他クライアントへ反映
+            broadcast("timesheet-updated", saved)
+            return mapOf("success" to true, "entry" to saved)
+        } catch (ex: Exception) {
+            return mapOf("success" to false, "message" to (ex.message ?: "save error"))
+        }
     }
 }

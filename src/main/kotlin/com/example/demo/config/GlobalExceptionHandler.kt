@@ -1,5 +1,8 @@
 package com.example.demo.config
 
+import com.example.demo.service.TimesheetConflictException
+import com.example.demo.service.TimesheetNotFoundException
+import com.example.demo.service.TimesheetValidationException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.ConstraintViolationException
 import org.slf4j.LoggerFactory
@@ -88,6 +91,30 @@ class GlobalExceptionHandler {
     }
 
     /**
+     * Timesheet系例外のハンドリング
+     */
+    @ExceptionHandler(TimesheetConflictException::class)
+    fun handleTimesheetConflict(ex: TimesheetConflictException): ResponseEntity<ErrorResponse> {
+        logger.warn("Timesheet conflict: {}", ex.message)
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse(message = ex.message ?: "競合"))
+    }
+
+    @ExceptionHandler(TimesheetNotFoundException::class)
+    fun handleTimesheetNotFound(ex: TimesheetNotFoundException): ResponseEntity<ErrorResponse> {
+        logger.debug("Timesheet not found: {}", ex.message)
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse(message = ex.message ?: "未検出"))
+    }
+
+    @ExceptionHandler(TimesheetValidationException::class)
+    fun handleTimesheetValidation(ex: TimesheetValidationException): ResponseEntity<ErrorResponse> {
+        logger.debug("Timesheet validation: {}", ex.message)
+        // 複数エラーは ';' 区切りなので map化オプション検討可
+        val errs = ex.message?.split(';')?.filter { it.isNotBlank() }?.associate { it to "INVALID" }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponse(message = "入力値に問題があります", errors = errs))
+    }
+
+    /**
      * その他の例外のハンドリング
      */
     @ExceptionHandler(Exception::class)
@@ -103,7 +130,10 @@ class GlobalExceptionHandler {
      * 静的リソース未検出（例: base.jsp など） -> 404
      */
     @ExceptionHandler(NoResourceFoundException::class)
-    fun handleNoResource(ex: NoResourceFoundException, request: HttpServletRequest): ResponseEntity<ErrorResponse> {
+    fun handleNoResource(
+        @Suppress("UNUSED_PARAMETER") unusedEx: NoResourceFoundException,
+        request: HttpServletRequest
+    ): ResponseEntity<ErrorResponse> {
         logger.debug("NoResourceFound: path={}", request.requestURI)
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
             ErrorResponse(message = "リソースが見つかりません: ${request.requestURI}")
