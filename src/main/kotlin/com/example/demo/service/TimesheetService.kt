@@ -2,6 +2,7 @@ package com.example.demo.service
 
 import com.example.demo.mapper.TimesheetEntryMapper
 import com.example.demo.model.TimesheetEntry
+import com.example.demo.util.dbCall
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -32,12 +33,14 @@ class TimesheetService(
     @Transactional
     fun clockIn(userName: String, now: LocalTime = LocalTime.now()): TimesheetEntry {
         val today = LocalDate.now()
-        val existing = timesheetEntryMapper.selectByUserAndDate(userName, today)
+        val existing =
+            dbCall("selectByUserAndDate", userName, today) { timesheetEntryMapper.selectByUserAndDate(userName, today) }
         if (existing != null) {
             if (existing.startTime == null) {
                 // 補完: startTime 未設定ならセット
                 val updated = applyCalc(existing.copy(startTime = now))
-                val updatedCount = timesheetEntryMapper.updateTimes(updated)
+                val updatedCount =
+                    dbCall("updateTimes", userName, today, existing.id) { timesheetEntryMapper.updateTimes(updated) }
                 if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
                 return updated
             }
@@ -49,14 +52,23 @@ class TimesheetService(
         }
         val entry = applyCalc(TimesheetEntry(workDate = today, userName = userName, startTime = now))
         try {
-            timesheetEntryMapper.insert(entry)
+            dbCall("insert", userName, today) { timesheetEntryMapper.insert(entry) }
         } catch (ex: Exception) {
             // 競合で同一 user+date が挿入されていた場合、既存レコードを取得して再試行
-            val nowExisting = timesheetEntryMapper.selectByUserAndDate(userName, today)
+            val nowExisting = dbCall(
+                "selectByUserAndDate (insert-catch)",
+                userName,
+                today
+            ) { timesheetEntryMapper.selectByUserAndDate(userName, today) }
                 ?: throw ex
             if (nowExisting.startTime == null) {
                 val updated = applyCalc(nowExisting.copy(startTime = now))
-                val updatedCount = timesheetEntryMapper.updateTimes(updated)
+                val updatedCount = dbCall(
+                    "updateTimes (insert-catch)",
+                    userName,
+                    today,
+                    nowExisting.id
+                ) { timesheetEntryMapper.updateTimes(updated) }
                 if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
                 return updated
             }
@@ -72,8 +84,9 @@ class TimesheetService(
     @Transactional
     fun clockOut(userName: String, now: LocalTime = LocalTime.now()): TimesheetEntry {
         val today = LocalDate.now()
-        val existing = timesheetEntryMapper.selectByUserAndDate(userName, today)
-            ?: throw TimesheetNotFoundException("本日のタイムシートがありません")
+        val existing =
+            dbCall("selectByUserAndDate", userName, today) { timesheetEntryMapper.selectByUserAndDate(userName, today) }
+                ?: throw TimesheetNotFoundException("本日のタイムシートがありません")
         if (existing.endTime != null) {
             return applyCalc(existing) // すでに終了
         }
@@ -81,20 +94,31 @@ class TimesheetService(
             throw TimesheetConflictException("clock-in が未実施です")
         }
         val updated = applyCalc(existing.copy(endTime = now))
-        val updatedCount = timesheetEntryMapper.updateTimes(updated)
+        val updatedCount =
+            dbCall("updateTimes", userName, today, existing.id) { timesheetEntryMapper.updateTimes(updated) }
         if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
         eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, today))
         return updated
     }
 
     fun getToday(userName: String): TimesheetEntry? {
-        val entry = timesheetEntryMapper.selectByUserAndDate(userName, LocalDate.now())
+        val entry = dbCall(
+            "selectByUserAndDate",
+            userName,
+            LocalDate.now()
+        ) { timesheetEntryMapper.selectByUserAndDate(userName, LocalDate.now()) }
         return entry?.let { applyCalc(it) }
     }
 
     fun list(userName: String, from: LocalDate, to: LocalDate): List<TimesheetEntry> {
         require(!from.isAfter(to)) { "from は to より後ろにできません" }
-        val entries = timesheetEntryMapper.selectByUserAndRange(userName, from, to)
+        val entries = dbCall("selectByUserAndRange", userName, from, to) {
+            timesheetEntryMapper.selectByUserAndRange(
+                userName,
+                from,
+                to
+            )
+        }
         val calculatedEntries = ArrayList<TimesheetEntry>(entries.size)
         var invalidCount = 0
         for (e in entries) {
@@ -119,9 +143,10 @@ class TimesheetService(
     @Transactional
     fun updateNote(userName: String, note: String): TimesheetEntry {
         val today = LocalDate.now()
-        val existing = timesheetEntryMapper.selectByUserAndDate(userName, today)
-            ?: throw TimesheetNotFoundException("本日のタイムシートがありません")
-        timesheetEntryMapper.updateNote(existing.id!!, note)
+        val existing =
+            dbCall("selectByUserAndDate", userName, today) { timesheetEntryMapper.selectByUserAndDate(userName, today) }
+                ?: throw TimesheetNotFoundException("本日のタイムシートがありません")
+        dbCall("updateNote", existing.id, userName, today) { timesheetEntryMapper.updateNote(existing.id!!, note) }
         eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, today))
         return applyCalc(existing.copy(note = note))
     }
@@ -135,7 +160,12 @@ class TimesheetService(
         breakMinutes: Int? = null,
         force: Boolean = false
     ): TimesheetEntry {
-        val existing = timesheetEntryMapper.selectByUserAndDate(userName, workDate)
+        val existing = dbCall("selectByUserAndDate", userName, workDate) {
+            timesheetEntryMapper.selectByUserAndDate(
+                userName,
+                workDate
+            )
+        }
         return if (existing != null) {
             val merged = existing.copy(
                 startTime = startTime ?: existing.startTime,
@@ -143,10 +173,11 @@ class TimesheetService(
                 breakMinutes = breakMinutes ?: existing.breakMinutes
             )
             val recalced = applyCalc(merged)
-            val updatedCount =
+            val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
                 if (force) timesheetEntryMapper.updateTimesForce(recalced) else timesheetEntryMapper.updateTimes(
                     recalced
                 )
+            }
             if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
             eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
             recalced
@@ -160,10 +191,14 @@ class TimesheetService(
             )
             val created = applyCalc(createdBase)
             try {
-                timesheetEntryMapper.insert(created)
+                dbCall("insert", userName, workDate) { timesheetEntryMapper.insert(created) }
             } catch (ex: Exception) {
                 // 競合で既にレコードが挿入されていた場合は、再取得して update を試みる
-                val nowExisting = timesheetEntryMapper.selectByUserAndDate(userName, workDate)
+                val nowExisting = dbCall(
+                    "selectByUserAndDate (insert-catch)",
+                    userName,
+                    workDate
+                ) { timesheetEntryMapper.selectByUserAndDate(userName, workDate) }
                     ?: throw ex
                 val merged = nowExisting.copy(
                     startTime = startTime ?: nowExisting.startTime,
@@ -172,9 +207,11 @@ class TimesheetService(
                 )
                 val recalced = applyCalc(merged)
                 val updatedCount =
-                    if (force) timesheetEntryMapper.updateTimesForce(recalced) else timesheetEntryMapper.updateTimes(
-                        recalced
-                    )
+                    dbCall("updateTimes/updateTimesForce (insert-catch)", recalced.id, userName, workDate) {
+                        if (force) timesheetEntryMapper.updateTimesForce(recalced) else timesheetEntryMapper.updateTimes(
+                            recalced
+                        )
+                    }
                 if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
                 eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
                 return recalced
