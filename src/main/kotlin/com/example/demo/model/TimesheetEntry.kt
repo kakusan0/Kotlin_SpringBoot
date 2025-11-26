@@ -23,4 +23,7 @@ data class TimesheetEntry(
     // MyBatis の constructor mapping で java.lang.Integer を期待する場合があるため
     // ボックス型 (Int?) にしておく。デフォルトは既存と同じ 0 を保持。
     val version: Int? = 0                     // 楽観ロック用バージョン
+    ,
+    // DBマイグレーションで追加されたフラグ列を反映
+    val holidayWork: Boolean? = false
 )
