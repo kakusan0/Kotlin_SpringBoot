@@ -3,18 +3,20 @@
 <mapper namespace="com.example.demo.mapper.TimesheetEntryMapper">
 
     <resultMap id="TimesheetEntryResult" type="com.example.demo.model.TimesheetEntry">
+        <!-- Kotlin data class constructor order: id, workDate, userName, startTime, endTime, note, createdAt, updatedAt, breakMinutes, durationMinutes, workingMinutes, version, holidayWork -->
         <id property="id" column="id"/>
         <result property="workDate" column="work_date"/>
         <result property="userName" column="user_name"/>
         <result property="startTime" column="start_time"/>
         <result property="endTime" column="end_time"/>
-        <result property="breakMinutes" column="break_minutes" javaType="java.lang.Integer"/>
-        <result property="durationMinutes" column="duration_minutes" javaType="java.lang.Integer"/>
-        <result property="workingMinutes" column="working_minutes" javaType="java.lang.Integer"/>
         <result property="note" column="note"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
-        <result property="version" column="version"/>
+        <result property="breakMinutes" column="break_minutes" javaType="java.lang.Integer"/>
+        <result property="durationMinutes" column="duration_minutes" javaType="java.lang.Integer"/>
+        <result property="workingMinutes" column="working_minutes" javaType="java.lang.Integer"/>
+        <result property="version" column="version" javaType="java.lang.Integer"/>
+        <result property="holidayWork" column="holiday_work" javaType="java.lang.Boolean"/>
     </resultMap>
 
     <select id="selectByUserAndDate" resultMap="TimesheetEntryResult">
@@ -41,11 +43,11 @@
 
     <insert id="insert" parameterType="com.example.demo.model.TimesheetEntry" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO
-            timesheet_entries( work_date, user_name, start_time, end_time, break_minutes, duration_minutes
-                             , working_minutes, note, version)
+            timesheet_entries( work_date, user_name, start_time, end_time, note, break_minutes, duration_minutes
+                             , working_minutes, version, holiday_work)
         VALUES
-            ( #{workDate}, #{userName}, #{startTime}, #{endTime}, #{breakMinutes}, #{durationMinutes}, #{workingMinutes}
-            , #{note}, #{version})
+            ( #{workDate}, #{userName}, #{startTime}, #{endTime}, #{note}, #{breakMinutes}, #{durationMinutes}
+            , #{workingMinutes}, #{version}, #{holidayWork})
     </insert>
 
     <update id="updateTimes" parameterType="com.example.demo.model.TimesheetEntry">
@@ -53,11 +55,13 @@
         SET
             start_time         = #{startTime}
             , end_time         = #{endTime}
+            , note             = #{note}
+            , updated_at       = NOW()
             , break_minutes    = #{breakMinutes}
             , duration_minutes = #{durationMinutes}
             , working_minutes  = #{workingMinutes}
-            , updated_at       = NOW()
             , version          = version + 1
+            , holiday_work     = #{holidayWork}
         WHERE
             id = #{id}
             AND version = #{version}
@@ -68,11 +72,13 @@
         SET
             start_time         = #{startTime}
             , end_time         = #{endTime}
+            , note             = #{note}
+            , updated_at       = NOW()
             , break_minutes    = #{breakMinutes}
             , duration_minutes = #{durationMinutes}
             , working_minutes  = #{workingMinutes}
-            , updated_at       = NOW()
             , version          = version + 1
+            , holiday_work     = #{holidayWork}
         WHERE
             id = #{id}
     </update>

@@ -26,4 +26,36 @@ data class TimesheetEntry(
     ,
     // DBマイグレーションで追加されたフラグ列を反映
     val holidayWork: Boolean? = false
-)
+) {
+    // 互換性のため、旧スキーマ(holiday_work カラムが無い)向けのコンストラクタを追加
+    // MyBatis は resultMap のカラム数に合わせてコンストラクタを探すため、
+    // 12 引数 (holidayWork を含まない) シグネチャが必要になる場合がある。
+    constructor(
+        id: Long?,
+        workDate: LocalDate,
+        userName: String,
+        startTime: LocalTime?,
+        endTime: LocalTime?,
+        note: String?,
+        createdAt: OffsetDateTime?,
+        updatedAt: OffsetDateTime?,
+        breakMinutes: Int?,
+        durationMinutes: Int?,
+        workingMinutes: Int?,
+        version: Int?
+    ) : this(
+        id,
+        workDate,
+        userName,
+        startTime,
+        endTime,
+        note,
+        createdAt,
+        updatedAt,
+        breakMinutes,
+        durationMinutes,
+        workingMinutes,
+        version,
+        false
+    )
+}
