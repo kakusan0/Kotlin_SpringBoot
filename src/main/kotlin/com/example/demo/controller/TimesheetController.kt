@@ -70,7 +70,15 @@ class TimesheetController(
         val minutes = body["minutes"] ?: 0
         val today = LocalDate.now()
         val existing = timesheetService.getToday(auth.name)
-        val updated = timesheetService.saveOrUpdate(auth.name, today, existing?.startTime, existing?.endTime, minutes)
+        val updated = timesheetService.saveOrUpdate(
+            auth.name,
+            today,
+            existing?.startTime,
+            existing?.endTime,
+            minutes,
+            false,
+            existing?.holidayWork ?: false
+        )
         broadcast("break", updated, auth.name)
         return updated
     }
@@ -121,6 +129,7 @@ class TimesheetController(
             val startTimeStr = entry["startTime"]
             val endTimeStr = entry["endTime"]
             val breakStr = entry["breakMinutes"]
+            val holidayStr = entry["holidayWork"]
             try {
                 val workDate = LocalDate.parse(workDateStr)
                 val startTime =
@@ -128,8 +137,17 @@ class TimesheetController(
                 val endTime =
                     endTimeStr?.let { if (it.isNotBlank()) LocalTime.parse(it).withSecond(0).withNano(0) else null }
                 val breakMinutes = breakStr?.let { if (it.isNotBlank()) it.toIntOrNull() else null }
+                val holidayWork = holidayStr?.let { it.equals("true", ignoreCase = true) } ?: false
 
-                val savedEntry = timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes)
+                val savedEntry = timesheetService.saveOrUpdate(
+                    auth.name,
+                    workDate,
+                    startTime,
+                    endTime,
+                    breakMinutes,
+                    false,
+                    holidayWork
+                )
                 // 個別保存なら user 宛に通知
                 broadcast("timesheet-updated", savedEntry, auth.name)
                 saved++
@@ -172,7 +190,9 @@ class TimesheetController(
                 body["endTime"]?.takeIf { it.isNotBlank() }?.let { LocalTime.parse(it).withSecond(0).withNano(0) }
             val breakMinutes = body["breakMinutes"]?.takeIf { it.isNotBlank() }?.toIntOrNull()
             val force = body["force"]?.toBoolean() ?: false
-            val saved = timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes, force)
+            val holidayWork = body["holidayWork"]?.toBoolean() ?: false
+            val saved =
+                timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes, force, holidayWork)
             // ブロードキャストして（同一ユーザの）他クライアントへ反映
             broadcast("timesheet-updated", saved, auth.name)
             return mapOf("success" to true, "entry" to saved)

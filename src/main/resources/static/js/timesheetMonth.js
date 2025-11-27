@@ -192,6 +192,9 @@
         const e = ensureSeconds(defaultEnd.value);
         const b = defaultBreak.value.trim();
         document.querySelectorAll('#tableBody tr').forEach(row => {
+            // skip rows marked as holidayWork (switch ON)
+            const hs = row.querySelector('.holiday-switch');
+            if (hs && hs.checked) return;
             const sc = row.querySelector('.time-cell[data-type="start"]');
             const ec = row.querySelector('.time-cell[data-type="end"]');
             const bc = row.querySelector('.break-cell');
@@ -212,11 +215,14 @@
     document.getElementById('workTable').addEventListener('click', e => {
         const cell = e.target.closest('td.time-cell');
         if (!cell) return;
+        // if row is marked holidayWork, disallow opening picker
+        const row = cell.parentElement;
+        const hs = row.querySelector('.holiday-switch');
+        if (hs && hs.checked) return; // do nothing for holiday-work rows
         document.querySelectorAll('td.time-cell.active').forEach(c => c.classList.remove('active'));
         cell.classList.add('active');
         currentCell = cell;
         const type = cell.dataset.type;
-        const row = cell.parentElement;
         const dateCell = row.querySelector('.date-cell');
         const iso = dateCell ? dateCell.dataset.iso : '';
         selectedDateLabel.textContent = '日付: ' + iso;
@@ -419,14 +425,22 @@
         const start = row.querySelector('.time-cell[data-type="start"]').textContent.trim();
         const end = row.querySelector('.time-cell[data-type="end"]').textContent.trim();
         const breakVal = row.querySelector('.break-cell').textContent.trim();
+        const hs = row.querySelector('.holiday-switch');
+        const holidayWork = hs ? !!hs.checked : false;
         // 小さな保護: 両方空なら保存しない
-        if (!start && !end && !breakVal) return;
+        if (!start && !end && !breakVal && !holidayWork) return;
         // 既存のタイマーがあればクリア
         if (saveTimers.has(iso)) clearTimeout(saveTimers.get(iso));
         // CSRF ヘッダ
         const csrf = getCsrf();
         // 準備するペイロード
-        const payload = {workDate: iso, startTime: start || null, endTime: end || null, breakMinutes: breakVal || null};
+        const payload = {
+            workDate: iso,
+            startTime: start || null,
+            endTime: end || null,
+            breakMinutes: breakVal || null,
+            holidayWork: holidayWork
+        };
         // 即時保存（短い遅延でバッチ化）
         const t = setTimeout(async () => {
             try {
@@ -468,6 +482,42 @@
         const t = setTimeout(() => autoSaveRow(row), 600);
         saveTimers.set(iso, t);
     });
+    // holiday switch change: toggle editability and save
+    document.getElementById('workTable').addEventListener('change', e => {
+        const hs = e.target.closest('.holiday-switch');
+        if (!hs) return;
+        const row = hs.closest('tr');
+        const checked = !!hs.checked;
+        setRowEditable(row, !checked);
+        // save immediately
+        autoSaveRow(row);
+    });
+
+    // helper to enable/disable editable cells in a row
+    function setRowEditable(row, editable) {
+        // time cells: allow click only if editable (we'll use a CSS class to indicate disabled state)
+        const timeCells = row.querySelectorAll('.time-cell');
+        timeCells.forEach(tc => {
+            if (editable) {
+                tc.classList.remove('disabled');
+                tc.style.pointerEvents = '';
+                tc.style.opacity = '';
+            } else {
+                tc.classList.add('disabled');
+                tc.style.pointerEvents = 'none';
+                tc.style.opacity = '0.6';
+                tc.textContent = ''; // clear displayed times per requirement
+            }
+        });
+        const breakCell = row.querySelector('.break-cell');
+        if (breakCell) {
+            breakCell.contentEditable = editable ? 'true' : 'false';
+            if (!editable) breakCell.textContent = '';
+            breakCell.style.opacity = editable ? '' : '0.6';
+        }
+        // recalc metrics
+        updateRowMetrics(row);
+    }
 
     // SSE 受信: 他クライアントの更新を反映
     (function setupSse() {
@@ -490,6 +540,12 @@
                         tr.querySelector('.break-cell').textContent = data.breakMinutes != null ? data.breakMinutes : '';
                         tr.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
                         tr.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
+                        // reflect holidayWork in switch and editability
+                        const hs2 = tr.querySelector('.holiday-switch');
+                        if (hs2) {
+                            hs2.checked = !!data.holidayWork;
+                            setRowEditable(tr, !hs2.checked);
+                        }
                     } finally {
                         // remove suppression after microtask to allow any downstream DOM changes to settle
                         setTimeout(() => {
@@ -613,6 +669,7 @@
             if (iso === new Date().toISOString().substring(0, 10)) tr.classList.add('table-primary');
             tr.innerHTML = `<td class="date-cell" data-iso="${iso}"><span>${dayLabel(date)}</span><span class="holiday" style="display:none;"></span></td>` +
                 `<td class="weekday-cell">${shortDay(date)}</td>` +
+                `<td class="holiday-cell"><div class="form-check form-switch"><input aria-label="休日出勤" class="form-check-input holiday-switch" role="switch" type="checkbox"></div></td>` +
                 `<td class="time-cell" data-type="start"></td>` +
                 `<td class="time-cell" data-type="end"></td>` +
                 `<td class="break-cell" contenteditable="true"></td>` +
@@ -670,6 +727,12 @@
                         row.querySelector('.break-cell').textContent = '';
                         row.querySelector('.duration-cell').textContent = '';
                         row.querySelector('.working-cell').textContent = '';
+                        // reset holiday switch
+                        const hs = row.querySelector('.holiday-switch');
+                        if (hs) {
+                            hs.checked = false;
+                            setRowEditable(row, true);
+                        }
                         // set weekday from date
                         const date = new Date(iso + 'T00:00:00');
                         const wd = shortDay(date);
@@ -684,6 +747,12 @@
                     row.querySelector('.break-cell').textContent = data.breakMinutes != null ? data.breakMinutes : '';
                     row.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
                     row.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
+                    // reflect holidayWork
+                    const hs = row.querySelector('.holiday-switch');
+                    if (hs) {
+                        hs.checked = !!data.holidayWork;
+                        setRowEditable(row, !hs.checked);
+                    }
                     // ensure weekday shown
                     const date = new Date(iso + 'T00:00:00');
                     const wd = shortDay(date);

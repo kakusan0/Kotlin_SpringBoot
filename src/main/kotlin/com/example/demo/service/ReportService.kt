@@ -155,27 +155,56 @@ class ReportService(
                 if (holidayName != null) holCell.setCellValue(holidayName) else holCell.setCellValue("")
                 holCell.cellStyle = defaultTextStyle
 
+                // 休日出勤フラグがオンの場合は時間関連セルを空文字にする
+                val isHolidayWork = e?.holidayWork == true
+
                 val sc = row.createCell(scIdx)
-                sc.setCellValue(e?.startTime?.toString() ?: "")
+                if (isHolidayWork) {
+                    sc.setCellValue("")
+                } else {
+                    sc.setCellValue(e?.startTime?.toString() ?: "")
+                }
                 sc.cellStyle = timeTextStyle
+
                 val ec = row.createCell(ecIdx)
-                ec.setCellValue(e?.endTime?.toString() ?: "")
+                if (isHolidayWork) {
+                    ec.setCellValue("")
+                } else {
+                    ec.setCellValue(e?.endTime?.toString() ?: "")
+                }
                 ec.cellStyle = timeTextStyle
 
                 val breakCell = row.createCell(breakIdx)
-                if (e?.breakMinutes != null) {
-                    breakCell.setCellValue(e.breakMinutes.toDouble()); breakCell.cellStyle = intStyle
-                } else breakCell.setCellValue("")
+                if (isHolidayWork) {
+                    breakCell.setCellValue("")
+                    breakCell.cellStyle = intStyle
+                } else if (e?.breakMinutes != null) {
+                    breakCell.setCellValue(e.breakMinutes.toDouble())
+                    breakCell.cellStyle = intStyle
+                } else {
+                    breakCell.setCellValue("")
+                    breakCell.cellStyle = intStyle
+                }
 
                 val durCell = row.createCell(durIdx)
-                if (e?.durationMinutes != null) {
-                    durCell.setCellValue(formatMinutesToHM(e.durationMinutes)); durCell.cellStyle = timeTextStyle
-                } else durCell.setCellValue("")
+                if (isHolidayWork) {
+                    durCell.setCellValue("")
+                } else if (e?.durationMinutes != null) {
+                    durCell.setCellValue(formatMinutesToHM(e.durationMinutes))
+                } else {
+                    durCell.setCellValue("")
+                }
+                durCell.cellStyle = timeTextStyle
 
                 val workCell = row.createCell(workIdx)
-                if (e?.workingMinutes != null) {
-                    workCell.setCellValue(formatMinutesToHM(e.workingMinutes)); workCell.cellStyle = timeTextStyle
-                } else workCell.setCellValue("")
+                if (isHolidayWork) {
+                    workCell.setCellValue("")
+                } else if (e?.workingMinutes != null) {
+                    workCell.setCellValue(formatMinutesToHM(e.workingMinutes))
+                } else {
+                    workCell.setCellValue("")
+                }
+                workCell.cellStyle = timeTextStyle
 
                 // fill weekend/holiday colors
                 val isHoliday = holidayMap.containsKey(d)

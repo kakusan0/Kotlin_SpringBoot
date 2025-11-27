@@ -158,7 +158,8 @@ class TimesheetService(
         startTime: LocalTime?,
         endTime: LocalTime?,
         breakMinutes: Int? = null,
-        force: Boolean = false
+        force: Boolean = false,
+        holidayWork: Boolean = false
     ): TimesheetEntry {
         val existing = dbCall("selectByUserAndDate", userName, workDate) {
             timesheetEntryMapper.selectByUserAndDate(
@@ -170,7 +171,8 @@ class TimesheetService(
             val merged = existing.copy(
                 startTime = startTime ?: existing.startTime,
                 endTime = endTime ?: existing.endTime,
-                breakMinutes = breakMinutes ?: existing.breakMinutes
+                breakMinutes = breakMinutes ?: existing.breakMinutes,
+                holidayWork = holidayWork
             )
             val recalced = applyCalc(merged)
             val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
@@ -187,7 +189,8 @@ class TimesheetService(
                 userName = userName,
                 startTime = startTime,
                 endTime = endTime,
-                breakMinutes = breakMinutes
+                breakMinutes = breakMinutes,
+                holidayWork = holidayWork
             )
             val created = applyCalc(createdBase)
             try {
@@ -203,7 +206,8 @@ class TimesheetService(
                 val merged = nowExisting.copy(
                     startTime = startTime ?: nowExisting.startTime,
                     endTime = endTime ?: nowExisting.endTime,
-                    breakMinutes = breakMinutes ?: nowExisting.breakMinutes
+                    breakMinutes = breakMinutes ?: nowExisting.breakMinutes,
+                    holidayWork = holidayWork
                 )
                 val recalced = applyCalc(merged)
                 val updatedCount =
