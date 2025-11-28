@@ -55,6 +55,8 @@
     // タッチ端末向け: ネイティブ time input を表示して結果をセルへ反映
     function showNativeTimePicker(cell, type) {
         const row = cell.parentElement;
+        // mark local editing while native picker is open
+        if (row) row.dataset.localEditing = '1';
         const rect = cell.getBoundingClientRect();
         // 初期値から秒を取り除く（HH:mm）
         let init = cell.textContent.trim();
@@ -92,6 +94,8 @@
                 updateRowMetrics(row);
                 autoSaveRow(row);
             }
+            // clear local editing mark
+            if (row && row.dataset.localEditing) delete row.dataset.localEditing;
             input.remove();
         }
 
@@ -124,21 +128,23 @@
         }
     }
 
-    (async function init() {
+    function init() {
         const year = new Date().getFullYear();
-        const holidayMap = await fetchHolidays(year);
-
-        document.querySelectorAll('td.date-cell').forEach(cell => {
-            const iso = cell.dataset.iso;
-            if (holidayMap[iso]) {
-                const hspan = cell.querySelector('.holiday');
-                if (hspan) {
-                    hspan.textContent = `祝: ${holidayMap[iso]}`;
-                    hspan.style.display = '';
+        return fetchHolidays(year).then(holidayMap => {
+            document.querySelectorAll('td.date-cell').forEach(cell => {
+                const iso = cell.dataset.iso;
+                if (holidayMap[iso]) {
+                    const hspan = cell.querySelector('.holiday');
+                    if (hspan) {
+                        hspan.textContent = `祝: ${holidayMap[iso]}`;
+                        hspan.style.display = '';
+                    }
                 }
-            }
-        });
-    })();
+            });
+        }).catch(err => console.warn('init holiday fetch failed', err));
+    }
+
+    init();
 
     // 稼働(開始-終了)と実働(休憩差引)を同時に計算して返す。
     // 返却: { durationMinutes: number|null, workingMinutes: number|null }
@@ -191,6 +197,7 @@
         const s = ensureSeconds(defaultStart.value);
         const e = ensureSeconds(defaultEnd.value);
         const b = defaultBreak.value.trim();
+        console.debug('[TS] applyDefaults clicked', {s, e, b});
         document.querySelectorAll('#tableBody tr').forEach(row => {
             // skip rows marked as holidayWork (switch ON)
             const hs = row.querySelector('.holiday-switch');
@@ -198,9 +205,19 @@
             const sc = row.querySelector('.time-cell[data-type="start"]');
             const ec = row.querySelector('.time-cell[data-type="end"]');
             const bc = row.querySelector('.break-cell');
-            if (sc.textContent.trim() === '' && /^\d\d:\d\d(:00)?$/.test(s)) sc.textContent = s;
-            if (ec.textContent.trim() === '' && /^\d\d:\d\d(:00)?$/.test(e)) ec.textContent = e;
-            if (bc.textContent.trim() === '' && b !== '') bc.textContent = b;
+            const iso = row.querySelector('.date-cell')?.dataset?.iso;
+            if (sc.textContent.trim() === '' && /^\d\d:\d\d(:00)?$/.test(s)) {
+                console.debug('[TS] applyDefaults set start', iso, s);
+                sc.textContent = s;
+            }
+            if (ec.textContent.trim() === '' && /^\d\d:\d\d(:00)?$/.test(e)) {
+                console.debug('[TS] applyDefaults set end', iso, e);
+                ec.textContent = e;
+            }
+            if (bc.textContent.trim() === '' && b !== '') {
+                console.debug('[TS] applyDefaults set break', iso, b);
+                bc.textContent = b;
+            }
             updateRowMetrics(row);
         });
     });
@@ -215,13 +232,15 @@
     document.getElementById('workTable').addEventListener('click', e => {
         const cell = e.target.closest('td.time-cell');
         if (!cell) return;
-        // if row is marked holidayWork, disallow opening picker
+        // if a holiday-switch exists and is NOT checked (i.e. not allowed), disallow opening picker
         const row = cell.parentElement;
         const hs = row.querySelector('.holiday-switch');
-        if (hs && hs.checked) return; // do nothing for holiday-work rows
+        if (hs && !hs.checked) return; // do nothing when switch exists but is unchecked (disabled)
         document.querySelectorAll('td.time-cell.active').forEach(c => c.classList.remove('active'));
         cell.classList.add('active');
         currentCell = cell;
+        // mark this row as locally editing to avoid SSE overwrites
+        if (row) row.dataset.localEditing = '1';
         const type = cell.dataset.type;
         const dateCell = row.querySelector('.date-cell');
         const iso = dateCell ? dateCell.dataset.iso : '';
@@ -301,15 +320,22 @@
             minute = Math.round(angle / 6) % 60;
         }
         updateDisplay();
+        // DO NOT write the value into the cell while dragging — only update the preview in the picker.
+        // Writing to the cell should only happen on drop/confirm to avoid accidental default writes
+        // when the UI is reconstructed (paging/refresh).
         if (currentCell) {
-            currentCell.textContent = display.textContent;
-            updateRowMetrics(currentCell.parentElement);
+            // update metrics preview without committing to the table cell
+            // we still update metrics visually by setting a data attribute and recalculating when dropped
+            currentCell.dataset.preview = display.textContent;
+            // update a temporary visual on the picker only; avoid touching DOM cell text here
+            // (existing updateRowMetrics relies on cell text; we'll call updateRowMetrics on drop)
         }
     }
 
     function onDrop() {
         document.removeEventListener('mousemove', onDrag);
         document.removeEventListener('mouseup', onDrop);
+        // only commit when a drag interaction occurred (user actively selected time)
         if (selectingHour) {
             selectingHour = false;
             modeLabel.textContent = '分を設定してください (0-59)';
@@ -317,12 +343,26 @@
             return;
         }
         if (currentCell) {
-            currentCell.textContent = display.textContent;
-            currentCell.classList.remove('active');
-            updateRowMetrics(currentCell.parentElement);
-            // 自動保存: ドロップ後にサーバへ保存
-            autoSaveRow(currentCell.parentElement);
+            if (dragStarted) {
+                // Commit the picked value into the cell only when the user finishes the interaction
+                // Prefer any preview value (dataset.preview) if present
+                const commitValue = currentCell.dataset.preview || display.textContent;
+                const iso = currentCell.parentElement.querySelector('.date-cell')?.dataset?.iso;
+                console.debug('[TS] picker commit', iso, commitValue);
+                currentCell.textContent = commitValue;
+                delete currentCell.dataset.preview;
+                currentCell.classList.remove('active');
+                updateRowMetrics(currentCell.parentElement);
+                // 自動保存: ドロップ後にサーバへ保存
+                autoSaveRow(currentCell.parentElement);
+            } else {
+                // user opened picker but didn't select (no drag) -> discard preview, do not commit
+                if (currentCell.dataset && currentCell.dataset.preview) delete currentCell.dataset.preview;
+                currentCell.classList.remove('active');
+            }
         }
+        // reset drag flag for next interaction
+        dragStarted = false;
         // 共通の閉じ処理を使う
         closePicker();
     }
@@ -330,6 +370,11 @@
     // 共通: ピッカーを閉じる処理
     function closePicker() {
         if (currentCell) {
+            // remove any transient preview left on the cell
+            if (currentCell.dataset && currentCell.dataset.preview) delete currentCell.dataset.preview;
+            // clear local editing mark on the row
+            const r = currentCell.parentElement;
+            if (r && r.dataset.localEditing) delete r.dataset.localEditing;
             currentCell.classList.remove('active');
             currentCell = null;
         }
@@ -488,10 +533,64 @@
         if (!hs) return;
         const row = hs.closest('tr');
         const checked = !!hs.checked;
-        setRowEditable(row, !checked);
-        // save immediately
-        autoSaveRow(row);
+        // Set editability: when holidayWork is ON, row should be editable (user may input times on holiday)
+        setRowEditable(row, checked);
+        // clear time/break/duration/working cells immediately per requirement
+        try {
+            row.querySelector('.time-cell[data-type="start"]').textContent = '';
+            row.querySelector('.time-cell[data-type="end"]').textContent = '';
+            const bc = row.querySelector('.break-cell');
+            if (bc) bc.textContent = '';
+            row.querySelector('.duration-cell').textContent = '';
+            row.querySelector('.working-cell').textContent = '';
+            updateRowMetrics(row);
+        } catch (err) {
+            console.warn('[TS] failed to clear cells on holiday switch', err);
+        }
+        // cancel any pending debounced save for this row
+        const iso = row.querySelector('.date-cell')?.dataset?.iso;
+        if (iso && saveTimers.has(iso)) {
+            clearTimeout(saveTimers.get(iso));
+            saveTimers.delete(iso);
+        }
+        // immediately persist the holidayWork flag (and clear times on server)
+        saveHolidayFlag(row, checked);
     });
+
+    // Immediately POST holidayWork change for a row. This sends start/end/break as null to ensure server stores flag and clears times.
+    async function saveHolidayFlag(row, holidayWork) {
+        if (!row) return;
+        const iso = row.querySelector('.date-cell')?.dataset?.iso;
+        if (!iso) return;
+        const csrf = getCsrf();
+        const payload = {
+            workDate: iso,
+            startTime: null,
+            endTime: null,
+            breakMinutes: null,
+            holidayWork: !!holidayWork
+        };
+        try {
+            const headers = {'Content-Type': 'application/json'};
+            if (csrf) headers[csrf.header] = csrf.token;
+            const resp = await fetch('/timesheet/api/entry', {
+                method: 'POST',
+                headers,
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            });
+            if (resp.status === 409) {
+                showConflictModal(row, payload);
+                return;
+            }
+            const json = await resp.json().catch(() => ({}));
+            if (!resp.ok || !json.success) {
+                console.warn('[TS] holiday flag save failed', json);
+            }
+        } catch (e) {
+            console.error('[TS] holiday flag save error', e);
+        }
+    }
 
     // helper to enable/disable editable cells in a row
     function setRowEditable(row, editable) {
@@ -529,9 +628,15 @@
                     const iso = data.workDate || data.workDateString || (data.workDate?.toString());
                     if (!iso) return;
                     // 該当行が存在すれば更新
-                    const row = document.querySelector(`#tableBody tr .date-cell[data-iso="${iso}"]`);
-                    if (!row) return;
-                    const tr = row.closest('tr');
+                    const dateCell = document.querySelector(`#tableBody tr .date-cell[data-iso="${iso}"]`);
+                    if (!dateCell) return;
+                    const tr = dateCell.closest('tr');
+                    if (!tr) return;
+                    // do not overwrite if user is editing this row locally
+                    if (tr.dataset.localEditing) {
+                        console.debug('[TS] SSE update skipped for locally edited row', iso);
+                        return;
+                    }
                     // mark to suppress auto-save for programmatic update
                     tr.dataset.suppressAutoSave = '1';
                     try {
@@ -667,17 +772,32 @@
             const date = new Date(yNum, mNum - 1, d);
             const tr = document.createElement('tr');
             if (iso === new Date().toISOString().substring(0, 10)) tr.classList.add('table-primary');
+            const isWeekend = isWeekendIso(iso);
+            // only render a holiday-work switch for weekends; weekday holidays will get a switch dynamically after fetching holidays
+            const switchHtml = isWeekend ? '<div class="form-check form-switch"><input aria-label="休日出勤" class="form-check-input holiday-switch" role="switch" type="checkbox"></div>' : '';
             tr.innerHTML = `<td class="date-cell" data-iso="${iso}"><span>${dayLabel(date)}</span><span class="holiday" style="display:none;"></span></td>` +
                 `<td class="weekday-cell">${shortDay(date)}</td>` +
-                `<td class="holiday-cell"><div class="form-check form-switch"><input aria-label="休日出勤" class="form-check-input holiday-switch" role="switch" type="checkbox"></div></td>` +
+                `<td class="holiday-cell">${switchHtml}</td>` +
                 `<td class="time-cell" data-type="start"></td>` +
                 `<td class="time-cell" data-type="end"></td>` +
                 `<td class="break-cell" contenteditable="true"></td>` +
                 `<td class="duration-cell"></td>` +
                 `<td class="working-cell"></td>`;
             tbody.appendChild(tr);
+
+            // For weekend rows we rendered a switch; for weekdays no switch is shown and row should be editable by default
+            const hsInit = tr.querySelector('.holiday-switch');
+            if (hsInit) {
+                // weekends: switch exists but disabled until allowed (we'll enable after holiday fetch if needed)
+                hsInit.checked = false;
+                setRowEditable(tr, false);
+            } else {
+                // weekdays (no switch): editable by default
+                setRowEditable(tr, true);
+            }
             applyRowShade(tr);
         }
+
         (async () => {
             try {
                 const holidayMap = holidayCache[yNum] || await fetchHolidays(yNum);
@@ -685,10 +805,36 @@
                     const iso = cell.dataset.iso;
                     if (holidayMap[iso]) {
                         const h = cell.querySelector('.holiday');
-                        h.textContent = `祝: ${holidayMap[iso]}`;
-                        h.style.display = '';
+                        if (h) {
+                            h.textContent = `祝: ${holidayMap[iso]}`;
+                            h.style.display = '';
+                        }
                         const tr = cell.closest('tr');
-                        if (tr) applyRowShade(tr);
+                        if (tr) {
+                            // if this is a weekday (no switch rendered), create a switch for the holiday
+                            let hs = tr.querySelector('.holiday-switch');
+                            if (!hs) {
+                                const hc = tr.querySelector('.holiday-cell');
+                                if (hc) {
+                                    const div = document.createElement('div');
+                                    div.className = 'form-check form-switch';
+                                    const input = document.createElement('input');
+                                    input.type = 'checkbox';
+                                    input.className = 'form-check-input holiday-switch';
+                                    input.setAttribute('aria-label', '休日出勤');
+                                    div.appendChild(input);
+                                    hc.appendChild(div);
+                                    hs = tr.querySelector('.holiday-switch');
+                                }
+                            }
+                            if (hs) {
+                                // enable the switch for holidays; initial unchecked -> non-editable until user turns it on
+                                hs.disabled = false;
+                                hs.checked = false;
+                                setRowEditable(tr, false);
+                            }
+                            applyRowShade(tr);
+                        }
                     }
                 });
             } catch (e) {
@@ -715,24 +861,42 @@
             const entries = await resp.json();
             const map = {};
             for (const e of entries) map[e.workDate] = e;
+            // ensure holiday info is available for the month so we can create switches for weekday holidays
+            const ymYear = Number(monthInput.value.split('-')[0]);
+            const holidayMap = holidayCache[ymYear] || await fetchHolidays(ymYear);
+
             document.querySelectorAll('#tableBody tr').forEach(row => {
                 const iso = row.querySelector('.date-cell').dataset.iso;
+                // don't overwrite rows that are being edited locally by the user
+                if (row.dataset.localEditing) {
+                    console.debug('[TS] loadTimesheetData skip locally editing row', iso);
+                    return;
+                }
                 const data = map[iso];
                 // suppress observer-triggered auto-save for this programmatic update
                 row.dataset.suppressAutoSave = '1';
                 try {
+                    const allowed = isWeekendIso(iso) || !!holidayMap[iso];
+                    let hs = row.querySelector('.holiday-switch');
                     if (!data) {
+                        // clear cells
+                        console.debug('[TS] loadTimesheetData clear row', iso);
                         row.querySelector('.time-cell[data-type="start"]').textContent = '';
                         row.querySelector('.time-cell[data-type="end"]').textContent = '';
                         row.querySelector('.break-cell').textContent = '';
                         row.querySelector('.duration-cell').textContent = '';
                         row.querySelector('.working-cell').textContent = '';
-                        // reset holiday switch
-                        const hs = row.querySelector('.holiday-switch');
+
+                        // if a switch exists (weekend or holiday), reset and disable/enable according to allowed
                         if (hs) {
                             hs.checked = false;
+                            hs.disabled = !allowed;
+                            setRowEditable(row, false);
+                        } else {
+                            // weekday without switch: editable
                             setRowEditable(row, true);
                         }
+
                         // set weekday from date
                         const date = new Date(iso + 'T00:00:00');
                         const wd = shortDay(date);
@@ -742,17 +906,40 @@
                         applyRowShade(row);
                         return;
                     }
+
+                    // populate cells from data
+                    console.debug('[TS] loadTimesheetData populate row', iso, data);
                     row.querySelector('.time-cell[data-type="start"]').textContent = data.startTime ? ensureSeconds(data.startTime) : '';
                     row.querySelector('.time-cell[data-type="end"]').textContent = data.endTime ? ensureSeconds(data.endTime) : '';
                     row.querySelector('.break-cell').textContent = data.breakMinutes != null ? data.breakMinutes : '';
                     row.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
                     row.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
-                    // reflect holidayWork
-                    const hs = row.querySelector('.holiday-switch');
-                    if (hs) {
-                        hs.checked = !!data.holidayWork;
-                        setRowEditable(row, !hs.checked);
+
+                    // reflect holidayWork. If needed create switch for weekday holidays
+                    if (!hs && holidayMap[iso]) {
+                        const hc = row.querySelector('.holiday-cell');
+                        if (hc) {
+                            const div = document.createElement('div');
+                            div.className = 'form-check form-switch';
+                            const input = document.createElement('input');
+                            input.type = 'checkbox';
+                            input.className = 'form-check-input holiday-switch';
+                            input.setAttribute('aria-label', '休日出勤');
+                            div.appendChild(input);
+                            hc.appendChild(div);
+                            hs = row.querySelector('.holiday-switch');
+                        }
                     }
+                    if (hs) {
+                        hs.disabled = !allowed;
+                        hs.checked = allowed && !!data.holidayWork;
+                        // editable only when holidayWork is ON
+                        setRowEditable(row, !!data.holidayWork);
+                    } else {
+                        // no switch -> weekday normal editable
+                        setRowEditable(row, true);
+                    }
+
                     // ensure weekday shown
                     const date = new Date(iso + 'T00:00:00');
                     const wd = shortDay(date);

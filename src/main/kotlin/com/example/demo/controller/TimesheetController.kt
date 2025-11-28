@@ -137,13 +137,20 @@ class TimesheetController(
                 val endTime =
                     endTimeStr?.let { if (it.isNotBlank()) LocalTime.parse(it).withSecond(0).withNano(0) else null }
                 val breakMinutes = breakStr?.let { if (it.isNotBlank()) it.toIntOrNull() else null }
-                val holidayWork = holidayStr?.let { it.equals("true", ignoreCase = true) } ?: false
+                val holidayWork = holidayStr?.equals("true", ignoreCase = true) ?: false
 
-                val savedEntry = timesheetService.saveOrUpdate(
+                // detect presence of keys to allow explicit null -> clear behavior
+                val startProvided = entry.containsKey("startTime")
+                val endProvided = entry.containsKey("endTime")
+                val breakProvided = entry.containsKey("breakMinutes")
+                val savedEntry = timesheetService.saveOrUpdateWithFlags(
                     auth.name,
                     workDate,
+                    startProvided,
                     startTime,
+                    endProvided,
                     endTime,
+                    breakProvided,
                     breakMinutes,
                     false,
                     holidayWork
@@ -191,8 +198,22 @@ class TimesheetController(
             val breakMinutes = body["breakMinutes"]?.takeIf { it.isNotBlank() }?.toIntOrNull()
             val force = body["force"]?.toBoolean() ?: false
             val holidayWork = body["holidayWork"]?.toBoolean() ?: false
-            val saved =
-                timesheetService.saveOrUpdate(auth.name, workDate, startTime, endTime, breakMinutes, force, holidayWork)
+            // detect presence of keys to allow explicit null -> clear behavior
+            val startProvided = body.containsKey("startTime")
+            val endProvided = body.containsKey("endTime")
+            val breakProvided = body.containsKey("breakMinutes")
+            val saved = timesheetService.saveOrUpdateWithFlags(
+                auth.name,
+                workDate,
+                startProvided,
+                startTime,
+                endProvided,
+                endTime,
+                breakProvided,
+                breakMinutes,
+                force,
+                holidayWork
+            )
             // ブロードキャストして（同一ユーザの）他クライアントへ反映
             broadcast("timesheet-updated", saved, auth.name)
             return mapOf("success" to true, "entry" to saved)

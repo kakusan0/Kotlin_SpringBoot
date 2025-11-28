@@ -7,7 +7,6 @@ import org.apache.poi.ss.usermodel.VerticalAlignment
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.core.io.ResourceLoader
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.net.URI
@@ -20,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap
 @Service
 class ReportService(
     private val timesheetService: TimesheetService,
-    private val resourceLoader: ResourceLoader,
     @param:Value("\${report.holidayPosition:MIDDLE}")
     private val holidayPositionStr: String
 ) {
@@ -157,9 +155,16 @@ class ReportService(
 
                 // 休日出勤フラグがオンの場合は時間関連セルを空文字にする
                 val isHolidayWork = e?.holidayWork == true
+                // 判定: その日が祝日かどうか、週末かどうかを分けて計算
+                val isActualHoliday = holidayMap.containsKey(d)
+                val isWeekend =
+                    (d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY)
+                val isHoliday = isActualHoliday || isWeekend
+                // Excel出力で空欄にするか: 休日(祝日 or 週末)かつ休日出勤フラグがOFF の場合は空欄にする
+                val shouldBlank = isHoliday && !isHolidayWork
 
                 val sc = row.createCell(scIdx)
-                if (isHolidayWork) {
+                if (shouldBlank) {
                     sc.setCellValue("")
                 } else {
                     sc.setCellValue(e?.startTime?.toString() ?: "")
@@ -167,7 +172,7 @@ class ReportService(
                 sc.cellStyle = timeTextStyle
 
                 val ec = row.createCell(ecIdx)
-                if (isHolidayWork) {
+                if (shouldBlank) {
                     ec.setCellValue("")
                 } else {
                     ec.setCellValue(e?.endTime?.toString() ?: "")
@@ -175,7 +180,7 @@ class ReportService(
                 ec.cellStyle = timeTextStyle
 
                 val breakCell = row.createCell(breakIdx)
-                if (isHolidayWork) {
+                if (shouldBlank) {
                     breakCell.setCellValue("")
                     breakCell.cellStyle = intStyle
                 } else if (e?.breakMinutes != null) {
@@ -187,7 +192,7 @@ class ReportService(
                 }
 
                 val durCell = row.createCell(durIdx)
-                if (isHolidayWork) {
+                if (shouldBlank) {
                     durCell.setCellValue("")
                 } else if (e?.durationMinutes != null) {
                     durCell.setCellValue(formatMinutesToHM(e.durationMinutes))
@@ -197,7 +202,7 @@ class ReportService(
                 durCell.cellStyle = timeTextStyle
 
                 val workCell = row.createCell(workIdx)
-                if (isHolidayWork) {
+                if (shouldBlank) {
                     workCell.setCellValue("")
                 } else if (e?.workingMinutes != null) {
                     workCell.setCellValue(formatMinutesToHM(e.workingMinutes))
@@ -207,9 +212,9 @@ class ReportService(
                 workCell.cellStyle = timeTextStyle
 
                 // fill weekend/holiday colors
-                val isHoliday = holidayMap.containsKey(d)
-                if (isHoliday || d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY) {
-                    val isRed = isHoliday || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
+                if (isHoliday) {
+                    // determine if we should use the 'red' color: true for actual holidays and Sundays
+                    val isRed = isActualHoliday || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
                     val fillColor =
                         if (isRed) org.apache.poi.ss.usermodel.IndexedColors.ROSE.index else org.apache.poi.ss.usermodel.IndexedColors.LIGHT_CORNFLOWER_BLUE.index
                     val fontForFill = wb.createFont().apply {
