@@ -562,6 +562,9 @@
         if (!row) return;
         const iso = row.querySelector('.date-cell')?.dataset?.iso;
         if (!iso) return;
+        // skip if same as last saved to avoid redundant POST
+        const last = row.dataset.lastSavedHoliday === '1';
+        if (last === !!holidayWork) return;
         const csrf = getCsrf();
         const payload = {
             workDate: iso,
@@ -586,7 +589,10 @@
             const json = await resp.json().catch(() => ({}));
             if (!resp.ok || !json.success) {
                 console.warn('[TS] holiday flag save failed', json);
+                return;
             }
+            // on success record lastSavedHoliday
+            row.dataset.lastSavedHoliday = holidayWork ? '1' : '0';
         } catch (e) {
             console.error('[TS] holiday flag save error', e);
         }
@@ -751,11 +757,10 @@
     function applyRowShade(tr) {
         // remove previous shading
         tr.classList.remove('table-secondary');
-        const iso = tr.querySelector('.date-cell')?.dataset?.iso;
-        if (!iso) return;
-        if (isHolidayIso(iso) || isWeekendIso(iso)) {
-            tr.classList.add('table-secondary');
-        }
+        // prefer precomputed dataset flags when available
+        const isHoliday = tr.dataset.isHoliday === '1' || isHolidayIso(tr.querySelector('.date-cell')?.dataset?.iso || '');
+        const isWeekend = tr.dataset.isWeekend === '1' || isWeekendIso(tr.querySelector('.date-cell')?.dataset?.iso || '');
+        if (isHoliday || isWeekend) tr.classList.add('table-secondary');
     }
 
     function rebuildRows(ym) {
@@ -791,9 +796,11 @@
                 // weekends: switch exists but disabled until allowed (we'll enable after holiday fetch if needed)
                 hsInit.checked = false;
                 setRowEditable(tr, false);
+                tr.dataset.lastSavedHoliday = '0';
             } else {
                 // weekdays (no switch): editable by default
                 setRowEditable(tr, true);
+                tr.dataset.lastSavedHoliday = '0';
             }
             applyRowShade(tr);
         }
@@ -832,6 +839,8 @@
                                 hs.disabled = false;
                                 hs.checked = false;
                                 setRowEditable(tr, false);
+                                tr.dataset.isHoliday = '1';
+                                tr.dataset.lastSavedHoliday = '0';
                             }
                             applyRowShade(tr);
                         }
@@ -935,9 +944,11 @@
                         hs.checked = allowed && !!data.holidayWork;
                         // editable only when holidayWork is ON
                         setRowEditable(row, !!data.holidayWork);
+                        row.dataset.lastSavedHoliday = hs.checked ? '1' : '0';
                     } else {
                         // no switch -> weekday normal editable
                         setRowEditable(row, true);
+                        row.dataset.lastSavedHoliday = '0';
                     }
 
                     // ensure weekday shown

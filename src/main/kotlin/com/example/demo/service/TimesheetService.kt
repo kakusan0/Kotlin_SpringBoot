@@ -254,11 +254,23 @@ class TimesheetService(
             )
         }
         return if (existing != null) {
+            val newStart = if (startProvided) startTime else existing.startTime
+            val newEnd = if (endProvided) endTime else existing.endTime
+            val newBreak = if (breakProvided) breakMinutes else existing.breakMinutes
+            val newHoliday = holidayWork
+
+            // If nothing changed, avoid DB write and just return evaluated existing
+            val nothingChanged =
+                (existing.startTime == newStart) && (existing.endTime == newEnd) && (existing.breakMinutes == newBreak) && (existing.holidayWork == newHoliday)
+            if (nothingChanged && !force) {
+                return applyCalc(existing)
+            }
+
             val merged = existing.copy(
-                startTime = if (startProvided) startTime else existing.startTime,
-                endTime = if (endProvided) endTime else existing.endTime,
-                breakMinutes = if (breakProvided) breakMinutes else existing.breakMinutes,
-                holidayWork = holidayWork
+                startTime = newStart,
+                endTime = newEnd,
+                breakMinutes = newBreak,
+                holidayWork = newHoliday
             )
             val recalced = applyCalc(merged)
             val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
