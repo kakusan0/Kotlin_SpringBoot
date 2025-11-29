@@ -325,23 +325,14 @@ class ReportService(
     fun generatePdfBytes(username: String, from: LocalDate, to: LocalDate): ByteArray {
         val entries = timesheetService.list(username, from, to)
         val baos = ByteArrayOutputStream()
-
         try {
             PDDocument().use { doc ->
-                // KazukiReiwa - Bold.ttf を日本語フォントとして利用
                 val fontStream = javaClass.classLoader.getResourceAsStream("fonts/KazukiReiwa - Bold.ttf")
-                val font = if (fontStream != null) {
-                    PDType0Font.load(doc, fontStream, true)
-                } else {
-                    PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN)
-                }
-
-                // ヘッダー日本語化・祝日列を一番左に
-                val headers = listOf(
-                    "祝日", "日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働"
-                )
-                val rows = mutableListOf<List<String>>()
-                rows.add(headers)
+                val font = fontStream?.let { PDType0Font.load(doc, it, true) }
+                    ?: PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN)
+                val headers = listOf("祝日", "日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働")
+                val colWidths = floatArrayOf(80f, 50f, 40f, 60f, 60f, 40f, 60f, 60f)
+                val tableWidth = colWidths.sum()
                 val holidayMap = fetchHolidayDates(from.year, to.year)
                 val jpWeek = mapOf(
                     java.time.DayOfWeek.MONDAY to "月",
@@ -352,34 +343,32 @@ class ReportService(
                     java.time.DayOfWeek.SATURDAY to "土",
                     java.time.DayOfWeek.SUNDAY to "日"
                 )
-                var d = from
                 val entryMap = entries.associateBy { it.workDate }
+                val rows = mutableListOf<List<String>>()
+                rows.add(headers)
+                var d = from
                 while (!d.isAfter(to)) {
                     val e = entryMap[d]
                     val holidayName = holidayMap[d] ?: ""
                     val isHolidayWork = e?.holidayWork == true
                     val isActualHoliday = holidayMap.containsKey(d)
                     val isWeekend =
-                        (d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY)
+                        d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
                     val isHoliday = isActualHoliday || isWeekend
                     val shouldBlank = isHoliday && !isHolidayWork
-                    val row = listOf(
-                        holidayName,
-                        "${d.dayOfMonth}日",
-                        jpWeek[d.dayOfWeek] ?: "",
-                        if (shouldBlank) "" else e?.startTime?.toString() ?: "",
-                        if (shouldBlank) "" else e?.endTime?.toString() ?: "",
-                        if (shouldBlank) "" else e?.breakMinutes?.toString() ?: "",
-                        if (shouldBlank) "" else if (e?.durationMinutes != null) formatMinutesToHM(e.durationMinutes) else "",
-                        if (shouldBlank) "" else if (e?.workingMinutes != null) formatMinutesToHM(e.workingMinutes) else ""
-                    )
-                    rows.add(row)
+                    rows.add(
+                        listOf(
+                            holidayName,
+                            "${d.dayOfMonth}日",
+                            jpWeek[d.dayOfWeek] ?: "",
+                            if (shouldBlank) "" else e?.startTime?.toString() ?: "",
+                            if (shouldBlank) "" else e?.endTime?.toString() ?: "",
+                            if (shouldBlank) "" else e?.breakMinutes?.toString() ?: "",
+                            if (shouldBlank) "" else e?.durationMinutes?.let { formatMinutesToHM(it) } ?: "",
+                            if (shouldBlank) "" else e?.workingMinutes?.let { formatMinutesToHM(it) } ?: ""
+                        ))
                     d = d.plusDays(1)
                 }
-
-                // ▼ ページ作成
-                // タイトル行
-                val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月度 勤務表"
                 val page = PDPage(PDRectangle.A4)
                 doc.addPage(page)
                 PDPageContentStream(doc, page).use { cs ->
@@ -388,21 +377,16 @@ class ReportService(
                     var y = yStart
                     val rowHeight = 20f
                     val fontSize = 10f
-                    // 列幅（祝日列を一番左に合わせて調整）
-                    val colWidths = floatArrayOf(
-                        80f, 50f, 40f, 60f, 60f, 40f, 60f, 60f
-                    )
-                    val tableWidth = colWidths.sum()
-                    // タイトル（テーブル外線幅に中央揃え）
+                    // タイトル
+                    val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月度 勤務表"
                     cs.beginText()
                     cs.setFont(font, 14f)
                     val titleWidth = font.getStringWidth(ymTitle) / 1000 * 14f
-                    val titleX = margin + (tableWidth - titleWidth) / 2
-                    cs.newLineAtOffset(titleX, y)
+                    cs.newLineAtOffset(margin + (tableWidth - titleWidth) / 2, y)
                     cs.showText(ymTitle)
                     cs.endText()
                     y -= rowHeight * 1.5f
-                    // 会社名・氏名行（テーブル外線幅内、下線付き）
+                    // 会社名・氏名
                     val company = "会社名：ユーニスイースト株式会社"
                     val name = "氏名：$username"
                     cs.beginText()
@@ -424,34 +408,30 @@ class ReportService(
                     cs.lineTo(margin + tableWidth, y - 2)
                     cs.stroke()
                     y -= rowHeight * 1.5f
-                    // ▼ 行を順番に描画
+                    // テーブル描画
                     for (rowIdx in rows.indices) {
                         val row = rows[rowIdx]
                         var x = margin
-                        // 背景色判定
-                        var fillColor: java.awt.Color? = null
-                        if (rowIdx > 0) { // ヘッダー以外
+                        // 背景色
+                        val fillColor = if (rowIdx > 0) {
                             val holiday = row[0].isNotBlank()
                             val youbi = row[2]
-                            fillColor = when {
-                                holiday || youbi == "日" -> java.awt.Color(255, 192, 203) // ROSE: #FFC0CB
-                                youbi == "土" -> java.awt.Color(180, 198, 231) // LIGHT_CORNFLOWER_BLUE: #B4C6E7
+                            when {
+                                holiday || youbi == "日" -> java.awt.Color(255, 192, 203)
+                                youbi == "土" -> java.awt.Color(180, 198, 231)
                                 else -> null
                             }
-                        }
+                        } else null
                         for (i in row.indices) {
                             val text = row[i]
-                            // 背景色
                             if (fillColor != null) {
                                 cs.setNonStrokingColor(fillColor)
                                 cs.addRect(x, y - rowHeight, colWidths[i], rowHeight)
                                 cs.fill()
-                                cs.setNonStrokingColor(java.awt.Color.BLACK) // テキスト・罫線は黒に戻す
+                                cs.setNonStrokingColor(java.awt.Color.BLACK)
                             }
-                            // 罫線
                             cs.addRect(x, y - rowHeight, colWidths[i], rowHeight)
                             cs.stroke()
-                            // テキスト（中央揃え）
                             cs.beginText()
                             cs.setFont(font, fontSize)
                             val textWidth = font.getStringWidth(text) / 1000 * fontSize
@@ -470,7 +450,6 @@ class ReportService(
             e.printStackTrace()
             throw e
         }
-
         return baos.toByteArray()
     }
 }
