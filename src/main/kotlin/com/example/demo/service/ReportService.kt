@@ -2,6 +2,13 @@ package com.example.demo.service
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.PDPageContentStream
+import org.apache.pdfbox.pdmodel.common.PDRectangle
+import org.apache.pdfbox.pdmodel.font.PDType0Font
+import org.apache.pdfbox.pdmodel.font.PDType1Font
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts
 import org.apache.poi.ss.usermodel.HorizontalAlignment
 import org.apache.poi.ss.usermodel.VerticalAlignment
 import org.apache.poi.ss.util.CellRangeAddress
@@ -57,7 +64,7 @@ class ReportService(
                 setFont(titleFont); alignment = HorizontalAlignment.CENTER; verticalAlignment = VerticalAlignment.CENTER
             }
             var rowIdx = 0
-            val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月度　勤務表"
+            val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月度　勤務表".replace('　', ' ')
             val cols = headers.size
             val titleRow = sheet.createRow(rowIdx++)
             titleRow.createCell(0).apply { setCellValue(ymTitle); cellStyle = titleStyle }
@@ -314,4 +321,156 @@ class ReportService(
         return result
     }
 
+    // PDF generator mirroring XLSX structure
+    fun generatePdfBytes(username: String, from: LocalDate, to: LocalDate): ByteArray {
+        val entries = timesheetService.list(username, from, to)
+        val baos = ByteArrayOutputStream()
+
+        try {
+            PDDocument().use { doc ->
+                // KazukiReiwa - Bold.ttf を日本語フォントとして利用
+                val fontStream = javaClass.classLoader.getResourceAsStream("fonts/KazukiReiwa - Bold.ttf")
+                val font = if (fontStream != null) {
+                    PDType0Font.load(doc, fontStream, true)
+                } else {
+                    PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN)
+                }
+
+                // ヘッダー日本語化・祝日列を一番左に
+                val headers = listOf(
+                    "祝日", "日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働"
+                )
+                val rows = mutableListOf<List<String>>()
+                rows.add(headers)
+                val holidayMap = fetchHolidayDates(from.year, to.year)
+                val jpWeek = mapOf(
+                    java.time.DayOfWeek.MONDAY to "月",
+                    java.time.DayOfWeek.TUESDAY to "火",
+                    java.time.DayOfWeek.WEDNESDAY to "水",
+                    java.time.DayOfWeek.THURSDAY to "木",
+                    java.time.DayOfWeek.FRIDAY to "金",
+                    java.time.DayOfWeek.SATURDAY to "土",
+                    java.time.DayOfWeek.SUNDAY to "日"
+                )
+                var d = from
+                val entryMap = entries.associateBy { it.workDate }
+                while (!d.isAfter(to)) {
+                    val e = entryMap[d]
+                    val holidayName = holidayMap[d] ?: ""
+                    val isHolidayWork = e?.holidayWork == true
+                    val isActualHoliday = holidayMap.containsKey(d)
+                    val isWeekend =
+                        (d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY)
+                    val isHoliday = isActualHoliday || isWeekend
+                    val shouldBlank = isHoliday && !isHolidayWork
+                    val row = listOf(
+                        holidayName,
+                        "${d.dayOfMonth}日",
+                        jpWeek[d.dayOfWeek] ?: "",
+                        if (shouldBlank) "" else e?.startTime?.toString() ?: "",
+                        if (shouldBlank) "" else e?.endTime?.toString() ?: "",
+                        if (shouldBlank) "" else e?.breakMinutes?.toString() ?: "",
+                        if (shouldBlank) "" else if (e?.durationMinutes != null) formatMinutesToHM(e.durationMinutes) else "",
+                        if (shouldBlank) "" else if (e?.workingMinutes != null) formatMinutesToHM(e.workingMinutes) else ""
+                    )
+                    rows.add(row)
+                    d = d.plusDays(1)
+                }
+
+                // ▼ ページ作成
+                // タイトル行
+                val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月度 勤務表"
+                val page = PDPage(PDRectangle.A4)
+                doc.addPage(page)
+                PDPageContentStream(doc, page).use { cs ->
+                    val margin = 40f
+                    val yStart = page.mediaBox.height - margin
+                    var y = yStart
+                    val rowHeight = 20f
+                    val fontSize = 10f
+                    // 列幅（祝日列を一番左に合わせて調整）
+                    val colWidths = floatArrayOf(
+                        80f, 50f, 40f, 60f, 60f, 40f, 60f, 60f
+                    )
+                    val tableWidth = colWidths.sum()
+                    // タイトル（テーブル外線幅に中央揃え）
+                    cs.beginText()
+                    cs.setFont(font, 14f)
+                    val titleWidth = font.getStringWidth(ymTitle) / 1000 * 14f
+                    val titleX = margin + (tableWidth - titleWidth) / 2
+                    cs.newLineAtOffset(titleX, y)
+                    cs.showText(ymTitle)
+                    cs.endText()
+                    y -= rowHeight * 1.5f
+                    // 会社名・氏名行（テーブル外線幅内、下線付き）
+                    val company = "会社名：ユーニスイースト株式会社"
+                    val name = "氏名：$username"
+                    cs.beginText()
+                    cs.setFont(font, fontSize)
+                    cs.newLineAtOffset(margin, y)
+                    cs.showText(company)
+                    cs.endText()
+                    val companyWidth = font.getStringWidth(company) / 1000 * fontSize
+                    cs.moveTo(margin, y - 2)
+                    cs.lineTo(margin + companyWidth, y - 2)
+                    cs.stroke()
+                    cs.beginText()
+                    val nameWidth = font.getStringWidth(name) / 1000 * fontSize
+                    cs.setFont(font, fontSize)
+                    cs.newLineAtOffset(margin + tableWidth - nameWidth, y)
+                    cs.showText(name)
+                    cs.endText()
+                    cs.moveTo(margin + tableWidth - nameWidth, y - 2)
+                    cs.lineTo(margin + tableWidth, y - 2)
+                    cs.stroke()
+                    y -= rowHeight * 1.5f
+                    // ▼ 行を順番に描画
+                    for (rowIdx in rows.indices) {
+                        val row = rows[rowIdx]
+                        var x = margin
+                        // 背景色判定
+                        var fillColor: java.awt.Color? = null
+                        if (rowIdx > 0) { // ヘッダー以外
+                            val holiday = row[0].isNotBlank()
+                            val youbi = row[2]
+                            fillColor = when {
+                                holiday || youbi == "日" -> java.awt.Color(255, 192, 203) // ROSE: #FFC0CB
+                                youbi == "土" -> java.awt.Color(180, 198, 231) // LIGHT_CORNFLOWER_BLUE: #B4C6E7
+                                else -> null
+                            }
+                        }
+                        for (i in row.indices) {
+                            val text = row[i]
+                            // 背景色
+                            if (fillColor != null) {
+                                cs.setNonStrokingColor(fillColor)
+                                cs.addRect(x, y - rowHeight, colWidths[i], rowHeight)
+                                cs.fill()
+                                cs.setNonStrokingColor(java.awt.Color.BLACK) // テキスト・罫線は黒に戻す
+                            }
+                            // 罫線
+                            cs.addRect(x, y - rowHeight, colWidths[i], rowHeight)
+                            cs.stroke()
+                            // テキスト（中央揃え）
+                            cs.beginText()
+                            cs.setFont(font, fontSize)
+                            val textWidth = font.getStringWidth(text) / 1000 * fontSize
+                            val cellCenter = x + (colWidths[i] / 2)
+                            cs.newLineAtOffset(cellCenter - textWidth / 2, y - 15)
+                            cs.showText(text)
+                            cs.endText()
+                            x += colWidths[i]
+                        }
+                        y -= rowHeight
+                    }
+                }
+                doc.save(baos)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
+        }
+
+        return baos.toByteArray()
+    }
 }

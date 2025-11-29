@@ -2,6 +2,7 @@ package com.example.demo
 
 import com.example.demo.constants.ApplicationConstants
 import com.example.demo.util.TimesheetGenerator
+import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.validation.annotation.Validated
@@ -36,7 +37,8 @@ class MainController {
     @GetMapping("/timesheet")
     fun timesheet(
         @RequestParam(name = "month", required = false) monthParam: String?,
-        model: Model
+        model: Model,
+        principal: Authentication
     ): String {
         val yearMonth = monthParam
             ?.takeIf { it.matches(Regex("\\d{4}-\\d{2}")) }
@@ -51,6 +53,7 @@ class MainController {
             addAttribute("monthDisplay", TimesheetGenerator.formatYearMonth(yearMonth))
             addAttribute("yearMonthValue", yearMonth.toString())
             addAttribute("dates", dates)
+            addAttribute("currentUserName", principal.name)
         }
         return "main"
     }

@@ -43,6 +43,27 @@ class TimesheetReportController(
         return ResponseEntity.ok().headers(headers).body(bytes)
     }
 
+    @GetMapping("/pdf")
+    fun pdf(
+        @RequestParam username: String,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        principal: Principal
+    ): ResponseEntity<ByteArray> {
+        if (principal.name != username) {
+            val auth = org.springframework.security.core.context.SecurityContextHolder.getContext().authentication
+            val hasAdmin = auth?.authorities?.any { it.authority == "ROLE_ADMIN" } ?: false
+            if (!hasAdmin) return ResponseEntity.status(403).build()
+        }
+        val bytes = reportService.generatePdfBytes(username, from, to)
+        val headers = HttpHeaders()
+        headers.contentType = MediaType.APPLICATION_PDF
+        val safeNamePdf =
+            URLEncoder.encode("timesheet_${username}_${from}_to_${to}.pdf", StandardCharsets.UTF_8.toString())
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeNamePdf")
+        return ResponseEntity.ok().headers(headers).body(bytes)
+    }
+
     // Submit job endpoint for large ranges (only xlsx supported now)
     @GetMapping("/submit")
     fun submit(
@@ -59,16 +80,36 @@ class TimesheetReportController(
         }
         val days = ChronoUnit.DAYS.between(from, to) + 1
         if (days <= 31) {
-            // only xlsx is supported for direct generation
-            if (format.lowercase() != "xlsx") return ResponseEntity.badRequest().body("unsupported format")
-            val bytes = reportService.generateXlsxBytes(username, from, to)
-            val headers = HttpHeaders()
-            headers.contentType =
-                MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            val safeName =
-                URLEncoder.encode("timesheet_${username}_${from}_to_${to}.xlsx", StandardCharsets.UTF_8.toString())
-            headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
-            return ResponseEntity.ok().headers(headers).body(bytes)
+            when (format.lowercase()) {
+                "xlsx" -> {
+                    val bytes = reportService.generateXlsxBytes(username, from, to)
+                    val headers = HttpHeaders()
+                    headers.contentType =
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    val safeName =
+                        URLEncoder.encode(
+                            "timesheet_${username}_${from}_to_${to}.xlsx",
+                            StandardCharsets.UTF_8.toString()
+                        )
+                    headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
+                    return ResponseEntity.ok().headers(headers).body(bytes)
+                }
+
+                "pdf" -> {
+                    val bytes = reportService.generatePdfBytes(username, from, to)
+                    val headers = HttpHeaders()
+                    headers.contentType = MediaType.APPLICATION_PDF
+                    val safeName =
+                        URLEncoder.encode(
+                            "timesheet_${username}_${from}_to_${to}.pdf",
+                            StandardCharsets.UTF_8.toString()
+                        )
+                    headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
+                    return ResponseEntity.ok().headers(headers).body(bytes)
+                }
+
+                else -> return ResponseEntity.badRequest().body("unsupported format")
+            }
         }
         val jobId = reportJobService.submitJob(username, from, to, format)
         return ResponseEntity.accepted().body(mapOf("jobId" to jobId))
@@ -105,9 +146,9 @@ class TimesheetReportController(
         if (!f.exists()) return ResponseEntity.notFound().build()
         val bytes = f.readBytes()
         val headers = HttpHeaders()
-        // force xlsx as only supported format for download
-        headers.contentType =
-            MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        val contentType =
+            if (f.name.endsWith(".pdf")) MediaType.APPLICATION_PDF else MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        headers.contentType = contentType
         val safeName = URLEncoder.encode(f.name, StandardCharsets.UTF_8.toString())
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
         return ResponseEntity.ok().headers(headers).body(bytes)

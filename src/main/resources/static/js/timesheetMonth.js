@@ -1026,7 +1026,9 @@
                 const last = new Date(y, m, 0).getDate();
                 const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
                 const username = (window.currentUserName || 'user1');
+                console.log('Username:', username);
                 const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
+                console.log('URL:', url);
                 const resp = await fetch(url, {credentials: 'same-origin'});
                 if (!resp.ok) {
                     const text = await resp.text().catch(() => '');

@@ -128,4 +128,7 @@
     </div>
 
     <script defer th:src="@{/js/timesheetMonth.js}"></script>
+    <script th:inline="javascript">
+        window.currentUserName = /*[[${currentUserName}]]*/ 'user1';
+    </script>
 </div>
