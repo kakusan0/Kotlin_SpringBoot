@@ -4,7 +4,8 @@ import com.example.demo.mapper.AccessLogMapper
 import com.example.demo.mapper.BlacklistEventMapper
 import com.example.demo.mapper.BlacklistIpMapper
 import com.example.demo.mapper.WhitelistIpMapper
-import com.example.demo.model.BlacklistEvent
+import com.example.demo.service.BlacklistEventService
+import com.example.demo.util.BlacklistEventFactory
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
@@ -19,6 +20,7 @@ class ApiIpController(
     private val blacklistIpMapper: BlacklistIpMapper,
     private val blacklistEventMapper: BlacklistEventMapper,
     private val accessLogMapper: AccessLogMapper,
+    private val blacklistEventService: BlacklistEventService
 ) {
     data class BlacklistRequest(@field:NotBlank val ipAddress: String)
     data class AutoBlacklistResult(
@@ -42,17 +44,18 @@ class ApiIpController(
         try {
             val requestId = (httpReq.getAttribute("requestId") as? String) ?: UUID.randomUUID().toString()
             val path = httpReq.requestURI + (httpReq.queryString?.let { "?$it" } ?: "")
-            blacklistEventMapper.insert(
-                BlacklistEvent(
-                    requestId = requestId,
+            // 非同期で挿入
+            blacklistEventService.recordEvent(
+                BlacklistEventFactory.create(
                     ipAddress = req.ipAddress,
+                    reason = "MANUAL",
+                    source = "API",
+                    requestId = requestId,
                     method = httpReq.method,
                     path = path,
                     status = HttpStatus.CREATED.value(),
                     userAgent = httpReq.getHeader("User-Agent"),
-                    referer = httpReq.getHeader("Referer"),
-                    reason = "MANUAL",
-                    source = "API"
+                    referer = httpReq.getHeader("Referer")
                 )
             )
         } catch (_: Exception) {
@@ -77,17 +80,18 @@ class ApiIpController(
                 whitelistIpMapper.markBlacklistedAndIncrement(ip)
                 // イベント記録（自動登録）
                 try {
-                    blacklistEventMapper.insert(
-                        BlacklistEvent(
-                            requestId = UUID.randomUUID().toString(),
+                    // 非同期で挿入
+                    blacklistEventService.recordEvent(
+                        BlacklistEventFactory.create(
                             ipAddress = ip,
+                            reason = "UA_MISSING",
+                            source = "AUTO",
+                            requestId = UUID.randomUUID().toString(),
                             method = "AUTO",
                             path = "/api/ip/auto-blacklist-ua-missing",
                             status = HttpStatus.CREATED.value(),
                             userAgent = null,
-                            referer = null,
-                            reason = "UA_MISSING",
-                            source = "AUTO"
+                            referer = null
                         )
                     )
                 } catch (_: Exception) {

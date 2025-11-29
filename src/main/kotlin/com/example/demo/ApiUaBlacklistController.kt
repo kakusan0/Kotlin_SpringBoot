@@ -1,8 +1,9 @@
 package com.example.demo
 
 import com.example.demo.mapper.*
-import com.example.demo.model.BlacklistEvent
 import com.example.demo.model.UaBlacklistRule
+import com.example.demo.service.BlacklistEventService
+import com.example.demo.util.BlacklistEventFactory
 import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -16,7 +17,8 @@ class ApiUaBlacklistController(
     private val accessLogMapper: AccessLogMapper,
     private val blacklistIpMapper: BlacklistIpMapper,
     private val whitelistIpMapper: WhitelistIpMapper,
-    private val blacklistEventMapper: BlacklistEventMapper
+    private val blacklistEventMapper: BlacklistEventMapper,
+    private val blacklistEventService: BlacklistEventService
 ) {
     data class CreateRuleRequest(
         @field:NotBlank val pattern: String,
@@ -52,17 +54,18 @@ class ApiUaBlacklistController(
 
                     // イベント記録（自動登録）
                     try {
-                        blacklistEventMapper.insert(
-                            BlacklistEvent(
-                                requestId = UUID.randomUUID().toString(),
+                        // 非同期で挿入
+                        blacklistEventService.recordEvent(
+                            BlacklistEventFactory.create(
                                 ipAddress = ip,
+                                reason = "UA_RULE_${mt}",
+                                source = "AUTO",
+                                requestId = UUID.randomUUID().toString(),
                                 method = "AUTO",
                                 path = "/api/ua-blacklist",
                                 status = HttpStatus.CREATED.value(),
                                 userAgent = null,
-                                referer = null,
-                                reason = "UA_RULE_${mt}",
-                                source = "AUTO"
+                                referer = null
                             )
                         )
                     } catch (_: Exception) {
@@ -86,4 +89,3 @@ class ApiUaBlacklistController(
         return ResponseEntity.noContent().build()
     }
 }
-

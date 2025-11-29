@@ -3,7 +3,8 @@ package com.example.demo.config
 import com.example.demo.mapper.AccessLogMapper
 import com.example.demo.mapper.BlacklistEventMapper
 import com.example.demo.model.AccessLog
-import com.example.demo.model.BlacklistEvent
+import com.example.demo.service.BlacklistEventService
+import com.example.demo.util.BlacklistEventFactory
 import com.example.demo.util.IpUtils
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -28,8 +29,9 @@ class SecurityAuditFilter(
     private val blacklistIpMapper: com.example.demo.mapper.BlacklistIpMapper,
     private val geoIpCountryService: com.example.demo.service.GeoIpCountryService,
     private val blacklistEventMapper: BlacklistEventMapper,
+    private val blacklistEventService: BlacklistEventService,
     private val uaBlacklistService: com.example.demo.service.UaBlacklistService,
-    @Value("\${app.trust-proxy:false}") private val trustProxy: Boolean
+    @param:Value("\${app.trust-proxy:false}") private val trustProxy: Boolean
 ) : OncePerRequestFilter() {
 
     companion object {
@@ -77,17 +79,18 @@ class SecurityAuditFilter(
             }
             // blacklist_events にも記録
             try {
-                blacklistEventMapper.insert(
-                    BlacklistEvent(
-                        requestId = requestId,
+                // 非同期で挿入（失敗はログに記録される）
+                blacklistEventService.recordEvent(
+                    BlacklistEventFactory.create(
                         ipAddress = remoteIp,
+                        reason = reason,
+                        source = "FILTER",
+                        requestId = requestId,
                         method = request.method,
                         path = request.requestURI + (request.queryString?.let { "?$it" } ?: ""),
                         status = statusCode,
                         userAgent = request.getHeader("User-Agent"),
-                        referer = request.getHeader("Referer"),
-                        reason = reason,
-                        source = "FILTER"
+                        referer = request.getHeader("Referer")
                     )
                 )
             } catch (e: Exception) {
