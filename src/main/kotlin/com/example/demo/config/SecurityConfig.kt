@@ -99,8 +99,8 @@ class SecurityConfig(
                         "/favicon.ico", "/favicon.svg", "/.well-known/**",
                         "/login"
                     ).permitAll()
-                    // APIエンドポイント（CSRF保護あり）
-                    .requestMatchers("/api/**").permitAll()
+                    // APIエンドポイントは認証必須に変更
+                    .requestMatchers("/api/**").authenticated()
                     // Actuatorエンドポイントは制限を検討
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").denyAll() // その他のactuatorエンドポイントは拒否
@@ -155,13 +155,12 @@ class SecurityConfig(
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration().apply {
             // 本番環境では特定のオリジンのみ許可すべき
-            allowedOrigins = ALLOWED_ORIGINS
+            allowedOrigins = System.getenv("ALLOWED_ORIGINS")?.split(",") ?: ALLOWED_ORIGINS
             allowedMethods = ALLOWED_METHODS
             allowedHeaders = listOf("*")
             allowCredentials = true
             maxAge = CORS_MAX_AGE
         }
-
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/**", configuration)
         }

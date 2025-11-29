@@ -472,8 +472,7 @@
         const breakVal = row.querySelector('.break-cell').textContent.trim();
         const hs = row.querySelector('.holiday-switch');
         const holidayWork = hs ? !!hs.checked : false;
-        // 小さな保護: 両方空なら保存しない
-        if (!start && !end && !breakVal && !holidayWork) return;
+        // クリアボタンで全て空欄にした場合も必ず保存する
         // 既存のタイマーがあればクリア
         if (saveTimers.has(iso)) clearTimeout(saveTimers.get(iso));
         // CSRF ヘッダ
@@ -486,6 +485,10 @@
             breakMinutes: breakVal || null,
             holidayWork: holidayWork
         };
+        // すべて空欄の場合はforce=trueで明示的にクリアをサーバへ伝える
+        if (!start && !end && !breakVal && !holidayWork) {
+            payload.force = true;
+        }
         // 即時保存（短い遅延でバッチ化）
         const t = setTimeout(async () => {
             try {
@@ -787,7 +790,8 @@
                 `<td class="time-cell" data-type="end"></td>` +
                 `<td class="break-cell" contenteditable="true"></td>` +
                 `<td class="duration-cell"></td>` +
-                `<td class="working-cell"></td>`;
+                `<td class="working-cell"></td>` +
+                `<td class="clear-cell"><button class='btn btn-outline-secondary btn-sm clear-row-btn' type='button'>クリア</button></td>`;
             tbody.appendChild(tr);
 
             // For weekend rows we rendered a switch; for weekdays no switch is shown and row should be editable by default
@@ -1065,5 +1069,34 @@
     } catch (e) {
         console.warn('report button handlers init failed', e);
     }
+
+    // クリアボタン（各行）
+    document.getElementById('workTable').addEventListener('click', e => {
+        const btn = e.target.closest('.clear-row-btn');
+        if (!btn) return;
+        const row = btn.closest('tr');
+        if (!row) return;
+        // クリア時は suppressAutoSave を一時的にセットし、MutationObserverによる二重保存を防ぐ
+        row.dataset.suppressAutoSave = '1';
+        row.querySelector('.time-cell[data-type="start"]').textContent = '';
+        row.querySelector('.time-cell[data-type="end"]').textContent = '';
+        row.querySelector('.break-cell').textContent = '';
+        row.querySelector('.duration-cell').textContent = '';
+        row.querySelector('.working-cell').textContent = '';
+        // 休日出勤スイッチもOFF
+        const hs = row.querySelector('.holiday-switch');
+        if (hs) {
+            hs.checked = false;
+            setRowEditable(row, false);
+        } else {
+            setRowEditable(row, true);
+        }
+        updateRowMetrics(row);
+        // suppressAutoSaveを解除してからautoSaveRowを呼ぶことで即時反映
+        setTimeout(() => {
+            delete row.dataset.suppressAutoSave;
+            autoSaveRow(row);
+        }, 0);
+    });
 
 })();
