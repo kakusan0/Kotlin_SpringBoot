@@ -4,14 +4,18 @@
 
     <insert id="insert" parameterType="com.example.demo.model.BlacklistEvent" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO
-            blacklist_events ( created_at, request_id, ip_address, method, path, status, user_agent, referer, reason
-                             , source)
+        blacklist_events ( created_at, request_id, ip_address, method, path, status, user_agent, referer, reason
+        , source)
         VALUES
-            ( #{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}, #{requestId,jdbcType=VARCHAR}
-            , #{ipAddress,jdbcType=VARCHAR}, #{method,jdbcType=VARCHAR}, #{path,jdbcType=VARCHAR}
-            , #{status,jdbcType=INTEGER}, #{userAgent,jdbcType=VARCHAR}, #{referer,jdbcType=VARCHAR}
-            , #{reason,jdbcType=VARCHAR}, #{source,jdbcType=VARCHAR})
+        (
+        <choose>
+            <when test="createdAt != null">#{createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}</when>
+            <otherwise>CURRENT_TIMESTAMP</otherwise>
+        </choose>
+        , #{requestId,jdbcType=VARCHAR}
+        , #{ipAddress,jdbcType=VARCHAR}, #{method,jdbcType=VARCHAR}, #{path,jdbcType=VARCHAR}
+        , #{status,jdbcType=INTEGER}, #{userAgent,jdbcType=VARCHAR}, #{referer,jdbcType=VARCHAR}
+        , #{reason,jdbcType=VARCHAR}, #{source,jdbcType=VARCHAR})
     </insert>
 
 </mapper>
-
