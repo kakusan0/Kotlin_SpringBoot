@@ -172,8 +172,8 @@ class SecurityConfig(
     @Bean
     fun userDetailsService(passwordEncoder: PasswordEncoder): UserDetailsService {
         val user1 = User.builder()
-            .username("user1")
-            .password(passwordEncoder.encode("user1"))
+            .username("角谷亮洋")
+            .password(passwordEncoder.encode("角谷亮洋"))
             .roles("USER")
             .build()
         return InMemoryUserDetailsManager(user1)
