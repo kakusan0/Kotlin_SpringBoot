@@ -1,7 +1,6 @@
 package com.example.demo.controller
 
 import com.example.demo.service.ReportJobService
-import com.example.demo.service.TimesheetService
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -16,7 +15,6 @@ import java.time.temporal.ChronoUnit
 @RestController
 @RequestMapping("/timesheet/report")
 class TimesheetReportController(
-    private val timesheetService: TimesheetService,
     private val reportJobService: ReportJobService,
     private val reportService: com.example.demo.service.ReportService
 ) {
@@ -152,22 +150,5 @@ class TimesheetReportController(
         val safeName = URLEncoder.encode(f.name, StandardCharsets.UTF_8.toString())
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
         return ResponseEntity.ok().headers(headers).body(bytes)
-    }
-
-    // keep helper csvBytes if used elsewhere, but it's okay to keep for now
-    fun csvBytes(username: String, from: LocalDate, to: LocalDate): ByteArray {
-        val entries = timesheetService.list(username, from, to)
-        val sb = StringBuilder()
-        sb.append("work_date,start_time,end_time,break_minutes,duration_minutes,working_minutes,note\n")
-        for (e in entries) {
-            sb.append(e.workDate).append(',')
-            sb.append(e.startTime?.toString() ?: "").append(',')
-            sb.append(e.endTime?.toString() ?: "").append(',')
-            sb.append(e.breakMinutes?.toString() ?: "").append(',')
-            sb.append(e.durationMinutes?.toString() ?: "").append(',')
-            sb.append(e.workingMinutes?.toString() ?: "").append(',')
-            sb.append('"').append((e.note ?: "").replace('"', '"')).append('"').append('\n')
-        }
-        return sb.toString().toByteArray(StandardCharsets.UTF_8)
     }
 }
