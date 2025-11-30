@@ -42,18 +42,23 @@
                      id="collapseDefaults">
                     <div class="accordion-body">
                         <div class="d-flex gap-2 align-items-center">
-                            <label class="form-label mb-0 small" for="defaultStart">出勤デフォルト：</label>
-                            <input class="form-control form-control-sm" id="defaultStart" style="width:110px;"
-                                   title="出勤時刻のデフォルト値"
-                                   type="time" value="09:00">
-                            <label class="form-label mb-0 small" for="defaultEnd">退勤デフォルト：</label>
-                            <input class="form-control form-control-sm" id="defaultEnd" style="width:110px;"
-                                   title="退勤時刻のデフォルト値"
-                                   type="time" value="18:00">
-                            <label class="form-label mb-0 small" for="defaultBreak">休憩(分)デフォルト：</label>
-                            <input class="form-control form-control-sm" id="defaultBreak" min="0" style="width:90px;"
-                                   type="number"
-                                   value="60">
+                            <div class="form-floating" style="width:110px;">
+                                <input class="form-control form-control-sm" id="defaultStart"
+                                       title="出勤時刻のデフォルト値"
+                                       type="time" value="09:00">
+                                <label for="defaultStart">出勤</label>
+                            </div>
+                            <div class="form-floating" style="width:110px;">
+                                <input class="form-control form-control-sm" id="defaultEnd"
+                                       title="退勤時刻のデフォルト値"
+                                       type="time" value="18:00">
+                                <label for="defaultEnd">退勤</label>
+                            </div>
+                            <div class="form-floating" style="width:90px;">
+                                <input class="form-control form-control-sm" id="defaultBreak" min="0" type="number"
+                                       value="60">
+                                <label for="defaultBreak">休憩(分)</label>
+                            </div>
                             <button class="btn btn-sm btn-secondary" id="applyDefaults">空セルに適用</button>
                         </div>
                     </div>

@@ -21,19 +21,19 @@
                     <div class="alert alert-danger" th:if="${error}" th:text="${error}"></div>
                     <form action="/login" id="loginForm" method="post" th:action="@{/login}">
                         <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden">
-                        <div class="mb-3">
-                            <label class="form-label" for="username">ユーザー名</label>
+                        <div class="form-floating mb-3">
                             <input autofocus class="form-control" id="username" name="username"
-                                   required th:value="${username}">
+                                   placeholder="ユーザー名" required th:value="${username}">
+                            <label for="username">ユーザー名</label>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label" for="password">パスワード</label>
-                            <div class="input-group">
-                                <input class="form-control" id="password" name="password" required type="password">
-                                <button class="btn btn-outline-secondary" id="togglePassword" type="button">
-                                    <i class="bi bi-eye" id="toggleIcon"></i>
-                                </button>
-                            </div>
+                        <div class="form-floating mb-3">
+                            <input class="form-control" id="password" name="password" placeholder="パスワード" required
+                                   type="password">
+                            <label for="password">パスワード</label>
+                            <button class="btn btn-outline-secondary position-absolute end-0 top-50 translate-middle-y"
+                                    id="togglePassword" type="button">
+                                <i class="bi bi-eye" id="toggleIcon"></i>
+                            </button>
                         </div>
                         <button class="btn btn-primary w-100" type="submit">ログイン</button>
                     </form>
