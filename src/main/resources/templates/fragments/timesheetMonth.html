@@ -23,11 +23,7 @@
         <!-- Report buttons: placed above the table, right-aligned -->
         <div class="d-flex justify-content-end align-items-center mb-2">
             <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-primary" id="downloadCsvBtn" type="button">CSV ダウンロード
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" id="downloadPdfBtn" type="button">PDF ダウンロード
-                </button>
-                <button class="btn btn-sm btn-success" id="downloadXlsxBtn" type="button">Excel ダウンロード</button>
+                <!-- Removed CSV, PDF, and Excel download buttons -->
             </div>
         </div>
         <div aria-live="polite" class="text-muted small mb-2" id="reportMessage"></div>
@@ -60,6 +56,23 @@
                                    value="60">
                             <button class="btn btn-sm btn-secondary" id="applyDefaults">空セルに適用</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 祝日アコーディオン -->
+        <div class="accordion mb-3" id="holidayAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingHolidays">
+                    <button aria-controls="collapseHolidays" aria-expanded="false" class="accordion-button collapsed"
+                            data-bs-target="#collapseHolidays" data-bs-toggle="collapse" type="button">
+                        当月の祝日
+                    </button>
+                </h2>
+                <div aria-labelledby="headingHolidays" class="accordion-collapse collapse" id="collapseHolidays">
+                    <div class="accordion-body" id="holidayInfo">
+                        <!-- JavaScriptで祝日情報を挿入 -->
                     </div>
                 </div>
             </div>
@@ -121,8 +134,12 @@
             </div>
         </div>
 
-        <p class="text-muted small mt-3">※
-            出勤・退勤のセルをクリックして時刻を設定してください。祝日は自動で表示されます。</p>
+        <!-- Add three line breaks at the bottom of the table for the mobile version -->
+        <div class="d-block d-md-none">
+            <br>
+            <br>
+            <br>
+        </div>
     </div>
 
     <!-- Time Picker -->

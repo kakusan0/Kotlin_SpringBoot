@@ -128,23 +128,37 @@
         }
     }
 
-    function init() {
-        const year = new Date().getFullYear();
-        return fetchHolidays(year).then(holidayMap => {
-            document.querySelectorAll('td.date-cell').forEach(cell => {
-                const iso = cell.dataset.iso;
-                if (holidayMap[iso]) {
-                    const hspan = cell.querySelector('.holiday');
-                    if (hspan) {
-                        hspan.textContent = `祝: ${holidayMap[iso]}`;
-                        hspan.style.display = '';
-                    }
-                }
-            });
-        }).catch(err => console.warn('init holiday fetch failed', err));
+    // Update the populateHolidayInfo function to filter holidays for the selected month
+    function populateHolidayInfo(holidayMap, selectedMonth) {
+        const holidayInfoDiv = document.getElementById('holidayInfo');
+        holidayInfoDiv.innerHTML = ''; // Clear existing content
+
+        Object.keys(holidayMap).forEach(date => {
+            const holidayName = holidayMap[date];
+            const holidayDate = new Date(date);
+            if (holidayDate.getMonth() + 1 === selectedMonth) { // Match the selected month
+                const holidayEntry = document.createElement('div');
+                holidayEntry.textContent = `${date}: 祝: ${holidayName}`;
+                holidayInfoDiv.appendChild(holidayEntry);
+            }
+        });
     }
 
-    init();
+    // Function to update the holiday accordion with the current month's holidays
+    function updateHolidayAccordion(holidayMap, selectedMonth) {
+        const holidayInfoDiv = document.getElementById('holidayInfo');
+        holidayInfoDiv.innerHTML = ''; // Clear existing content
+
+        Object.keys(holidayMap).forEach(date => {
+            const holidayName = holidayMap[date];
+            const holidayDate = new Date(date);
+            if (holidayDate.getMonth() + 1 === selectedMonth) { // Match the selected month
+                const holidayEntry = document.createElement('div');
+                holidayEntry.textContent = `${holidayDate.getDate()}日: 祝: ${holidayName}`;
+                holidayInfoDiv.appendChild(holidayEntry);
+            }
+        });
+    }
 
     // 稼働(開始-終了)と実働(休憩差引)を同時に計算して返す。
     // 返却: { durationMinutes: number|null, workingMinutes: number|null }
@@ -828,15 +842,13 @@
 
         (async () => {
             try {
-                const holidayMap = holidayCache[yNum] || await fetchHolidays(yNum);
+                const monthInput = document.getElementById('monthInput');
+                const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number); // Get selected year and month
+                const holidayMap = holidayCache[selectedYear] || await fetchHolidays(selectedYear);
+                populateHolidayInfo(holidayMap, selectedMonth); // Populate the accordion with holidays for the selected month
                 tbody.querySelectorAll('.date-cell').forEach(cell => {
                     const iso = cell.dataset.iso;
                     if (holidayMap[iso]) {
-                        const h = cell.querySelector('.holiday');
-                        if (h) {
-                            h.textContent = `祝: ${holidayMap[iso]}`;
-                            h.style.display = '';
-                        }
                         const tr = cell.closest('tr');
                         if (tr) {
                             // if this is a weekday (no switch rendered), create a switch for the holiday
@@ -1039,59 +1051,59 @@
     }
 
     // Ensure report download buttons work: CSV / PDF / XLSX
-    async function downloadReport(format, btn) {
-        const msgEl = document.getElementById('reportMessage');
-        if (btn) {
-            btn.disabled = true;
-            const orig = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 生成中';
-            try {
-                if (msgEl) msgEl.textContent = 'レポートを生成しています...';
-                const ym = (monthInput && monthInput.value) ? monthInput.value : (new Date().toISOString().substring(0, 7));
-                const [y, m] = ym.split('-').map(Number);
-                const from = `${y}-${String(m).padStart(2, '0')}-01`;
-                const last = new Date(y, m, 0).getDate();
-                const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
-                const username = (window.currentUserName || 'user1');
-                console.log('Username:', username);
-                const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
-                console.log('URL:', url);
-                const resp = await fetch(url, {credentials: 'same-origin'});
-                if (!resp.ok) {
-                    const text = await resp.text().catch(() => '');
-                    if (msgEl) msgEl.textContent = `レポート生成失敗 (${resp.status})`;
-                    throw new Error('report fetch failed ' + resp.status + ' ' + text);
-                }
-                const blob = await resp.blob();
-                // derive filename
-                const disposition = resp.headers.get('Content-Disposition') || '';
-                const fnMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
-                const filename = fnMatch ? decodeURIComponent(fnMatch[1].replace(/"/g, '')) : `timesheet_${from}_to_${to}.${format}`;
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                if (msgEl) msgEl.textContent = 'ダウンロード完了';
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = orig;
-            }
-        }
-    }
-
-    // Attach handlers if buttons exist
-    try {
-        const csvBtn = document.getElementById('downloadCsvBtn');
-        const pdfBtn = document.getElementById('downloadPdfBtn');
-        const xlsxBtn = document.getElementById('downloadXlsxBtn');
-        if (csvBtn) csvBtn.addEventListener('click', () => downloadReport('csv', csvBtn));
-        if (pdfBtn) pdfBtn.addEventListener('click', () => downloadReport('pdf', pdfBtn));
-        if (xlsxBtn) xlsxBtn.addEventListener('click', () => downloadReport('xlsx', xlsxBtn));
-    } catch (e) {
-        console.warn('report button handlers init failed', e);
-    }
+    // async function downloadReport(format, btn) {
+    //     const msgEl = document.getElementById('reportMessage');
+    //     if (btn) {
+    //         btn.disabled = true;
+    //         const orig = btn.innerHTML;
+    //         btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 生成中';
+    //         try {
+    //             if (msgEl) msgEl.textContent = 'レポートを生成しています...';
+    //             const ym = (monthInput && monthInput.value) ? monthInput.value : (new Date().toISOString().substring(0, 7));
+    //             const [y, m] = ym.split('-').map(Number);
+    //             const from = `${y}-${String(m).padStart(2, '0')}-01`;
+    //             const last = new Date(y, m, 0).getDate();
+    //             const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+    //             const username = (window.currentUserName || 'user1');
+    //             console.log('Username:', username);
+    //             const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
+    //             console.log('URL:', url);
+    //             const resp = await fetch(url, {credentials: 'same-origin'});
+    //             if (!resp.ok) {
+    //                 const text = await resp.text().catch(() => '');
+    //                 if (msgEl) msgEl.textContent = `レポート生成失敗 (${resp.status})`;
+    //                 throw new Error('report fetch failed ' + resp.status + ' ' + text);
+    //             }
+    //             const blob = await resp.blob();
+    //             // derive filename
+    //             const disposition = resp.headers.get('Content-Disposition') || '';
+    //             const fnMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
+    //             const filename = fnMatch ? decodeURIComponent(fnMatch[1].replace(/"/g, '')) : `timesheet_${from}_to_${to}.${format}`;
+    //             const a = document.createElement('a');
+    //             a.href = URL.createObjectURL(blob);
+    //             a.download = filename;
+    //             document.body.appendChild(a);
+    //             a.click();
+    //             a.remove();
+    //             if (msgEl) msgEl.textContent = 'ダウンロード完了';
+    //         } finally {
+    //             btn.disabled = false;
+    //             btn.innerHTML = orig;
+    //         }
+    //     }
+    // }
+    //
+    // // Attach handlers if buttons exist
+    // try {
+    //     const csvBtn = document.getElementById('downloadCsvBtn');
+    //     const pdfBtn = document.getElementById('downloadPdfBtn');
+    //     const xlsxBtn = document.getElementById('downloadXlsxBtn');
+    //     if (csvBtn) csvBtn.addEventListener('click', () => downloadReport('csv', csvBtn));
+    //     if (pdfBtn) pdfBtn.addEventListener('click', () => downloadReport('pdf', pdfBtn));
+    //     if (xlsxBtn) xlsxBtn.addEventListener('click', () => downloadReport('xlsx', xlsxBtn));
+    // } catch (e) {
+    //     console.warn('report button handlers init failed', e);
+    // }
 
     // クリアボタン（各行）
     document.getElementById('workTable').addEventListener('click', e => {
@@ -1146,10 +1158,7 @@
         downloadExcelOption.style.cursor = 'pointer';
         downloadExcelOption.style.padding = '5px';
         downloadExcelOption.addEventListener('click', () => {
-            const xlsxBtn = document.getElementById('downloadXlsxBtn');
-            if (xlsxBtn) {
-                downloadReport('xlsx', xlsxBtn);
-            }
+            downloadReport('xlsx'); // ボタン参照を削除し、直接ダウンロード処理を呼び出す
             document.body.removeChild(menu);
         });
 
@@ -1158,10 +1167,7 @@
         downloadPdfOption.style.cursor = 'pointer';
         downloadPdfOption.style.padding = '5px';
         downloadPdfOption.addEventListener('click', () => {
-            const pdfBtn = document.getElementById('downloadPdfBtn');
-            if (pdfBtn) {
-                downloadReport('pdf', pdfBtn);
-            }
+            downloadReport('pdf'); // ボタン参照を削除し、直接ダウンロード処理を呼び出す
             document.body.removeChild(menu);
         });
 
@@ -1194,5 +1200,61 @@
     }
 
     adjustNoteColumnWidth();
+
+    // スクロール位置を保存
+    window.addEventListener('scroll', () => {
+        localStorage.setItem('scrollPosition', window.scrollY);
+    });
+
+    // ページ読み込み時にスクロール位置を復元
+    window.addEventListener('load', () => {
+        const savedPosition = localStorage.getItem('scrollPosition');
+        if (savedPosition) {
+            window.scrollTo(0, parseInt(savedPosition, 10));
+        }
+    });
+
+    // Define the downloadReport function to handle Excel and PDF downloads
+    async function downloadReport(format) {
+        const msgEl = document.getElementById('reportMessage');
+        // if (btn) {
+        //     btn.disabled = true;
+        //     const orig = btn.innerHTML;
+        //     btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 生成中';
+        try {
+            if (msgEl) msgEl.textContent = 'レポートを生成しています...';
+            const ym = (monthInput && monthInput.value) ? monthInput.value : (new Date().toISOString().substring(0, 7));
+            const [y, m] = ym.split('-').map(Number);
+            const from = `${y}-${String(m).padStart(2, '0')}-01`;
+            const last = new Date(y, m, 0).getDate();
+            const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+            const username = (window.currentUserName || 'user1');
+            console.log('Username:', username);
+            const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
+            console.log('URL:', url);
+            const resp = await fetch(url, {credentials: 'same-origin'});
+            if (!resp.ok) {
+                const text = await resp.text().catch(() => '');
+                if (msgEl) msgEl.textContent = `レポート生成失敗 (${resp.status})`;
+                throw new Error('report fetch failed ' + resp.status + ' ' + text);
+            }
+            const blob = await resp.blob();
+            // derive filename
+            const disposition = resp.headers.get('Content-Disposition') || '';
+            const fnMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
+            const filename = fnMatch ? decodeURIComponent(fnMatch[1].replace(/"/g, '')) : `timesheet_${from}_to_${to}.${format}`;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            if (msgEl) msgEl.textContent = 'ダウンロード完了';
+        } finally {
+            // btn.disabled = false;
+            // btn.innerHTML = orig;
+        }
+        // }
+    }
 })();
 
