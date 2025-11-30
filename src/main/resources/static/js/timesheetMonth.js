@@ -813,8 +813,15 @@
                 `<td class="note-cell">
                     <select class="form-select form-select-sm note-select">
                         <option value="">---</option>
-                        <option value="午前休">午前休</option>
-                        <option value="午後休">午後休</option>
+                                <option value="年休">年休</option>
+                                <option value="AM年休">AM年休</option>
+                                <option value="PM年休">PM年休</option>
+                                <option value="休日">休日</option>
+                                <option value="祝日">祝日</option>
+                                <option value="会社休">会社休</option>
+                                <option value="祝日">祝日</option>
+                                <option value="対象外">対象外</option>
+                                <option value="休日出勤">休日出勤</option>
                     </select>
                 </td>` +
                 `<td class="time-cell" data-type="start"></td>` +
