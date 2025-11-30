@@ -155,6 +155,20 @@ class TimesheetService(
     }
 
     @Transactional
+    fun addNoteToEntry(userName: String, note: String): TimesheetEntry {
+        val today = LocalDate.now()
+        val existing = dbCall("selectByUserAndDate", userName, today) {
+            timesheetEntryMapper.selectByUserAndDate(userName, today)
+        } ?: throw TimesheetNotFoundException("No timesheet entry found for today")
+
+        dbCall("updateNote", existing.id, userName, today) {
+            timesheetEntryMapper.updateNote(existing.id!!, note)
+        }
+        eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, today))
+        return applyCalc(existing.copy(note = note))
+    }
+
+    @Transactional
     fun saveOrUpdate(
         userName: String,
         workDate: LocalDate,
@@ -317,6 +331,64 @@ class TimesheetService(
                 eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
                 return recalced
             }
+            eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
+            created
+        }
+    }
+
+    /**
+     * Variant of saveOrUpdate that accepts explicit "provided" flags for start/end/break.
+     * When a provided flag is true, the corresponding value (which may be null) will be used
+     * (allowing callers to explicitly clear a field by providing null). When the provided flag
+     * is false, the existing DB value is preserved.
+     */
+    @Transactional
+    fun saveOrUpdateWithFlags(
+        userName: String,
+        workDate: LocalDate,
+        startProvided: Boolean,
+        startTime: LocalTime?,
+        endProvided: Boolean,
+        endTime: LocalTime?,
+        breakProvided: Boolean,
+        breakMinutes: Int?,
+        force: Boolean = false,
+        holidayWork: Boolean = false,
+        noteProvided: Boolean,
+        note: String?
+    ): TimesheetEntry {
+        val existing = dbCall("selectByUserAndDate", userName, workDate) {
+            timesheetEntryMapper.selectByUserAndDate(userName, workDate)
+        }
+        return if (existing != null) {
+            val merged = existing.copy(
+                startTime = if (startProvided) startTime else existing.startTime,
+                endTime = if (endProvided) endTime else existing.endTime,
+                breakMinutes = if (breakProvided) breakMinutes else existing.breakMinutes,
+                holidayWork = holidayWork,
+                note = if (noteProvided) note else existing.note
+            )
+            val recalced = applyCalc(merged)
+            val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
+                if (force) timesheetEntryMapper.updateTimesForce(recalced) else timesheetEntryMapper.updateTimes(
+                    recalced
+                )
+            }
+            if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
+            eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
+            recalced
+        } else {
+            val createdBase = TimesheetEntry(
+                workDate = workDate,
+                userName = userName,
+                startTime = startTime,
+                endTime = endTime,
+                breakMinutes = breakMinutes,
+                holidayWork = holidayWork,
+                note = note
+            )
+            val created = applyCalc(createdBase)
+            dbCall("insert", userName, workDate) { timesheetEntryMapper.insert(created) }
             eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
             created
         }

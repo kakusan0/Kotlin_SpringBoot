@@ -29,7 +29,7 @@ class TimesheetController(
 
     @PostMapping("/clock-out")
     fun clockOut(auth: Authentication): TimesheetEntry {
-        val entry = timesheetService.clockOut(auth.name)
+        val entry = timesheetService.clockOut(auth.name, LocalTime.now())
         broadcast("clock-out", entry, auth.name)
         return entry
     }
@@ -198,6 +198,8 @@ class TimesheetController(
             val breakMinutes = body["breakMinutes"]?.takeIf { it.isNotBlank() }?.toIntOrNull()
             val force = body["force"]?.toBoolean() ?: false
             val holidayWork = body["holidayWork"]?.toBoolean() ?: false
+            val note = body["note"]?.takeIf { it.isNotBlank() }
+            val noteProvided = body.containsKey("note")
             // detect presence of keys to allow explicit null -> clear behavior
             val startProvided = body.containsKey("startTime")
             val endProvided = body.containsKey("endTime")
@@ -212,7 +214,9 @@ class TimesheetController(
                 breakProvided,
                 breakMinutes,
                 force,
-                holidayWork
+                holidayWork,
+                noteProvided,
+                note
             )
             // ブロードキャストして（同一ユーザの）他クライアントへ反映
             broadcast("timesheet-updated", saved, auth.name)
@@ -220,5 +224,13 @@ class TimesheetController(
         } catch (ex: Exception) {
             return mapOf("success" to false, "message" to (ex.message ?: "save error"))
         }
+    }
+
+    @PostMapping("/add-note")
+    fun addNote(auth: Authentication, @RequestBody body: Map<String, String>): TimesheetEntry {
+        val note = body["note"] ?: throw IllegalArgumentException("Note is required")
+        val entry = timesheetService.addNoteToEntry(auth.name, note)
+        broadcast("add-note", entry, auth.name)
+        return entry
     }
 }

@@ -472,6 +472,7 @@
         const breakVal = row.querySelector('.break-cell').textContent.trim();
         const hs = row.querySelector('.holiday-switch');
         const holidayWork = hs ? !!hs.checked : false;
+        const note = row.querySelector('.note-select')?.value || null;
         // クリアボタンで全て空欄にした場合も必ず保存する
         // 既存のタイマーがあればクリア
         if (saveTimers.has(iso)) clearTimeout(saveTimers.get(iso));
@@ -483,7 +484,8 @@
             startTime: start || null,
             endTime: end || null,
             breakMinutes: breakVal || null,
-            holidayWork: holidayWork
+            holidayWork: holidayWork,
+            note: note // 備考列の値を追加
         };
         // すべて空欄の場合はforce=trueで明示的にクリアをサーバへ伝える
         if (!start && !end && !breakVal && !holidayWork) {
@@ -558,6 +560,16 @@
         }
         // immediately persist the holidayWork flag (and clear times on server)
         saveHolidayFlag(row, checked);
+    });
+
+    // 備考プルダウンの変更で自動保存
+    document.getElementById('workTable').addEventListener('change', e => {
+        const select = e.target.closest('.note-select');
+        if (!select) return;
+        const row = select.closest('tr');
+        if (!row) return;
+        // 備考の変更時は即時保存
+        autoSaveRow(row);
     });
 
     // Immediately POST holidayWork change for a row. This sends start/end/break as null to ensure server stores flag and clears times.
@@ -723,10 +735,8 @@
     })();
 
     function dayLabel(date) {
-        const wd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        return `${mm}/${dd} (${wd})`;
+        // 「〇日」表記のみ返す
+        return `${date.getDate()}日`;
     }
 
     function shortDay(date) {
@@ -786,6 +796,13 @@
             tr.innerHTML = `<td class="date-cell" data-iso="${iso}"><span>${dayLabel(date)}</span><span class="holiday" style="display:none;"></span></td>` +
                 `<td class="weekday-cell">${shortDay(date)}</td>` +
                 `<td class="holiday-cell">${switchHtml}</td>` +
+                `<td class="note-cell">
+                    <select class="form-select form-select-sm note-select">
+                        <option value="">---</option>
+                        <option value="午前休">午前休</option>
+                        <option value="午後休">午後休</option>
+                    </select>
+                </td>` +
                 `<td class="time-cell" data-type="start"></td>` +
                 `<td class="time-cell" data-type="end"></td>` +
                 `<td class="break-cell" contenteditable="true"></td>` +
@@ -955,6 +972,12 @@
                         row.dataset.lastSavedHoliday = '0';
                     }
 
+                    // reflect note data
+                    const noteSelect = row.querySelector('.note-select');
+                    if (noteSelect) {
+                        noteSelect.value = data.note || '';
+                    }
+
                     // ensure weekday shown
                     const date = new Date(iso + 'T00:00:00');
                     const wd = shortDay(date);
@@ -1099,4 +1122,77 @@
         }, 0);
     });
 
+    // Ensure previous context menu is closed before opening a new one
+    document.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        const existingMenu = document.getElementById('contextMenu');
+        if (existingMenu) {
+            document.body.removeChild(existingMenu);
+        }
+
+        const menu = document.createElement('div');
+        menu.id = 'contextMenu';
+        menu.style.position = 'absolute';
+        menu.style.top = `${e.clientY}px`;
+        menu.style.left = `${e.clientX}px`;
+        menu.style.backgroundColor = '#fff';
+        menu.style.border = '1px solid #ccc';
+        menu.style.padding = '5px';
+        menu.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+        menu.style.zIndex = '1000';
+
+        const downloadExcelOption = document.createElement('div');
+        downloadExcelOption.textContent = 'Excelダウンロード';
+        downloadExcelOption.style.cursor = 'pointer';
+        downloadExcelOption.style.padding = '5px';
+        downloadExcelOption.addEventListener('click', () => {
+            const xlsxBtn = document.getElementById('downloadXlsxBtn');
+            if (xlsxBtn) {
+                downloadReport('xlsx', xlsxBtn);
+            }
+            document.body.removeChild(menu);
+        });
+
+        const downloadPdfOption = document.createElement('div');
+        downloadPdfOption.textContent = 'PDFダウンロード';
+        downloadPdfOption.style.cursor = 'pointer';
+        downloadPdfOption.style.padding = '5px';
+        downloadPdfOption.addEventListener('click', () => {
+            const pdfBtn = document.getElementById('downloadPdfBtn');
+            if (pdfBtn) {
+                downloadReport('pdf', pdfBtn);
+            }
+            document.body.removeChild(menu);
+        });
+
+        menu.appendChild(downloadExcelOption);
+        menu.appendChild(downloadPdfOption);
+        document.body.appendChild(menu);
+
+        document.addEventListener('click', () => {
+            if (document.body.contains(menu)) {
+                document.body.removeChild(menu);
+            }
+        }, {once: true});
+    });
+
+    function adjustNoteColumnWidth() {
+        const noteCells = document.querySelectorAll('.note-cell');
+        let maxWidth = 0;
+
+        noteCells.forEach(cell => {
+            const selectElement = cell.querySelector('.note-select');
+            const contentWidth = selectElement ? selectElement.scrollWidth : cell.scrollWidth;
+            if (contentWidth > maxWidth) {
+                maxWidth = contentWidth;
+            }
+        });
+
+        noteCells.forEach(cell => {
+            cell.style.width = `${maxWidth}px`;
+        });
+    }
+
+    adjustNoteColumnWidth();
 })();
+
