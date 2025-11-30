@@ -330,7 +330,7 @@ class ReportService(
                 val fontStream = javaClass.classLoader.getResourceAsStream("fonts/KazukiReiwa - Bold.ttf")
                 val font = fontStream?.let { PDType0Font.load(doc, it, true) }
                     ?: PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN)
-                val headers = listOf("祝日", "日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働")
+                val headers = listOf("備考", "日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働")
                 val colWidths = floatArrayOf(80f, 50f, 40f, 60f, 60f, 40f, 60f, 60f)
                 val tableWidth = colWidths.sum()
                 val holidayMap = fetchHolidayDates(from.year, to.year)
@@ -349,7 +349,7 @@ class ReportService(
                 var d = from
                 while (!d.isAfter(to)) {
                     val e = entryMap[d]
-                    val holidayName = holidayMap[d] ?: ""
+                    val holidayName = e?.note ?: ""
                     val isHolidayWork = e?.holidayWork == true
                     val isActualHoliday = holidayMap.containsKey(d)
                     val isWeekend =
