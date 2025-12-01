@@ -52,9 +52,9 @@ class ReportService(
             val baseBefore = listOf("日付", "曜日")
             val baseAfter = listOf("出勤時間", "退勤時間", "休憩", "稼働時間", "実働")
             val headers = when (holidayPosition) {
-                HolidayPosition.START -> listOf("祝日") + baseBefore + baseAfter
-                HolidayPosition.END -> baseBefore + baseAfter + listOf("祝日")
-                else -> baseBefore + listOf("祝日") + baseAfter
+                HolidayPosition.START -> listOf("備考") + baseBefore + baseAfter
+                HolidayPosition.END -> baseBefore + baseAfter + listOf("備考")
+                else -> baseBefore + listOf("備考") + baseAfter
             }
 
             val sheet = wb.createSheet(username)
@@ -140,7 +140,7 @@ class ReportService(
 
                 val dateIdx = headers.indexOf("日付")
                 val wdIdx = headers.indexOf("曜日")
-                val holIdx = headers.indexOf("祝日")
+                val remarkIdx = headers.indexOf("備考")
                 val scIdx = headers.indexOf("出勤時間")
                 val ecIdx = headers.indexOf("退勤時間")
                 val breakIdx = headers.indexOf("休憩")
@@ -155,13 +155,18 @@ class ReportService(
                 wdCell.setCellValue(jpWeek[d.dayOfWeek])
                 wdCell.cellStyle = dayOnlyStyle
 
-                val holCell = row.createCell(holIdx)
-                val holidayName = holidayMap[d]
-                if (holidayName != null) holCell.setCellValue(holidayName) else holCell.setCellValue("")
-                holCell.cellStyle = defaultTextStyle
-
-                // 休日出勤フラグがオンの場合は時間関連セルを空文字にする
+                // 休日出勤フラグがオンの場合は備考列を空欄にする
                 val isHolidayWork = e?.holidayWork == true
+                val remarkCell = row.createCell(remarkIdx)
+                if (isHolidayWork) {
+                    remarkCell.setCellValue("")
+                } else {
+                    // 休日出勤がオフの場合はnote情報を表示
+                    val noteValue = e?.note ?: ""
+                    remarkCell.setCellValue(noteValue)
+                }
+                remarkCell.cellStyle = defaultTextStyle
+
                 // 判定: その日が祝日かどうか、週末かどうかを分けて計算
                 val isActualHoliday = holidayMap.containsKey(d)
                 val isWeekend =
@@ -252,7 +257,7 @@ class ReportService(
                 val minChars = when (i) {
                     headers.indexOf("日付") -> 6
                     headers.indexOf("曜日") -> 4
-                    headers.indexOf("祝日") -> 12
+                    headers.indexOf("備考") -> 12
                     headers.indexOf("出勤時間"), headers.indexOf("退勤時間") -> 10
                     headers.indexOf("休憩") -> 6
                     headers.indexOf("稼働時間"), headers.indexOf("実働") -> 8
@@ -417,12 +422,23 @@ class ReportService(
                             rowIdx == 0 -> java.awt.Color(217, 217, 217) // ヘッダー：グレー
 
                             rowIdx > 0 -> {
-                                val holiday = row[0].isNotBlank()
-                                val youbi = row[2]
+                                val dateIdx = 1 // "日付"列
+                                val weekdayIdx = 2 // "曜日"列
+
+                                // rowsからdateを復元
+                                val dayStr = row[dateIdx].removeSuffix("日")
+                                val dayOfMonth = dayStr.toIntOrNull() ?: 1
+                                var currentDate = from
+                                while (currentDate.dayOfMonth != dayOfMonth && !currentDate.isAfter(to)) {
+                                    currentDate = currentDate.plusDays(1)
+                                }
+
+                                val youbi = row[weekdayIdx]
+                                val isActualHoliday = holidayMap.containsKey(currentDate)
 
                                 when {
-                                    // 日曜 または 備考欄(祝日名)がある場合 → #FF99CC
-                                    holiday || youbi == "日" -> java.awt.Color(0xFF, 0x99, 0xCC)
+                                    // 日曜 または 祝日 → #FF99CC
+                                    youbi == "日" || isActualHoliday -> java.awt.Color(0xFF, 0x99, 0xCC)
 
                                     // 土曜 → #CCCCFF
                                     youbi == "土" -> java.awt.Color(0xCC, 0xCC, 0xFF)

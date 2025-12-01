@@ -819,7 +819,6 @@
                                 <option value="休日">休日</option>
                                 <option value="祝日">祝日</option>
                                 <option value="会社休">会社休</option>
-                                <option value="祝日">祝日</option>
                                 <option value="対象外">対象外</option>
                                 <option value="休日出勤">休日出勤</option>
                     </select>
@@ -844,6 +843,13 @@
                 setRowEditable(tr, true);
                 tr.dataset.lastSavedHoliday = '0';
             }
+
+            // 土曜日・日曜日の場合は備考列のプルダウンをデフォルトで「休日」を設定
+            const noteSelect = tr.querySelector('.note-select');
+            if (isWeekend && noteSelect) {
+                noteSelect.value = '休日';
+            }
+
             applyRowShade(tr);
         }
 
@@ -882,6 +888,13 @@
                                 tr.dataset.isHoliday = '1';
                                 tr.dataset.lastSavedHoliday = '0';
                             }
+
+                            // 祝日の場合は備考列のプルダウンをデフォルトで「祝日」を設定
+                            const noteSelect = tr.querySelector('.note-select');
+                            if (noteSelect) {
+                                noteSelect.value = '祝日';
+                            }
+
                             applyRowShade(tr);
                         }
                     }
