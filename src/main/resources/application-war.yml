@@ -1,0 +1,54 @@
+spring:
+  config:
+    activate:
+      on-profile: war
+  datasource:
+    url: ${APP_DB_URL:jdbc:postgresql://db-host:5432/demo_db}
+    username: ${APP_DB_USER:demo_user}
+    password: ${APP_DB_PASSWORD:demo_pass}
+    hikari:
+      maximum-pool-size: ${APP_DB_MAX_POOL:20}
+      minimum-idle: ${APP_DB_MIN_IDLE:5}
+      connection-timeout: ${APP_DB_CONN_TIMEOUT:30000}
+      idle-timeout: ${APP_DB_IDLE_TIMEOUT:600000}
+      max-lifetime: ${APP_DB_MAX_LIFETIME:1800000}
+  flyway:
+    baseline-version: 0
+    validate-on-migrate: true
+    clean-disabled: true
+    out-of-order: false
+  session:
+    store-type: ${APP_SESSION_STORE:redis}
+    redis:
+      namespace: ${APP_SESSION_NAMESPACE:app:sessions}
+  data:
+    redis:
+      host: ${APP_REDIS_HOST:redis-host}
+      port: ${APP_REDIS_PORT:6379}
+
+server:
+  servlet:
+    context-path: ${APP_CONTEXT_PATH:/demo}
+    session:
+      cookie:
+        secure: true
+      timeout: 10m
+
+logging:
+  level:
+    root: WARN
+    com.example.demo: INFO
+  file:
+    name: ${LOG_DIR:/var/log/app}/application.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+
+app:
+  login:
+    rate-limit:
+      capacity: ${APP_LOGIN_RATE_CAP:5}
+      refill-minutes: ${APP_LOGIN_RATE_REFILL:5}
+  trust-proxy: true
+

@@ -1,0 +1,73 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/demo_db
+    username: demo_user
+    password: demo_pass
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+  flyway:
+    baseline-version: 0
+    validate-on-migrate: true
+    clean-disabled: true
+    out-of-order: false
+  thymeleaf:
+    cache: false
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/resources/templates,src/main/resources/static,src/main/kotlin
+      exclude: logs/**,tmp/**,**/*Test.class,**/*.log
+    livereload:
+      enabled: true
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 0
+          cache-public: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  session:
+    store-type: redis
+    redis:
+      namespace: app:sessions
+
+geoip:
+  mmdb-path: C:/Users/gmaki/GeoLite2-Country.mmdb
+  allowed-country-codes: JP
+
+app:
+  login:
+    rate-limit:
+      capacity: 10
+      refill-minutes: 1
+  trust-proxy: false
+  csp:
+    connect-src: "'self' http://localhost:35729 ws://localhost:35729"
+
+server:
+  port: 8080
+  ssl:
+    enabled: false
+  servlet:
+    session:
+      cookie:
+        secure: false
+      timeout: 5m
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
+    min-response-size: 1024
+  http2:
+    enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.example.demo: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.mybatis: DEBUG
