@@ -414,19 +414,26 @@ class ReportService(
                         var x = margin
                         // ヘッダー行の背景色（エクセルと同じグレー）
                         val fillColor = when {
-                            rowIdx == 0 -> java.awt.Color(217, 217, 217) // GREY_25_PERCENT: #D9D9D9
+                            rowIdx == 0 -> java.awt.Color(217, 217, 217) // ヘッダー：グレー
+
                             rowIdx > 0 -> {
                                 val holiday = row[0].isNotBlank()
                                 val youbi = row[2]
+
                                 when {
-                                    holiday || youbi == "日" -> java.awt.Color(255, 192, 203)
-                                    youbi == "土" -> java.awt.Color(180, 198, 231)
+                                    // 日曜 または 備考欄(祝日名)がある場合 → #FF99CC
+                                    holiday || youbi == "日" -> java.awt.Color(0xFF, 0x99, 0xCC)
+
+                                    // 土曜 → #CCCCFF
+                                    youbi == "土" -> java.awt.Color(0xCC, 0xCC, 0xFF)
+
                                     else -> null
                                 }
                             }
 
                             else -> null
                         }
+
                         for (i in row.indices) {
                             val text = row[i]
                             if (fillColor != null) {
