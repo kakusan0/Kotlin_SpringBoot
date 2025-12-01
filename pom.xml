@@ -23,7 +23,19 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <flyway.version>11.18.0</flyway.version>
         <postgresql.version>42.7.8</postgresql.version>
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Database -->
@@ -116,12 +128,6 @@
         <!-- Development -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
         </dependency>
@@ -137,16 +143,7 @@
             <artifactId>spring-boot-docker-compose</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
+
         <!-- PDF generation -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
@@ -159,6 +156,17 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.5.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-vault-config</artifactId>
+        </dependency>
+
     </dependencies>
     <build>
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
@@ -249,4 +257,35 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>dev</id>
+            <properties>
+                <spring.profiles.active>dev</spring.profiles.active>
+                <spring-boot.run.profiles>dev</spring-boot.run.profiles>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-core</artifactId>
+                    <version>${flyway.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-database-postgresql</artifactId>
+                    <version>${flyway.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-actuator</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <spring.profiles.active>prod</spring.profiles.active>
+            </properties>
+        </profile>
+    </profiles>
 </project>
