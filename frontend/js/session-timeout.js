@@ -2,35 +2,42 @@
 (function () {
     'use strict';
 
-    // セッションタイムアウト時間（5分 = 300秒）
-    const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
-    // 警告表示時間（タイムアウト30秒前）
-    const WARNING_BEFORE_MS = 30 * 1000;
+    // 定数定義
+    const CONFIG = {
+        SESSION_TIMEOUT_MS: 5 * 60 * 1000,  // 5分
+        WARNING_BEFORE_MS: 30 * 1000,        // 30秒前
+        ALERT_Z_INDEX: 9999,
+        ALERT_MAX_WIDTH: '500px'
+    };
+
+    const SELECTORS = {
+        CSRF_TOKEN: 'meta[name="_csrf"]',
+        CSRF_HEADER: 'meta[name="_csrf_header"]',
+        WARNING_ALERT: '.alert-warning[role="alert"]'
+    };
+
+    const USER_EVENTS = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
 
     let timeoutTimer = null;
     let warningTimer = null;
 
     function resetTimers() {
-        // 既存のタイマーをクリア
-        if (timeoutTimer) clearTimeout(timeoutTimer);
-        if (warningTimer) clearTimeout(warningTimer);
+        clearTimeout(timeoutTimer);
+        clearTimeout(warningTimer);
 
-        // 警告タイマー（タイムアウト30秒前）
-        warningTimer = setTimeout(() => {
-            showWarning();
-        }, SESSION_TIMEOUT_MS - WARNING_BEFORE_MS);
-
-        // 自動ログアウトタイマー
-        timeoutTimer = setTimeout(() => {
-            autoLogout();
-        }, SESSION_TIMEOUT_MS);
+        warningTimer = setTimeout(showWarning, CONFIG.SESSION_TIMEOUT_MS - CONFIG.WARNING_BEFORE_MS);
+        timeoutTimer = setTimeout(autoLogout, CONFIG.SESSION_TIMEOUT_MS);
     }
 
     function showWarning() {
+        // 既存の警告を削除
+        const existingAlerts = document.querySelectorAll(SELECTORS.WARNING_ALERT);
+        existingAlerts.forEach(el => el.remove());
+
         // 警告表示（Bootstrapアラート）
         const alertHtml = `
             <div class="alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3" 
-                 role="alert" style="z-index: 9999; max-width: 500px;">
+                 role="alert" style="z-index: ${CONFIG.ALERT_Z_INDEX}; max-width: ${CONFIG.ALERT_MAX_WIDTH};">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
                 <strong>セッションタイムアウト警告</strong><br>
                 30秒後に自動的にログアウトされます。
@@ -38,32 +45,26 @@
             </div>
         `;
 
-        // 既存の警告を削除
-        document.querySelectorAll('.alert-warning[role="alert"]').forEach(el => el.remove());
-
-        // 新しい警告を追加
         document.body.insertAdjacentHTML('afterbegin', alertHtml);
     }
 
     function autoLogout() {
-        // ログアウト処理（CSRFトークンを含むPOSTリクエスト）
         const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/logout';
+        Object.assign(form, {
+            method: 'POST',
+            action: '/logout'
+        });
 
         // CSRFトークンを取得
         const csrfToken = getCsrfToken();
-        const csrfHeader = getCsrfHeaderName();
 
-        if (csrfToken && csrfHeader) {
+        if (csrfToken) {
             const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = csrfHeader.replace('X-', '').replace(/-/g, '').toLowerCase();
-            // Spring Securityのデフォルトパラメータ名に変換
-            if (input.name === 'xsrftoken') {
-                input.name = '_csrf';
-            }
-            input.value = csrfToken;
+            Object.assign(input, {
+                type: 'hidden',
+                name: '_csrf',
+                value: csrfToken
+            });
             form.appendChild(input);
         }
 
@@ -73,35 +74,29 @@
 
     function getCsrfToken() {
         // metaタグから取得
-        const meta = document.querySelector('meta[name="_csrf"]');
+        const meta = document.querySelector(SELECTORS.CSRF_TOKEN);
         if (meta) return meta.getAttribute('content');
 
-        // Cookieから取得
+        // Cookieから取得（フォールバック）
         const cookies = document.cookie.split(';');
-        for (let cookie of cookies) {
+        for (const cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
             if (name === 'XSRF-TOKEN') return decodeURIComponent(value);
         }
         return null;
     }
 
-    function getCsrfHeaderName() {
-        const meta = document.querySelector('meta[name="_csrf_header"]');
-        return meta ? meta.getAttribute('content') : 'X-XSRF-TOKEN';
-    }
 
     // ユーザーアクティビティでタイマーをリセット
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    const resetOnActivity = () => resetTimers();
 
-    events.forEach(event => {
-        document.addEventListener(event, () => {
-            resetTimers();
-        }, true);
+    USER_EVENTS.forEach(event => {
+        document.addEventListener(event, resetOnActivity, true);
     });
 
     // 初期タイマー開始
     resetTimers();
 
-    console.log('Session timeout initialized: 5 minutes');
+    console.log(`Session timeout initialized: ${CONFIG.SESSION_TIMEOUT_MS / 1000} seconds`);
 })();
 
