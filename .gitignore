@@ -50,4 +50,4 @@ src/main/resources/keystore/
 frontend/node
 frontend/node_modules
 frontend/package-lock.json
-src/main/resources/static/js
+src/main/resources/static/js/*.js
