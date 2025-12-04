@@ -1,10 +1,70 @@
 /* Timesheet Month Styles */
-#workTable thead th {
+
+/* テーブルコンテナ - スクロール領域 */
+.timesheet-table-container {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+    overflow-x: auto;
+    position: relative;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+/* テーブル基本スタイル */
+#workTable {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+/* ヘッダー固定 */
+#workTable thead.sticky-header th {
     position: sticky;
     top: 0;
     background: #f8f9fa;
     z-index: 10;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* テーブル列の幅定義 */
+.col-date {
+    width: 80px;
+    min-width: 60px;
+}
+
+.col-weekday {
+    width: 50px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.col-holiday {
+    width: 90px;
+    min-width: 70px;
+}
+
+.col-note {
+    min-width: 90px;
+}
+
+.col-start, .col-end {
+    width: 80px;
+    min-width: 70px;
+}
+
+.col-break {
+    width: 60px;
+    min-width: 50px;
+}
+
+.col-duration, .col-working {
+    width: 80px;
+    min-width: 70px;
+}
+
+.col-action {
+    width: 60px;
+    min-width: 50px;
 }
 
 .date-cell {
@@ -194,3 +254,300 @@
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
 }
 
+/* ============================================
+   モバイル対応 - レスポンシブスタイル
+   ============================================ */
+
+/* タブレット以下 (768px以下) */
+@media (max-width: 768px) {
+    /* テーブルコンテナの調整 */
+    .timesheet-table-container {
+        max-height: calc(100vh - 200px);
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    /* テーブルのフォントサイズ縮小 */
+    #workTable {
+        font-size: 13px;
+    }
+
+    #workTable th,
+    #workTable td {
+        padding: 6px 4px;
+    }
+
+    /* 日付列のコンパクト化 */
+    .date-cell {
+        padding-left: 6px !important;
+        min-width: 60px;
+    }
+
+    /* 曜日列の幅調整 */
+    .weekday-cell {
+        min-width: 35px;
+        text-align: center;
+    }
+
+    /* 時刻セルのタッチ対応 */
+    .time-cell {
+        min-width: 70px;
+        min-height: 44px;
+        vertical-align: middle;
+    }
+
+    /* 休憩セルのタッチ対応 */
+    .break-cell {
+        min-width: 50px;
+        min-height: 44px;
+    }
+
+    /* ボタンのタッチ対応 */
+    .clear-row-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+    /* 備考プルダウンの調整 */
+    .note-select {
+        font-size: 12px;
+        padding: 4px 6px;
+        min-width: 80px;
+    }
+
+    /* 稼働・実働列の幅調整 */
+    .duration-cell,
+    .working-cell {
+        min-width: 70px;
+        font-size: 12px;
+    }
+
+    /* 休日出勤スイッチの調整 */
+    .holiday-cell .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+    }
+
+    /* Time Picker モバイル対応 */
+    .time-picker {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 16px 16px 0 0;
+        padding: 16px;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .clock {
+        width: 180px;
+        height: 180px;
+    }
+
+    .hand {
+        height: 75px;
+        left: 88.5px;
+    }
+
+    .center-dot {
+        top: 83px;
+        left: 83px;
+    }
+
+    .drag-area {
+        width: 180px;
+        height: 180px;
+    }
+
+    .display {
+        font-size: 28px;
+    }
+
+    /* アコーディオンのコンパクト化 */
+    .accordion-button {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .accordion-body {
+        padding: 12px;
+    }
+
+    /* デフォルト設定のフォーム調整 */
+    #collapseDefaults .d-flex {
+        flex-wrap: wrap;
+    }
+
+    #collapseDefaults .form-floating {
+        width: 100px !important;
+    }
+
+    /* 月選択コントロールの調整 */
+    #monthInput {
+        width: 140px !important;
+    }
+}
+
+/* スマートフォン (480px以下) */
+@media (max-width: 480px) {
+    /* さらにコンパクトに */
+    #workTable {
+        font-size: 12px;
+    }
+
+    #workTable th,
+    #workTable td {
+        padding: 5px 3px;
+    }
+
+    /* 一部の列を非表示にするオプション */
+    #workTable th:nth-child(3),
+    #workTable td.holiday-cell {
+        /* 休日出勤列を狭く */
+        max-width: 60px;
+    }
+
+    /* 時刻セルをより大きく（タップしやすく） */
+    .time-cell {
+        min-height: 48px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    /* 稼働・実働を省略表示 */
+    .duration-cell,
+    .working-cell {
+        font-size: 11px;
+    }
+
+    /* 月選択をさらにコンパクトに */
+    #monthInput {
+        width: 120px !important;
+        font-size: 14px;
+    }
+
+    /* ナビゲーションボタン */
+    #prevMonth,
+    #nextMonth {
+        padding: 6px 10px;
+    }
+
+    /* クリアボタンを小さく */
+    .clear-row-btn {
+        padding: 2px 6px;
+        font-size: 11px;
+    }
+
+    /* Time Picker の時計を小さく */
+    .clock {
+        width: 160px;
+        height: 160px;
+    }
+
+    .hand {
+        height: 65px;
+        left: 78.5px;
+    }
+
+    .center-dot {
+        top: 73px;
+        left: 73px;
+    }
+
+    .drag-area {
+        width: 160px;
+        height: 160px;
+    }
+
+    .display {
+        font-size: 24px;
+    }
+
+    .mode {
+        font-size: 12px;
+    }
+}
+
+/* タッチデバイス用の改善 */
+@media (hover: none) and (pointer: coarse) {
+    /* タップ領域を大きく */
+    .time-cell,
+    .break-cell {
+        min-height: 48px;
+    }
+
+    /* ホバー効果を無効化（タッチでは不要） */
+    .time-cell:hover {
+        background: #fafafa;
+    }
+
+    /* スイッチを大きく */
+    .holiday-cell .form-check-input {
+        width: 3em;
+        height: 1.5em;
+    }
+
+    /* ネイティブ time input のスタイル */
+    .native-time-input {
+        font-size: 16px !important; /* iOSでズームを防ぐ */
+        padding: 12px;
+        border-radius: 8px;
+        border: 2px solid #0066cc;
+    }
+}
+
+/* 横向きスマートフォン */
+@media (max-height: 500px) and (orientation: landscape) {
+    .timesheet-table-container {
+        max-height: calc(100vh - 120px);
+    }
+
+    .time-picker {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .clock {
+        width: 140px;
+        height: 140px;
+    }
+
+    .hand {
+        height: 55px;
+        left: 68.5px;
+    }
+
+    .center-dot {
+        top: 63px;
+        left: 63px;
+    }
+
+    .drag-area {
+        width: 140px;
+        height: 140px;
+    }
+}
+
+/* 印刷用スタイル */
+@media print {
+    .timesheet-table-container {
+        max-height: none;
+        overflow: visible;
+    }
+
+    #workTable thead.sticky-header th {
+        position: static;
+    }
+
+    .time-picker,
+    .accordion,
+    .clear-row-btn,
+    #prevMonth,
+    #nextMonth {
+        display: none !important;
+    }
+}
