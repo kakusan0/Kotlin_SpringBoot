@@ -394,9 +394,10 @@
 
 /* スマートフォン (480px以下) */
 @media (max-width: 480px) {
-    /* さらにコンパクトに */
+    /* 全列を維持し、横スクロールで対応 */
     #workTable {
         font-size: 12px;
+        min-width: 750px;
     }
 
     #workTable th,
@@ -404,12 +405,6 @@
         padding: 5px 3px;
     }
 
-    /* 一部の列を非表示にするオプション */
-    #workTable th:nth-child(3),
-    #workTable td.holiday-cell {
-        /* 休日出勤列を狭く */
-        max-width: 60px;
-    }
 
     /* 時刻セルをより大きく（タップしやすく） */
     .time-cell {

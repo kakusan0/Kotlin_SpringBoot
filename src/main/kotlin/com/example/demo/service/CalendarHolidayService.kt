@@ -3,6 +3,8 @@ package com.example.demo.service
 import com.example.demo.mapper.CalendarHolidayMapper
 import com.example.demo.model.CalendarHoliday
 import com.example.demo.util.dbCall
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -12,8 +14,9 @@ class CalendarHolidayService(
     private val calendarHolidayMapper: CalendarHolidayMapper
 ) {
     /**
-     * 指定した年の祝日一覧を取得
+     * 指定した年の祝日一覧を取得（キャッシュ有効）
      */
+    @Cacheable("holidays", key = "#year")
     fun getHolidaysByYear(year: Int): List<CalendarHoliday> {
         return dbCall("selectByYear", year) { calendarHolidayMapper.selectByYear(year) }
     }
@@ -27,9 +30,10 @@ class CalendarHolidayService(
     }
 
     /**
-     * 年指定で祝日をMap形式で取得（フロントエンド用）
+     * 年指定で祝日をMap形式で取得（フロントエンド用、キャッシュ有効）
      * キー: 日付文字列(YYYY-MM-DD)、値: 祝日名
      */
+    @Cacheable("holidaysMap", key = "#year")
     fun getHolidaysMapByYear(year: Int): Map<String, String> {
         val holidays = getHolidaysByYear(year)
         return holidays.associate { it.holidayDate.toString() to it.name }
@@ -43,9 +47,10 @@ class CalendarHolidayService(
     }
 
     /**
-     * 祝日を追加
+     * 祝日を追加（キャッシュをクリア）
      */
     @Transactional
+    @CacheEvict(value = ["holidays", "holidaysMap"], allEntries = true)
     fun addHoliday(date: LocalDate, name: String): CalendarHoliday {
         val holiday = CalendarHoliday(
             holidayDate = date,
@@ -57,21 +62,21 @@ class CalendarHolidayService(
     }
 
     /**
-     * 祝日を更新（名前のみ）
+     * 祝日を更新（キャッシュをクリア）
      */
     @Transactional
+    @CacheEvict(value = ["holidays", "holidaysMap"], allEntries = true)
     fun updateHoliday(id: Long, name: String): Int {
-        // Note: 実際の更新ではidでレコードを取得後に更新すべき
-        // 現在の実装では名前のみを更新
         return dbCall("update", id, name) {
             calendarHolidayMapper.update(CalendarHoliday(id = id, holidayDate = LocalDate.now(), name = name, year = 0))
         }
     }
 
     /**
-     * 祝日を削除
+     * 祝日を削除（キャッシュをクリア）
      */
     @Transactional
+    @CacheEvict(value = ["holidays", "holidaysMap"], allEntries = true)
     fun deleteHoliday(id: Long): Int {
         return dbCall("deleteById", id) { calendarHolidayMapper.deleteById(id) }
     }
