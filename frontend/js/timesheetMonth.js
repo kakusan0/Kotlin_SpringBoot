@@ -756,10 +756,10 @@
                     console.debug('[TS] cleared row due to note:', noteValue);
 
                     // 入力を無効化
-                    disableRowInput(row, true);
+                    disableRowInput(row, true, noteValue);
                 } else {
                     // 休日系以外の場合は入力を有効化
-                    disableRowInput(row, false);
+                    disableRowInput(row, false, noteValue);
                 }
                 // 警告チェック
                 checkRowWarnings(row);
@@ -769,7 +769,8 @@
     });
 
     // 行の入力を無効化/有効化する関数
-    function disableRowInput(row, disable) {
+    // noteValue: 備考の値（土日祝で午前休・午後休・現場休の場合は出社区分を有効化するため）
+    function disableRowInput(row, disable, noteValue = '') {
         const timeCells = row.querySelectorAll('.time-cell');
         timeCells.forEach(cell => {
             if (disable) {
@@ -792,10 +793,17 @@
             breakCell.style.cursor = disable ? 'not-allowed' : '';
         }
 
-        // 出社区分ボタンも無効化
+        // 出社区分ボタン
+        // 土日祝でも午前休・午後休・現場休の場合は有効化
         const locationBtn = row.querySelector('.work-location-btn');
         if (locationBtn) {
-            locationBtn.disabled = disable;
+            const workingNotes = ['午前休', '午後休', '現場休'];
+            if (workingNotes.includes(noteValue)) {
+                // 勤務系の備考の場合は出社区分を有効化
+                locationBtn.disabled = false;
+            } else {
+                locationBtn.disabled = disable;
+            }
         }
     }
 
@@ -1145,10 +1153,11 @@
                         // 備考が休日系の場合は入力を無効化
                         const clearNotes = ['休日', '祝日', '会社休', '対象外'];
                         if (clearNotes.includes(data.note)) {
-                            disableRowInput(row, true);
+                            disableRowInput(row, true, data.note);
                         } else {
                             // editable for normal days
                             setRowEditable(row, true);
+                            disableRowInput(row, false, data.note);
                         }
                     } else {
                         // editable for normal days without note
@@ -1171,6 +1180,7 @@
                         delete row.dataset.suppressAutoSave;
                     }, 0);
                 }
+
             });
 
         } catch (e) {
