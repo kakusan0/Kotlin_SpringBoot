@@ -376,9 +376,9 @@
         return t && h ? {token: t.content, header: h.content} : null;
     }
 
-    // 時刻セルクリック
-    elements.workTable.addEventListener('click', e => {
-        const cell = e.target.closest('td.time-cell');
+    // 時刻セルクリック (documentレベルでイベント委譲)
+    document.addEventListener('click', e => {
+        const cell = e.target.closest('#workTable td.time-cell');
         if (!cell) return;
 
         const row = cell.parentElement;
@@ -685,9 +685,9 @@
         saveTimers.set(iso, t);
     }
 
-    // 休憩セルの入力に対してデバウンス自動保存
-    elements.workTable.addEventListener('input', e => {
-        const cell = e.target.closest('.break-cell');
+    // 休憩セルの入力に対してデバウンス自動保存 (documentレベルでイベント委譲)
+    document.addEventListener('input', e => {
+        const cell = e.target.closest('#workTable .break-cell');
         if (!cell) return;
         const row = cell.parentElement;
         updateRowMetrics(row);
@@ -697,9 +697,9 @@
         saveTimers.set(iso, t);
     });
 
-    // 出社区分ボタンのクリックイベント
-    elements.workTable.addEventListener('click', e => {
-        const btn = e.target.closest('.work-location-btn');
+    // 出社区分ボタンのクリックイベント (documentレベルでイベント委譲)
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('#workTable .work-location-btn');
         if (btn) {
             const currentLocation = btn.dataset.location || '出社';
             let newLocation;
@@ -729,16 +729,17 @@
         }
     });
 
-    // 備考プルダウンの変更で自動保存
-    elements.workTable.addEventListener('change', e => {
+    // 備考プルダウンの変更で自動保存 (documentレベルでイベント委譲)
+    document.addEventListener('change', e => {
         // 備考プルダウンの変更で自動保存
-        const select = e.target.closest('.note-select');
+        const select = e.target.closest('#workTable .note-select');
         if (select) {
             const row = select.closest('tr');
             if (row) {
                 const noteValue = select.value;
+
                 // 休日・祝日・年休などの場合は入力値をクリアして無効化
-                const clearNotes = ['休日', '祝日', '年休', '会社休', '対象外', '振替休日', '特別休暇', '欠勤'];
+                const clearNotes = ['休日', '祝日', '会社休', '対象外'];
                 if (clearNotes.includes(noteValue)) {
                     const startCell = row.querySelector('.time-cell[data-type="start"]');
                     const endCell = row.querySelector('.time-cell[data-type="end"]');
@@ -984,23 +985,20 @@
                         <option value="">---</option>
                         <option value="午前休">午前休</option>
                         <option value="午後休">午後休</option>
-                        <option value="年休">年休</option>
-                        <option value="振替出勤">振替出勤</option>
-                        <option value="振替休日">振替休日</option>
-                        <option value="特別休暇">特別休暇</option>
-                        <option value="欠勤">欠勤</option>
                         <option value="休日">休日</option>
                         <option value="祝日">祝日</option>
                         <option value="会社休">会社休</option>
+                        <option value="現場休">現場休</option>
                         <option value="対象外">対象外</option>
-                        <option value="休日出勤">休日出勤</option>
                     </select>
                 </td>` +
+                `<td class="irregular-cell"><button class="btn btn-sm btn-outline-secondary irregular-btn" type="button">表示</button></td>` +
                 `<td class="time-cell" data-type="start"></td>` +
                 `<td class="time-cell" data-type="end"></td>` +
                 `<td class="break-cell" contenteditable="true"></td>` +
                 `<td class="duration-cell"></td>` +
                 `<td class="working-cell"></td>` +
+                `<td class="lateearly-cell"><button class="btn btn-sm btn-outline-warning late-btn" type="button">遅刻</button><button class="btn btn-sm btn-outline-info early-btn" type="button">早退</button></td>` +
                 `<td class="clear-cell"><button class='btn btn-outline-secondary btn-sm reset-row-btn' type='button'>リセット</button></td>`;
             tbody.appendChild(tr);
 
@@ -1145,7 +1143,7 @@
                         noteSelect.value = data.note;
 
                         // 備考が休日系の場合は入力を無効化
-                        const clearNotes = ['休日', '祝日', '年休', '会社休', '対象外', '振替休日', '特別休暇', '欠勤'];
+                        const clearNotes = ['休日', '祝日', '会社休', '対象外'];
                         if (clearNotes.includes(data.note)) {
                             disableRowInput(row, true);
                         } else {
@@ -1221,9 +1219,9 @@
     }
 
 
-    // リセットボタン（各行）- 勤務時間・休憩・備考を初期状態に戻す
-    document.getElementById('workTable').addEventListener('click', e => {
-        const btn = e.target.closest('.reset-row-btn');
+    // リセットボタン（各行）- 勤務時間・休憩・備考を初期状態に戻す (documentレベルでイベント委譲)
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('#workTable .reset-row-btn');
         if (!btn) return;
         const row = btn.closest('tr');
         if (!row) return;
@@ -1473,5 +1471,386 @@
             window.scrollTo(0, parseInt(savedPosition, 10));
         }
     });
+
+    // デフォルト設定が未入力の場合にモーダルを表示
+    (function checkDefaultSettings() {
+        const defaultStart = document.getElementById('defaultStart');
+        const defaultEnd = document.getElementById('defaultEnd');
+        const defaultBreak = document.getElementById('defaultBreak');
+        const modal = document.getElementById('defaultSettingsModal');
+
+        if (!modal) return;
+
+        // localStorage からデフォルト設定を読み込む
+        const savedStart = localStorage.getItem('defaultStart');
+        const savedEnd = localStorage.getItem('defaultEnd');
+        const savedBreak = localStorage.getItem('defaultBreak');
+
+        if (savedStart) defaultStart.value = savedStart;
+        if (savedEnd) defaultEnd.value = savedEnd;
+        if (savedBreak) defaultBreak.value = savedBreak;
+
+        // デフォルト設定が未入力の場合はモーダルを表示
+        if (!savedStart || !savedEnd || !savedBreak) {
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        }
+
+        // モーダルの保存ボタン
+        const saveBtn = document.getElementById('saveDefaultSettings');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                const modalStart = document.getElementById('modalDefaultStart').value;
+                const modalEnd = document.getElementById('modalDefaultEnd').value;
+                const modalBreak = document.getElementById('modalDefaultBreak').value;
+
+                // メインのデフォルト設定に反映
+                if (defaultStart) defaultStart.value = modalStart;
+                if (defaultEnd) defaultEnd.value = modalEnd;
+                if (defaultBreak) defaultBreak.value = modalBreak;
+
+                // localStorage に保存
+                localStorage.setItem('defaultStart', modalStart);
+                localStorage.setItem('defaultEnd', modalEnd);
+                localStorage.setItem('defaultBreak', modalBreak);
+
+                // モーダルを閉じる
+                bootstrap.Modal.getInstance(modal).hide();
+            });
+        }
+    })();
+
+    // サブモーダルのz-indexを調整する関数（フルスクリーンモーダル内で表示される場合）
+    function adjustSubModalZIndex(modalEl) {
+        if (!modalEl) return;
+        modalEl.addEventListener('show.bs.modal', () => {
+            // モーダル自体のz-indexを設定
+            modalEl.style.zIndex = '1060';
+            // backdropのz-indexも調整
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach((bd, idx) => {
+                    bd.style.zIndex = (1055 + idx).toString();
+                });
+            }, 10);
+        });
+    }
+
+    // 変則勤務モーダル
+    let currentIrregularRow = null;
+    const irregularModal = document.getElementById('irregularWorkModal');
+    const irregularDateLabel = document.getElementById('irregularDateLabel');
+    const irregularType = document.getElementById('irregularType');
+    const irregularDesc = document.getElementById('irregularDesc');
+    const saveIrregularBtn = document.getElementById('saveIrregularWork');
+
+    // z-index調整を適用
+    adjustSubModalZIndex(irregularModal);
+
+    // 変則勤務ボタンのクリック (documentレベルでイベント委譲)
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('#workTable .irregular-btn');
+        if (btn && irregularModal) {
+            currentIrregularRow = btn.closest('tr');
+            const iso = currentIrregularRow.querySelector('.date-cell')?.dataset?.iso || '';
+            irregularDateLabel.textContent = iso;
+
+            // 既存のデータを反映
+            irregularType.value = currentIrregularRow.dataset.irregularType || '';
+            irregularDesc.value = currentIrregularRow.dataset.irregularDesc || '';
+
+            const bsModal = new bootstrap.Modal(irregularModal);
+            bsModal.show();
+        }
+    });
+
+    // 変則勤務モーダルのクリアボタン
+    const clearIrregularBtn = document.getElementById('clearIrregularWork');
+    if (clearIrregularBtn) {
+        clearIrregularBtn.addEventListener('click', () => {
+            irregularType.value = '';
+            irregularDesc.value = '';
+            // 完了ボタンを強調表示（クリア後は保存が必要）
+            if (saveIrregularBtn) {
+                saveIrregularBtn.classList.remove('btn-primary');
+                saveIrregularBtn.classList.add('btn-danger');
+                saveIrregularBtn.textContent = '完了（保存必須）';
+            }
+        });
+    }
+
+    if (saveIrregularBtn) {
+        saveIrregularBtn.addEventListener('click', () => {
+            if (currentIrregularRow) {
+                const typeValue = irregularType.value;
+                const descValue = irregularDesc.value;
+
+                currentIrregularRow.dataset.irregularType = typeValue;
+                currentIrregularRow.dataset.irregularDesc = descValue;
+
+                // ボタンの表示を更新
+                const btn = currentIrregularRow.querySelector('.irregular-btn');
+                if (btn) {
+                    if (typeValue) {
+                        btn.classList.remove('btn-outline-secondary');
+                        btn.classList.add('btn-secondary');
+                    } else {
+                        btn.classList.remove('btn-secondary');
+                        btn.classList.add('btn-outline-secondary');
+                    }
+                }
+
+                // 保存
+                saveRowWithExtras(currentIrregularRow, {
+                    irregularWorkType: typeValue || null,
+                    irregularWorkDesc: descValue || null
+                });
+
+                // 完了ボタンを元に戻す
+                saveIrregularBtn.classList.remove('btn-danger');
+                saveIrregularBtn.classList.add('btn-primary');
+                saveIrregularBtn.textContent = '完了';
+
+                bootstrap.Modal.getInstance(irregularModal).hide();
+            }
+        });
+    }
+
+    // モーダルが閉じられるときに完了ボタンをリセット
+    if (irregularModal) {
+        irregularModal.addEventListener('hidden.bs.modal', () => {
+            if (saveIrregularBtn) {
+                saveIrregularBtn.classList.remove('btn-danger');
+                saveIrregularBtn.classList.add('btn-primary');
+                saveIrregularBtn.textContent = '完了';
+            }
+        });
+    }
+
+    // 遅刻モーダル
+    let currentLateRow = null;
+    const lateModal = document.getElementById('lateModal');
+    const lateDateLabel = document.getElementById('lateDateLabel');
+    const lateTimeInput = document.getElementById('lateTimeInput');
+    const lateDescInput = document.getElementById('lateDescInput');
+    const saveLateBtn = document.getElementById('saveLate');
+    const clearLateBtn = document.getElementById('clearLate');
+
+    // z-index調整を適用
+    adjustSubModalZIndex(lateModal);
+
+    // 遅刻ボタンのクリック (documentレベルでイベント委譲)
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('#workTable .late-btn');
+        if (btn && lateModal) {
+            currentLateRow = btn.closest('tr');
+            const iso = currentLateRow.querySelector('.date-cell')?.dataset?.iso || '';
+            lateDateLabel.textContent = iso;
+
+            // 既存のデータを反映
+            lateTimeInput.value = currentLateRow.dataset.lateTime || '';
+            lateDescInput.value = currentLateRow.dataset.lateDesc || '';
+
+            const bsModal = new bootstrap.Modal(lateModal);
+            bsModal.show();
+        }
+    });
+
+    if (saveLateBtn) {
+        saveLateBtn.addEventListener('click', () => {
+            if (currentLateRow) {
+                const timeValue = lateTimeInput.value;
+                const descValue = lateDescInput.value;
+
+                currentLateRow.dataset.lateTime = timeValue;
+                currentLateRow.dataset.lateDesc = descValue;
+
+                // ボタンの表示を更新
+                const btn = currentLateRow.querySelector('.late-btn');
+                if (btn) {
+                    if (timeValue) {
+                        btn.classList.add('has-data');
+                    } else {
+                        btn.classList.remove('has-data');
+                    }
+                }
+
+                // 保存
+                saveRowWithExtras(currentLateRow, {
+                    lateTime: timeValue || null,
+                    lateDesc: descValue || null
+                });
+
+                // 完了ボタンを元に戻す
+                saveLateBtn.classList.remove('btn-danger');
+                saveLateBtn.classList.add('btn-primary');
+                saveLateBtn.textContent = '完了';
+
+                bootstrap.Modal.getInstance(lateModal).hide();
+            }
+        });
+    }
+
+    if (clearLateBtn) {
+        clearLateBtn.addEventListener('click', () => {
+            lateTimeInput.value = '';
+            lateDescInput.value = '';
+            // 完了ボタンを強調表示（クリア後は保存が必要）
+            if (saveLateBtn) {
+                saveLateBtn.classList.remove('btn-primary');
+                saveLateBtn.classList.add('btn-danger');
+                saveLateBtn.textContent = '完了（保存必須）';
+            }
+        });
+    }
+
+    // モーダルが閉じられるときに完了ボタンをリセット
+    if (lateModal) {
+        lateModal.addEventListener('hidden.bs.modal', () => {
+            if (saveLateBtn) {
+                saveLateBtn.classList.remove('btn-danger');
+                saveLateBtn.classList.add('btn-primary');
+                saveLateBtn.textContent = '完了';
+            }
+        });
+    }
+
+    // 早退モーダル
+    let currentEarlyRow = null;
+    const earlyModal = document.getElementById('earlyModal');
+    const earlyDateLabel = document.getElementById('earlyDateLabel');
+    const earlyTimeInput = document.getElementById('earlyTimeInput');
+    const earlyDescInput = document.getElementById('earlyDescInput');
+    const saveEarlyBtn = document.getElementById('saveEarly');
+    const clearEarlyBtn = document.getElementById('clearEarly');
+
+    // z-index調整を適用
+    adjustSubModalZIndex(earlyModal);
+
+    // 早退ボタンのクリック (documentレベルでイベント委譲)
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('#workTable .early-btn');
+        if (btn && earlyModal) {
+            currentEarlyRow = btn.closest('tr');
+            const iso = currentEarlyRow.querySelector('.date-cell')?.dataset?.iso || '';
+            earlyDateLabel.textContent = iso;
+
+            // 既存のデータを反映
+            earlyTimeInput.value = currentEarlyRow.dataset.earlyTime || '';
+            earlyDescInput.value = currentEarlyRow.dataset.earlyDesc || '';
+
+            const bsModal = new bootstrap.Modal(earlyModal);
+            bsModal.show();
+        }
+    });
+
+    if (saveEarlyBtn) {
+        saveEarlyBtn.addEventListener('click', () => {
+            if (currentEarlyRow) {
+                const timeValue = earlyTimeInput.value;
+                const descValue = earlyDescInput.value;
+
+                currentEarlyRow.dataset.earlyTime = timeValue;
+                currentEarlyRow.dataset.earlyDesc = descValue;
+
+                // ボタンの表示を更新
+                const btn = currentEarlyRow.querySelector('.early-btn');
+                if (btn) {
+                    if (timeValue) {
+                        btn.classList.add('has-data');
+                    } else {
+                        btn.classList.remove('has-data');
+                    }
+                }
+
+                // 保存
+                saveRowWithExtras(currentEarlyRow, {
+                    earlyTime: timeValue || null,
+                    earlyDesc: descValue || null
+                });
+
+                // 完了ボタンを元に戻す
+                saveEarlyBtn.classList.remove('btn-danger');
+                saveEarlyBtn.classList.add('btn-primary');
+                saveEarlyBtn.textContent = '完了';
+
+                bootstrap.Modal.getInstance(earlyModal).hide();
+            }
+        });
+    }
+
+    if (clearEarlyBtn) {
+        clearEarlyBtn.addEventListener('click', () => {
+            earlyTimeInput.value = '';
+            earlyDescInput.value = '';
+            // 完了ボタンを強調表示（クリア後は保存が必要）
+            if (saveEarlyBtn) {
+                saveEarlyBtn.classList.remove('btn-primary');
+                saveEarlyBtn.classList.add('btn-danger');
+                saveEarlyBtn.textContent = '完了（保存必須）';
+            }
+        });
+    }
+
+    // モーダルが閉じられるときに完了ボタンをリセット
+    if (earlyModal) {
+        earlyModal.addEventListener('hidden.bs.modal', () => {
+            if (saveEarlyBtn) {
+                saveEarlyBtn.classList.remove('btn-danger');
+                saveEarlyBtn.classList.add('btn-primary');
+                saveEarlyBtn.textContent = '完了';
+            }
+        });
+    }
+
+    // 拡張データを含めて保存する関数
+    async function saveRowWithExtras(row, extras) {
+        const dateCell = row.querySelector('.date-cell');
+        const startCell = row.querySelector('.time-cell[data-type="start"]');
+        const endCell = row.querySelector('.time-cell[data-type="end"]');
+        const breakCell = row.querySelector('.break-cell');
+        const locationBtn = row.querySelector('.work-location-btn');
+        const noteSelect = row.querySelector('.note-select');
+
+        if (!dateCell) return;
+
+        const iso = dateCell.dataset.iso;
+        const csrf = getCsrf();
+
+        // 拡張フィールドは空文字も送信（サーバー側でクリア判定）
+        const payload = {
+            workDate: iso,
+            startTime: startCell?.textContent.trim() || null,
+            endTime: endCell?.textContent.trim() || null,
+            breakMinutes: breakCell?.textContent.trim() || null,
+            workLocation: locationBtn?.dataset.location || null,
+            note: noteSelect?.value || null,
+            // 拡張フィールド: 空文字も送信することでクリアを明示
+            irregularWorkType: row.dataset.irregularType ?? null,
+            irregularWorkDesc: row.dataset.irregularDesc ?? null,
+            lateTime: row.dataset.lateTime ?? null,
+            lateDesc: row.dataset.lateDesc ?? null,
+            earlyTime: row.dataset.earlyTime ?? null,
+            earlyDesc: row.dataset.earlyDesc ?? null,
+            ...extras
+        };
+
+        try {
+            const headers = {'Content-Type': 'application/json'};
+            if (csrf) headers[csrf.header] = csrf.token;
+            const resp = await fetch('/timesheet/api/entry', {
+                method: 'POST',
+                headers,
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            });
+            const json = await resp.json().catch(() => ({}));
+            if (!resp.ok || !json.success) {
+                console.warn('[TS] 拡張データ保存失敗', json);
+            }
+        } catch (e) {
+            console.error('[TS] 拡張データ保存エラー', e);
+        }
+    }
 })();
 

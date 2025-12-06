@@ -201,6 +201,19 @@ class TimesheetController(
             val note = body["note"]?.takeIf { it.isNotBlank() }
             val noteProvided = body.containsKey("note")
             val workLocation = body["workLocation"]?.takeIf { it.isNotBlank() }
+            val irregularWorkType = body["irregularWorkType"]?.takeIf { it.isNotBlank() }
+            val irregularWorkDesc = body["irregularWorkDesc"]?.takeIf { it.isNotBlank() }
+            val lateTime = body["lateTime"]?.takeIf { it.isNotBlank() }
+            val lateDesc = body["lateDesc"]?.takeIf { it.isNotBlank() }
+            val earlyTime = body["earlyTime"]?.takeIf { it.isNotBlank() }
+            val earlyDesc = body["earlyDesc"]?.takeIf { it.isNotBlank() }
+            val paidLeave = body["paidLeave"]?.takeIf { it.isNotBlank() }
+
+            // クリアフラグ: キーが存在し、値が空またはnullの場合はクリア
+            val clearIrregular = body.containsKey("irregularWorkType") && body["irregularWorkType"].isNullOrBlank()
+            val clearLate = body.containsKey("lateTime") && body["lateTime"].isNullOrBlank()
+            val clearEarly = body.containsKey("earlyTime") && body["earlyTime"].isNullOrBlank()
+
             // detect presence of keys to allow explicit null -> clear behavior
             val startProvided = body.containsKey("startTime")
             val endProvided = body.containsKey("endTime")
@@ -218,7 +231,17 @@ class TimesheetController(
                 holidayWork,
                 noteProvided,
                 note,
-                workLocation
+                workLocation,
+                irregularWorkType,
+                irregularWorkDesc,
+                lateTime,
+                lateDesc,
+                earlyTime,
+                earlyDesc,
+                paidLeave,
+                clearIrregular,
+                clearLate,
+                clearEarly
             )
             // ブロードキャストして（同一ユーザの）他クライアントへ反映
             broadcast("timesheet-updated", saved, auth.name)
@@ -236,4 +259,3 @@ class TimesheetController(
         return entry
     }
 }
-

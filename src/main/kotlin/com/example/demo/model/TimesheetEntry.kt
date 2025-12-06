@@ -20,16 +20,44 @@ data class TimesheetEntry(
     val breakMinutes: Int? = null,          // 休憩(分)
     val durationMinutes: Int? = null,       // 稼働(開始〜終了, 分)
     val workingMinutes: Int? = null,        // 実働(稼働 - 休憩, 分)
-    // MyBatis の constructor mapping で java.lang.Integer を期待する場合があるため
-    // ボックス型 (Int?) にしておく。デフォルトは既存と同じ 0 を保持。
     val version: Int? = 0,                   // 楽観ロック用バージョン
-    // DBマイグレーションで追加されたフラグ列を反映
     val holidayWork: Boolean? = false,
-    // 出社区分: "出社", "在宅", null
-    val workLocation: String? = null
+    val workLocation: String? = null,        // 出社区分: "出社", "在宅"
+    // 変則勤務
+    val irregularWorkType: String? = null,   // 有給休暇, 特別休暇, 欠勤, 振替出勤, 振替休日, 休日出勤
+    val irregularWorkDesc: String? = null,   // 変則勤務の説明
+    // 遅刻
+    val lateTime: String? = null,            // 遅刻時間 (例: "0:30")
+    val lateDesc: String? = null,            // 遅刻の説明
+    // 早退
+    val earlyTime: String? = null,           // 早退時間 (例: "1:00")
+    val earlyDesc: String? = null,           // 早退の説明
+    // 有給消化
+    val paidLeave: String? = null            // "有給" or null
 ) {
-    // 互換性のため、旧スキーマ(work_location カラムが無い)向けの13引数コンストラクタ
-    // MyBatis は resultMap のカラム数に合わせてコンストラクタを探すため必要
+    // 互換性のため、旧スキーマ(14カラム: work_locationまで)向けのコンストラクタ
+    constructor(
+        id: Long?,
+        workDate: LocalDate,
+        userName: String,
+        startTime: LocalTime?,
+        endTime: LocalTime?,
+        note: String?,
+        createdAt: OffsetDateTime?,
+        updatedAt: OffsetDateTime?,
+        breakMinutes: Int?,
+        durationMinutes: Int?,
+        workingMinutes: Int?,
+        version: Int?,
+        holidayWork: Boolean?,
+        workLocation: String?
+    ) : this(
+        id, workDate, userName, startTime, endTime, note, createdAt, updatedAt,
+        breakMinutes, durationMinutes, workingMinutes, version, holidayWork, workLocation,
+        null, null, null, null, null, null, null
+    )
+
+    // 互換性のため、旧スキーマ(13カラム: work_locationなし)向けのコンストラクタ
     constructor(
         id: Long?,
         workDate: LocalDate,
@@ -45,20 +73,9 @@ data class TimesheetEntry(
         version: Int?,
         holidayWork: Boolean?
     ) : this(
-        id,
-        workDate,
-        userName,
-        startTime,
-        endTime,
-        note,
-        createdAt,
-        updatedAt,
-        breakMinutes,
-        durationMinutes,
-        workingMinutes,
-        version,
-        holidayWork,
-        null  // workLocation defaults to null
+        id, workDate, userName, startTime, endTime, note, createdAt, updatedAt,
+        breakMinutes, durationMinutes, workingMinutes, version, holidayWork,
+        null, null, null, null, null, null, null, null
     )
 }
 

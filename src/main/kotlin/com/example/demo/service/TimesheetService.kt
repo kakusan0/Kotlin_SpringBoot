@@ -350,6 +350,11 @@ class TimesheetService(
      * When a provided flag is true, the corresponding value (which may be null) will be used
      * (allowing callers to explicitly clear a field by providing null). When the provided flag
      * is false, the existing DB value is preserved.
+     *
+     * For extended fields (irregularWorkType, lateTime, etc.):
+     * - Pass the actual value to update
+     * - Pass empty string "" to clear the field
+     * - Pass null to keep existing value
      */
     @Transactional
     fun saveOrUpdateWithFlags(
@@ -365,7 +370,18 @@ class TimesheetService(
         holidayWork: Boolean = false,
         noteProvided: Boolean,
         note: String?,
-        workLocation: String? = null
+        workLocation: String? = null,
+        irregularWorkType: String? = null,
+        irregularWorkDesc: String? = null,
+        lateTime: String? = null,
+        lateDesc: String? = null,
+        earlyTime: String? = null,
+        earlyDesc: String? = null,
+        paidLeave: String? = null,
+        // フラグ: 明示的にクリアするかどうか
+        clearIrregular: Boolean = false,
+        clearLate: Boolean = false,
+        clearEarly: Boolean = false
     ): TimesheetEntry {
         val existing = dbCall("selectByUserAndDate", userName, workDate) {
             timesheetEntryMapper.selectByUserAndDate(userName, workDate)
@@ -377,7 +393,15 @@ class TimesheetService(
                 breakMinutes = if (breakProvided) breakMinutes else existing.breakMinutes,
                 holidayWork = holidayWork,
                 note = if (noteProvided) note else existing.note,
-                workLocation = workLocation ?: existing.workLocation
+                workLocation = workLocation ?: existing.workLocation,
+                // 拡張フィールド: clearフラグがtrueならnull、そうでなければ値があれば更新、なければ既存値
+                irregularWorkType = if (clearIrregular) null else (irregularWorkType ?: existing.irregularWorkType),
+                irregularWorkDesc = if (clearIrregular) null else (irregularWorkDesc ?: existing.irregularWorkDesc),
+                lateTime = if (clearLate) null else (lateTime ?: existing.lateTime),
+                lateDesc = if (clearLate) null else (lateDesc ?: existing.lateDesc),
+                earlyTime = if (clearEarly) null else (earlyTime ?: existing.earlyTime),
+                earlyDesc = if (clearEarly) null else (earlyDesc ?: existing.earlyDesc),
+                paidLeave = paidLeave ?: existing.paidLeave
             )
             val recalced = applyCalc(merged)
             val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
@@ -397,7 +421,14 @@ class TimesheetService(
                 breakMinutes = breakMinutes,
                 holidayWork = holidayWork,
                 note = note,
-                workLocation = workLocation
+                workLocation = workLocation,
+                irregularWorkType = irregularWorkType,
+                irregularWorkDesc = irregularWorkDesc,
+                lateTime = lateTime,
+                lateDesc = lateDesc,
+                earlyTime = earlyTime,
+                earlyDesc = earlyDesc,
+                paidLeave = paidLeave
             )
             val created = applyCalc(createdBase)
             dbCall("insert", userName, workDate) { timesheetEntryMapper.insert(created) }

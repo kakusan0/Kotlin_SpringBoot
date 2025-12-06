@@ -29,6 +29,10 @@
 }
 
 /* フルスクリーンモーダル */
+#fullscreenModal {
+    z-index: 1050;
+}
+
 #fullscreenModal .modal-body {
     background: #fff;
 }
@@ -36,6 +40,24 @@
 #fullscreenTableContainer {
     overflow: auto;
     max-height: calc(100vh - 70px);
+}
+
+/* サブモーダル（変則勤務/遅刻/早退）をフルスクリーンモーダルより前面に表示 */
+/* フルスクリーン(1050)より大きい値にする */
+#irregularWorkModal,
+#lateModal,
+#earlyModal,
+#defaultSettingsModal,
+#conflictModal {
+    z-index: 1060 !important;
+}
+
+#irregularWorkModal .modal-backdrop,
+#lateModal .modal-backdrop,
+#earlyModal .modal-backdrop,
+#defaultSettingsModal .modal-backdrop,
+#conflictModal .modal-backdrop {
+    z-index: 1055 !important;
 }
 
 #fullscreenWorkTable {
@@ -591,6 +613,43 @@ tr.row-incomplete .break-cell {
     font-size: 12px;
     padding: 2px 8px;
     min-width: 50px;
+}
+
+/* 変則勤務列 */
+.col-irregular {
+    width: 70px;
+    min-width: 60px;
+    text-align: center;
+}
+
+.irregular-btn {
+    font-size: 11px;
+    padding: 2px 6px;
+}
+
+/* 遅刻・早退列 */
+.col-lateearly {
+    width: 100px;
+    min-width: 90px;
+    text-align: center;
+}
+
+.late-btn, .early-btn {
+    font-size: 10px;
+    padding: 2px 4px;
+    margin: 1px;
+}
+
+.late-btn.has-data {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.early-btn.has-data {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: #000;
 }
 
 /* 印刷用スタイル */

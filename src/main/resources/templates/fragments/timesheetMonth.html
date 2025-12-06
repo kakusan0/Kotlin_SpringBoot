@@ -81,11 +81,13 @@
                     <th class="col-weekday">曜日</th>
                     <th class="col-location">出社区分</th>
                     <th class="col-note">備考</th>
+                    <th class="col-irregular">変則勤務</th>
                     <th class="col-start">出勤</th>
                     <th class="col-end">退勤</th>
                     <th class="col-break">休憩</th>
                     <th class="col-duration">稼働</th>
                     <th class="col-working">実働</th>
+                    <th class="col-lateearly"></th>
                     <th class="col-action">操作</th>
                 </tr>
                 </thead>
@@ -98,39 +100,36 @@
                     </td>
                     <td class="weekday-cell"></td>
                     <td class="location-cell">
-                        <button class="btn btn-sm btn-primary work-location-btn" data-location="出社"
-                                type="button">
+                        <button class="btn btn-sm btn-primary work-location-btn" data-location="出社" type="button">
                             出社
                         </button>
                     </td>
                     <td class="note-cell">
-                        <label class="visually-hidden"
-                               for="note-select-[[${#temporals.format(d,'yyyy-MM-dd')}]]">備考</label>
-                        <select class="form-select form-select-sm note-select"
-                                id="note-select-[[${#temporals.format(d,'yyyy-MM-dd')}]]" title="備考">
+                        <select class="form-select form-select-sm note-select" title="備考">
                             <option value="">---</option>
                             <option value="午前休">午前休</option>
                             <option value="午後休">午後休</option>
-                            <option value="年休">年休</option>
-                            <option value="振替出勤">振替出勤</option>
-                            <option value="振替休日">振替休日</option>
-                            <option value="特別休暇">特別休暇</option>
-                            <option value="欠勤">欠勤</option>
                             <option value="休日">休日</option>
                             <option value="祝日">祝日</option>
                             <option value="会社休">会社休</option>
+                            <option value="現場休">現場休</option>
                             <option value="対象外">対象外</option>
-                            <option value="休日出勤">休日出勤</option>
                         </select>
+                    </td>
+                    <td class="irregular-cell">
+                        <button class="btn btn-sm btn-outline-secondary irregular-btn" type="button">表示</button>
                     </td>
                     <td class="time-cell" data-type="start"></td>
                     <td class="time-cell" data-type="end"></td>
                     <td class="break-cell" contenteditable="true"></td>
                     <td class="duration-cell"></td>
                     <td class="working-cell"></td>
+                    <td class="lateearly-cell">
+                        <button class="btn btn-sm btn-outline-warning late-btn" type="button">遅刻</button>
+                        <button class="btn btn-sm btn-outline-info early-btn" type="button">早退</button>
+                    </td>
                     <td class="clear-cell">
-                        <button class="btn btn-outline-secondary btn-sm reset-row-btn" type="button">リセット
-                        </button>
+                        <button class="btn btn-outline-secondary btn-sm reset-row-btn" type="button">リセット</button>
                     </td>
                 </tr>
                 </tbody>
@@ -184,9 +183,131 @@
         </div>
     </div>
 
+    <!-- デフォルト設定強制モーダル -->
+    <div aria-hidden="true" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false"
+         id="defaultSettingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">デフォルト設定が必要です</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger">勤務表を入力する前に、デフォルト設定を入力してください。</p>
+                    <div class="mb-3">
+                        <label class="form-label" for="modalDefaultStart">出勤時間</label>
+                        <input class="form-control" id="modalDefaultStart" type="time" value="09:00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="modalDefaultEnd">退勤時間</label>
+                        <input class="form-control" id="modalDefaultEnd" type="time" value="18:00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="modalDefaultBreak">休憩時間（分）</label>
+                        <input class="form-control" id="modalDefaultBreak" min="0" type="number" value="60">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="saveDefaultSettings" type="button">設定を保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 変則勤務モーダル -->
+    <div aria-hidden="true" class="modal fade" id="irregularWorkModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">変則勤務 - <span id="irregularDateLabel"></span></h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="irregularType">種類</label>
+                        <select class="form-select" id="irregularType">
+                            <option value="">---</option>
+                            <option value="有給休暇">有給休暇</option>
+                            <option value="特別休暇">特別休暇</option>
+                            <option value="欠勤">欠勤</option>
+                            <option value="振替出勤">振替出勤</option>
+                            <option value="振替休日">振替休日</option>
+                            <option value="休日出勤">休日出勤</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="irregularDesc">説明</label>
+                        <textarea class="form-control" id="irregularDesc" placeholder="説明を入力..."
+                                  rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-danger" id="clearIrregularWork" type="button">クリア</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
+                    <button class="btn btn-primary" id="saveIrregularWork" type="button">完了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遅刻モーダル -->
+    <div aria-hidden="true" class="modal fade" id="lateModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">遅刻 - <span id="lateDateLabel"></span></h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="lateTime">遅刻時間</label>
+                        <input class="form-control" id="lateTimeInput" placeholder="0:30" type="time">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="lateDesc">説明</label>
+                        <textarea class="form-control" id="lateDescInput" placeholder="遅刻の理由を入力..."
+                                  rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-danger" id="clearLate" type="button">クリア</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
+                    <button class="btn btn-primary" id="saveLate" type="button">完了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 早退モーダル -->
+    <div aria-hidden="true" class="modal fade" id="earlyModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">早退 - <span id="earlyDateLabel"></span></h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="earlyTime">早退時間</label>
+                        <input class="form-control" id="earlyTimeInput" placeholder="1:00" type="time">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="earlyDesc">説明</label>
+                        <textarea class="form-control" id="earlyDescInput" placeholder="早退の理由を入力..."
+                                  rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-danger" id="clearEarly" type="button">クリア</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
+                    <button class="btn btn-primary" id="saveEarly" type="button">完了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- フルスクリーンモーダル -->
-    <div aria-hidden="true" aria-labelledby="fullscreenModalLabel" class="modal fade" id="fullscreenModal"
-         tabindex="-1">
+    <div aria-labelledby="fullscreenModalLabel" class="modal fade" data-bs-backdrop="false"
+         data-bs-focus="false" data-bs-keyboard="true" id="fullscreenModal">
         <div class="modal-dialog modal-fullscreen">
             <div class="modal-content">
                 <div class="modal-header py-2">
@@ -240,6 +361,20 @@
                 // フルスクリーン用にスタイル調整
                 originalContainer.style.maxHeight = 'calc(100vh - 80px)';
                 originalContainer.style.border = 'none';
+                originalContainer.style.pointerEvents = 'auto';
+            });
+
+            // モーダルが表示された後にフォーカストラップを解除
+            fullscreenModal.addEventListener('shown.bs.modal', function () {
+                // モーダル内の要素へのフォーカスを許可
+                const modalBody = fullscreenModal.querySelector('.modal-body');
+                if (modalBody) {
+                    modalBody.style.pointerEvents = 'auto';
+                }
+                // テーブル内のすべてのインタラクティブ要素を有効化
+                fullscreenModal.querySelectorAll('button, select, input, [contenteditable]').forEach(el => {
+                    el.style.pointerEvents = 'auto';
+                });
             });
 
             // モーダルが閉じる時: テーブルを元の位置に戻す

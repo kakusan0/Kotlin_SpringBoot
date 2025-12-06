@@ -156,10 +156,11 @@ class ReportService(
                 wdCell.setCellValue(jpWeek[d.dayOfWeek])
                 wdCell.cellStyle = dayOnlyStyle
 
-                // 備考情報
+                // 備考情報（現場休の場合は「休日」として出力）
                 val noteValue = e?.note ?: ""
+                val displayNote = if (noteValue == "現場休") "休日" else noteValue
                 val remarkCell = row.createCell(remarkIdx)
-                remarkCell.setCellValue(noteValue)
+                remarkCell.setCellValue(displayNote)
                 remarkCell.cellStyle = defaultTextStyle
 
                 // 判定: その日が祝日かどうか、週末かどうかを分けて計算
@@ -169,7 +170,7 @@ class ReportService(
                 val isHolidayOrWeekend = isActualHoliday || isWeekend
 
                 // 勤務時間を出力するべき備考（土日祝でも出力する）
-                val workingNotes = listOf("午前休", "午後休", "休日出勤", "振替出勤")
+                val workingNotes = listOf("午前休", "午後休", "休日出勤", "振替出勤", "現場休")
                 val isWorkingNote = workingNotes.contains(noteValue)
 
                 // 時間を空欄にすべき備考（完全な休み）
@@ -359,13 +360,15 @@ class ReportService(
                 while (!d.isAfter(to)) {
                     val e = entryMap[d]
                     val noteValue = e?.note ?: ""
+                    // 現場休の場合は「休日」として表示
+                    val displayNote = if (noteValue == "現場休") "休日" else noteValue
                     val isActualHoliday = holidayMap.containsKey(d)
                     val isWeekend =
                         d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
                     val isHolidayOrWeekend = isActualHoliday || isWeekend
 
                     // 勤務時間を出力するべき備考（土日祝でも出力する）
-                    val workingNotes = listOf("午前休", "午後休", "休日出勤", "振替出勤")
+                    val workingNotes = listOf("午前休", "午後休", "休日出勤", "振替出勤", "現場休")
                     val isWorkingNote = workingNotes.contains(noteValue)
 
                     // 時間を空欄にすべき備考（完全な休み）
@@ -376,7 +379,7 @@ class ReportService(
                     val shouldBlank = (isHolidayOrWeekend && !isWorkingNote) || isBlankNote
                     rows.add(
                         listOf(
-                            noteValue,
+                            displayNote,
                             "${d.dayOfMonth}日",
                             jpWeek[d.dayOfWeek] ?: "",
                             if (shouldBlank) "" else e?.startTime?.toString() ?: "",
@@ -520,13 +523,14 @@ class ReportService(
                 monthCell.setCellValue(from.monthValue.toDouble())
 
                 // 固定の列インデックス（0-indexed）
-                // E列=4: 出勤時、F列=5: 出勤分、G列=6: 退勤時、H列=7: 退勤分、I列=8: 休憩
                 val colStartHour = 4   // E列: 出勤時
                 val colStartMin = 5    // F列: 出勤分
                 val colEndHour = 6     // G列: 退勤時
                 val colEndMin = 7      // H列: 退勤分
                 val colBreak = 8       // I列: 休憩
                 val colHalfDay = 10    // K列: 午前休/午後休の場合に「4:00」
+                val colLate = 11       // L列: 遅刻時間
+                val colEarly = 12      // M列: 早退時間
                 val colOffice = 13     // N列: 出社
                 val colRemote = 14     // O列: 在宅
                 val colAnnualLeave = 15 // P列: 年休
@@ -535,6 +539,7 @@ class ReportService(
                 val colSubstituteHoliday = 18 // S列: 振替休日
                 val colSubstituteWork = 19 // T列: 振替出勤
                 val colHolidayWork = 20 // U列: 休日出勤
+                val colDescription = 27 // AB列: 説明
 
                 // 10行目（インデックス9）からデータ入力開始
                 val dataStartRow = 9
@@ -625,6 +630,47 @@ class ReportService(
                         remoteCell.setBlank()
                     }
 
+                    // 遅刻時間 (L列)
+                    val lateCell = row.getCell(colLate) ?: row.createCell(colLate)
+                    val lateTime = entry?.lateTime
+                    if (!lateTime.isNullOrBlank()) {
+                        lateCell.setCellValue(lateTime)
+                    } else {
+                        lateCell.setBlank()
+                    }
+
+                    // 早退時間 (M列)
+                    val earlyCell = row.getCell(colEarly) ?: row.createCell(colEarly)
+                    val earlyTime = entry?.earlyTime
+                    if (!earlyTime.isNullOrBlank()) {
+                        earlyCell.setCellValue(earlyTime)
+                    } else {
+                        earlyCell.setBlank()
+                    }
+
+                    // 説明 (AB列) - 遅刻・早退・変則勤務の説明を結合
+                    val descCell = row.getCell(colDescription) ?: row.createCell(colDescription)
+                    val descriptions = mutableListOf<String>()
+                    if (!entry?.lateDesc.isNullOrBlank()) {
+                        descriptions.add("遅刻: ${entry?.lateDesc}")
+                    }
+                    if (!entry?.earlyDesc.isNullOrBlank()) {
+                        descriptions.add("早退: ${entry?.earlyDesc}")
+                    }
+                    if (!entry?.irregularWorkDesc.isNullOrBlank()) {
+                        descriptions.add("${entry?.irregularWorkType ?: "変則"}: ${entry?.irregularWorkDesc}")
+                    }
+                    if (descriptions.isNotEmpty()) {
+                        // セル内改行（ALT+Enter相当）は \n を使用、各項目の前に「・」をつける
+                        descCell.setCellValue(descriptions.joinToString("\n") { "・$it" })
+                        // 折り返し設定
+                        val style = wb.createCellStyle()
+                        style.wrapText = true
+                        descCell.cellStyle = style
+                    } else {
+                        descCell.setBlank()
+                    }
+
                     // 備考による各列への〇入力
                     val annualLeaveCell = row.getCell(colAnnualLeave) ?: row.createCell(colAnnualLeave)
                     val specialLeaveCell = row.getCell(colSpecialLeave) ?: row.createCell(colSpecialLeave)
@@ -642,23 +688,26 @@ class ReportService(
                     substituteWorkCell.setBlank()
                     holidayWorkCell.setBlank()
 
-                    // 備考に応じて〇を入力
-                    when (noteValue) {
-                        "年休" -> annualLeaveCell.setCellValue("〇")
-                        "午前休", "午後休" -> {
-                            // 土日祝の場合は休日出勤のみ、平日は有給休暇
-                            if (isHolidayOrWeekend) {
-                                holidayWorkCell.setCellValue("〇")
-                            } else {
-                                annualLeaveCell.setCellValue("〇")
-                            }
-                        }
+                    // 備考が「午前休」「午後休」「年休」の場合はP列（有給休暇）に〇
+                    val annualLeaveNotes = listOf("午前休", "午後休", "年休")
+                    if (annualLeaveNotes.contains(noteValue)) {
+                        annualLeaveCell.setCellValue("〇")
+                    }
 
+                    // 変則勤務による〇入力
+                    val irregularType = entry?.irregularWorkType
+                    when (irregularType) {
+                        "有給休暇" -> annualLeaveCell.setCellValue("〇")
                         "特別休暇" -> specialLeaveCell.setCellValue("〇")
                         "欠勤" -> absenceCell.setCellValue("〇")
                         "振替休日" -> substituteHolidayCell.setCellValue("〇")
                         "振替出勤" -> substituteWorkCell.setCellValue("〇")
                         "休日出勤" -> holidayWorkCell.setCellValue("〇")
+                    }
+
+                    // 土日祝で午前休・午後休の場合は休日出勤にも〇
+                    if (isHolidayOrWeekend && (noteValue == "午前休" || noteValue == "午後休")) {
+                        holidayWorkCell.setCellValue("〇")
                     }
                 }
 
