@@ -34,7 +34,7 @@ spring:
       cookie:
         same-site: strict
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration
     baseline-on-migrate: true
   cache:

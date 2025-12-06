@@ -1,0 +1,3 @@
+このディレクトリのマイグレーションSQLはV1__ALL_MIGRATIONS_MERGED.sqlに統合されました。
+他のV2以降のSQLファイルは不要です。
+
