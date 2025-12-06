@@ -3,6 +3,7 @@
     "obfuscate": "javascript-obfuscator js --output ../src/main/resources/static/js"
   },
   "devDependencies": {
-    "javascript-obfuscator": "latest"
+    "javascript-obfuscator": "latest",
+    "terser": "latest"
   }
 }

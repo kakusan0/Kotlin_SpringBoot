@@ -834,6 +834,16 @@
         const workLocation = locationBtn?.dataset.location || null;
         const note = noteSelect?.value || null;
 
+        // 変則勤務・遅刻・早退データを取得
+        // undefinedの場合は空文字列を送信してサーバー側でクリアさせる
+        const irregularType = row.dataset.irregularType !== undefined ? row.dataset.irregularType : '';
+        const irregularDesc = row.dataset.irregularDesc !== undefined ? row.dataset.irregularDesc : '';
+        const irregularData = row.dataset.irregularData !== undefined ? row.dataset.irregularData : '';
+        const lateTime = row.dataset.lateTime !== undefined ? row.dataset.lateTime : '';
+        const lateDesc = row.dataset.lateDesc !== undefined ? row.dataset.lateDesc : '';
+        const earlyTime = row.dataset.earlyTime !== undefined ? row.dataset.earlyTime : '';
+        const earlyDesc = row.dataset.earlyDesc !== undefined ? row.dataset.earlyDesc : '';
+
         // 既存のタイマーがあればクリア
         if (saveTimers.has(iso)) clearTimeout(saveTimers.get(iso));
 
@@ -847,7 +857,15 @@
             endTime: end || null,
             breakMinutes: breakVal || null,
             workLocation: workLocation,
-            note: note
+            note: note,
+            // 変則勤務・遅刻・早退（空文字列の場合もサーバーに送信してクリア）
+            irregularWorkType: irregularType || '',
+            irregularWorkDesc: irregularDesc || '',
+            irregularWorkData: irregularData || '',
+            lateTime: lateTime || '',
+            lateDesc: lateDesc || '',
+            earlyTime: earlyTime || '',
+            earlyDesc: earlyDesc || ''
         };
 
         // すべて空欄の場合はforce=trueで明示的にクリアをサーバへ伝える
@@ -1008,12 +1026,14 @@
         }
 
         // 出社区分ボタン
-        // 土日祝でも午前休・午後休・現場休の場合は有効化
+        // 土日祝でも午前休・午後休・現場休、または変則勤務（振替出勤・休日出勤）の場合は有効化
         const locationBtn = row.querySelector('.work-location-btn');
         if (locationBtn) {
             const workingNotes = ['午前休', '午後休', '現場休'];
-            if (workingNotes.includes(noteValue)) {
-                // 勤務系の備考の場合は出社区分を有効化
+            const irregularType = row.dataset.irregularType || '';
+            const workingIrregulars = ['振替出勤', '休日出勤'];
+            if (workingNotes.includes(noteValue) || workingIrregulars.includes(irregularType)) {
+                // 勤務系の備考または変則勤務の場合は出社区分を有効化
                 locationBtn.disabled = false;
             } else {
                 locationBtn.disabled = disable;
@@ -1214,10 +1234,10 @@
                         <option value="対象外">対象外</option>
                     </select>
                 </td>` +
-                `<td class="irregular-cell"><button class="btn btn-sm btn-outline-secondary irregular-btn" type="button">表示</button></td>` +
+                `<td class="irregular-cell"><button class="btn btn-sm btn-outline-secondary irregular-btn" type="button">表示</button><span class="irregular-type-label ms-1"></span></td>` +
                 `<td class="time-cell" data-type="start"></td>` +
                 `<td class="time-cell" data-type="end"></td>` +
-                `<td class="break-cell" contenteditable="true"></td>` +
+                `<td class="break-cell" contenteditable="true" inputmode="numeric"></td>` +
                 `<td class="duration-cell"></td>` +
                 `<td class="working-cell"></td>` +
                 `<td class="lateearly-cell"><button class="btn btn-sm btn-outline-warning late-btn" type="button">遅刻</button><button class="btn btn-sm btn-outline-info early-btn" type="button">早退</button></td>` +
@@ -1359,6 +1379,68 @@
                         }
                     }
 
+                    // reflect irregular work data (変則勤務)
+                    const irregularTypeValue = data.irregularWorkType || '';
+                    row.dataset.irregularType = irregularTypeValue;
+                    row.dataset.irregularDesc = data.irregularWorkDesc || '';
+                    // 追加: 複数データをdatasetに反映
+                    if (data.irregularWorkData) {
+                        row.dataset.irregularData = data.irregularWorkData;
+                    } else {
+                        delete row.dataset.irregularData;
+                    }
+                    const irregularBtn = row.querySelector('.irregular-btn');
+                    const irregularTypeLabel = row.querySelector('.irregular-type-label');
+                    if (irregularBtn) {
+                        if (irregularTypeValue) {
+                            irregularBtn.classList.remove('btn-outline-secondary');
+                            irregularBtn.classList.add('btn-secondary');
+                        } else {
+                            irregularBtn.classList.remove('btn-secondary');
+                            irregularBtn.classList.add('btn-outline-secondary');
+                        }
+                    }
+                    if (irregularTypeLabel) {
+                        // 複数件表示対応（種類のみ表示、説明は不要）
+                        let irregularList = [];
+                        if (row.dataset.irregularData) {
+                            try {
+                                const items = JSON.parse(row.dataset.irregularData);
+                                if (Array.isArray(items)) {
+                                    irregularList = items.map(item => `・${item.type}`);
+                                }
+                            } catch (e) {
+                                // パース失敗時は旧形式
+                                if (irregularTypeValue) irregularList = [`・${irregularTypeValue}`];
+                            }
+                        } else if (irregularTypeValue) {
+                            irregularList = [`・${irregularTypeValue}`];
+                        }
+                        irregularTypeLabel.innerHTML = irregularList.join('');
+                    }
+
+                    // reflect late/early data
+                    row.dataset.lateTime = data.lateTime || '';
+                    row.dataset.lateDesc = data.lateDesc || '';
+                    row.dataset.earlyTime = data.earlyTime || '';
+                    row.dataset.earlyDesc = data.earlyDesc || '';
+                    const lateBtn = row.querySelector('.late-btn');
+                    const earlyBtn = row.querySelector('.early-btn');
+                    if (lateBtn) {
+                        if (data.lateTime) {
+                            lateBtn.classList.add('has-data');
+                        } else {
+                            lateBtn.classList.remove('has-data');
+                        }
+                    }
+                    if (earlyBtn) {
+                        if (data.earlyTime) {
+                            earlyBtn.classList.add('has-data');
+                        } else {
+                            earlyBtn.classList.remove('has-data');
+                        }
+                    }
+
                     // reflect note data
                     const noteSelect = row.querySelector('.note-select');
                     const noteValue = data.note || '';
@@ -1368,8 +1450,8 @@
 
                     // 土日祝判定
                     const dateForCheck = new Date(iso + 'T00:00:00');
-                    const dayOfWeek = dateForCheck.getDay();
-                    const isWeekendDay = (dayOfWeek === 0 || dayOfWeek === 6);
+                    const dayForCheck = dateForCheck.getDay();
+                    const isWeekendDay = (dayForCheck === 0 || dayForCheck === 6);
                     const isHolidayDay = row.dataset.isHoliday === '1';
                     const isHolidayOrWeekend = isWeekendDay || isHolidayDay;
 
@@ -1377,11 +1459,18 @@
                     const clearNotes = ['休日', '祝日', '会社休', '対象外'];
                     // 勤務系の備考（土日祝でも入力可能）
                     const workingNotes = ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'];
+                    // 変則勤務で勤務扱いになるもの
+                    const workingIrregulars = ['振替出勤', '休日出勤'];
+                    const hasWorkingIrregular = workingIrregulars.includes(irregularTypeValue);
 
-                    if (clearNotes.includes(noteValue)) {
-                        // 完全休みの備考
+                    if (clearNotes.includes(noteValue) && !hasWorkingIrregular) {
+                        // 完全休みの備考（変則勤務で勤務扱いでない場合）
                         disableRowInput(row, true, noteValue);
-                    } else if (isHolidayOrWeekend && !workingNotes.includes(noteValue)) {
+                    } else if (isHolidayOrWeekend && hasWorkingIrregular) {
+                        // 土日祝で変則勤務が振替出勤・休日出勤の場合は有効化
+                        setRowEditable(row, true);
+                        disableRowInput(row, false, noteValue);
+                    } else if (isHolidayOrWeekend && !workingNotes.includes(noteValue) && !hasWorkingIrregular) {
                         // 土日祝で勤務系備考がない場合（「---」含む）は無効化
                         disableRowInput(row, true, noteValue);
                     } else {
@@ -1502,14 +1591,46 @@
             locationBtn.classList.add('btn-primary');
         }
 
+        // 変則勤務・遅刻・早退データをクリア
+        delete row.dataset.irregularType;
+        delete row.dataset.irregularDesc;
+        delete row.dataset.irregularData;
+        delete row.dataset.lateTime;
+        delete row.dataset.lateDesc;
+        delete row.dataset.earlyTime;
+        delete row.dataset.earlyDesc;
+
+        // 変則勤務ボタンと種類名ラベルを更新
+        const irregularBtn = row.querySelector('.irregular-btn');
+        if (irregularBtn) {
+            irregularBtn.classList.remove('btn-secondary');
+            irregularBtn.classList.add('btn-outline-secondary');
+        }
+        const irregularTypeLabel = row.querySelector('.irregular-type-label');
+        if (irregularTypeLabel) {
+            irregularTypeLabel.textContent = '';
+        }
+
+        // 遅刻・早退ボタンを更新
+        const lateBtn = row.querySelector('.late-btn');
+        if (lateBtn) {
+            lateBtn.classList.remove('has-data');
+        }
+        const earlyBtn = row.querySelector('.early-btn');
+        if (earlyBtn) {
+            earlyBtn.classList.remove('has-data');
+        }
+
         // 土日祝の場合は入力を無効化
+        const noteValue = noteSelect?.value || '';
         if (isWeekend || isHoliday) {
-            disableRowInput(row, true);
+            disableRowInput(row, true, noteValue);
         } else {
             setRowEditable(row, true);
         }
 
         updateRowMetrics(row);
+        checkRowWarnings(row);
 
         setTimeout(() => {
             delete row.dataset.suppressAutoSave;
@@ -1574,6 +1695,7 @@
                 // 変則勤務・遅刻・早退データをクリア
                 delete row.dataset.irregularType;
                 delete row.dataset.irregularDesc;
+                delete row.dataset.irregularData;
                 delete row.dataset.lateTime;
                 delete row.dataset.lateDesc;
                 delete row.dataset.earlyTime;
@@ -1872,14 +1994,116 @@
 
     // 変則勤務モーダル
     let currentIrregularRow = null;
+    let irregularItems = []; // 複数の種類と説明を管理する配列
     const irregularModal = document.getElementById('irregularWorkModal');
     const irregularDateLabel = document.getElementById('irregularDateLabel');
     const irregularType = document.getElementById('irregularType');
     const irregularDesc = document.getElementById('irregularDesc');
+    const irregularDescError = document.getElementById('irregularDescError');
+    const irregularList = document.getElementById('irregularList');
+    const irregularListEmpty = document.getElementById('irregularListEmpty');
+    const addIrregularItemBtn = document.getElementById('addIrregularItem');
     const saveIrregularBtn = document.getElementById('saveIrregularWork');
+
+    // 全種類リスト
+    const allIrregularTypes = ['有給休暇', '特別休暇', '欠勤', '振替出勤', '振替休日', '休日出勤'];
 
     // z-index調整を適用
     adjustSubModalZIndex(irregularModal);
+
+    // 変則勤務一覧を更新する関数
+    function updateIrregularList() {
+        if (!irregularList) return;
+
+        // 一覧をクリア
+        irregularList.innerHTML = '';
+
+        if (irregularItems.length === 0) {
+            irregularList.innerHTML = '<p class="text-muted small mb-0" id="irregularListEmpty">登録がありません</p>';
+        } else {
+            irregularItems.forEach((item, index) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'list-group-item d-flex justify-content-between align-items-start py-2';
+                itemEl.innerHTML = `
+                    <div class="me-2">
+                        <span class="badge bg-primary me-1">${item.type}</span>
+                        <small class="text-muted d-block mt-1">${item.desc}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger irregular-item-remove" data-index="${index}" type="button">
+                        <i class="bi bi-x"></i>
+                    </button>
+                `;
+                irregularList.appendChild(itemEl);
+            });
+        }
+
+        // プルダウンのオプションを更新（登録済みのものは非表示）
+        updateIrregularTypeOptions();
+
+        // 完了ボタンの状態を更新
+        updateSaveButtonState();
+    }
+
+    // プルダウンのオプションを更新
+    function updateIrregularTypeOptions() {
+        if (!irregularType) return;
+
+        const registeredTypes = irregularItems.map(item => item.type);
+
+        // 一旦全てのオプションをリセット
+        irregularType.innerHTML = '<option value="">---</option>';
+
+        allIrregularTypes.forEach(type => {
+            if (!registeredTypes.includes(type)) {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                irregularType.appendChild(option);
+            }
+        });
+    }
+
+    // 入力状態に応じてプラスボタンと完了ボタンの表示/非表示を切り替え
+    function updateAddButtonVisibility() {
+        if (!addIrregularItemBtn) return;
+
+        const typeValue = irregularType?.value || '';
+        const descValue = irregularDesc?.value?.trim() || '';
+
+        // 種類と説明の両方が入力されている場合のみプラスボタンを表示
+        if (typeValue && descValue) {
+            addIrregularItemBtn.style.display = 'block';
+        } else {
+            addIrregularItemBtn.style.display = 'none';
+        }
+
+        // エラー表示の更新
+        if (irregularDescError) {
+            if (typeValue && !descValue) {
+                irregularDescError.style.display = 'block';
+            } else {
+                irregularDescError.style.display = 'none';
+            }
+        }
+    }
+
+    // 完了ボタンの状態を更新
+    function updateSaveButtonState() {
+        if (!saveIrregularBtn) return;
+
+        const typeValue = irregularType?.value || '';
+        const descValue = irregularDesc?.value?.trim() || '';
+
+        // 種類が選択されているが説明が空の場合のみ非活性
+        // それ以外（何も入力していない、または両方入力済み、または一覧がある）は活性
+        if (typeValue && !descValue) {
+            // 種類が選択されているが説明が未入力 → 非活性
+            saveIrregularBtn.disabled = true;
+        } else {
+            // 何も入力していない、または両方入力済み、または一覧がある → 活性
+            saveIrregularBtn.disabled = false;
+        }
+    }
 
     // 変則勤務ボタンのクリック (documentレベルでイベント委譲)
     document.addEventListener('click', e => {
@@ -1889,43 +2113,131 @@
             const iso = currentIrregularRow.querySelector('.date-cell')?.dataset?.iso || '';
             irregularDateLabel.textContent = iso;
 
-            // 既存のデータを反映
-            irregularType.value = currentIrregularRow.dataset.irregularType || '';
-            irregularDesc.value = currentIrregularRow.dataset.irregularDesc || '';
+            // 既存のデータを読み込む
+            const existingData = currentIrregularRow.dataset.irregularData;
+            if (existingData) {
+                try {
+                    irregularItems = JSON.parse(existingData);
+                } catch (err) {
+                    // 旧形式のデータをマイグレーション
+                    const oldType = currentIrregularRow.dataset.irregularType || '';
+                    const oldDesc = currentIrregularRow.dataset.irregularDesc || '';
+                    if (oldType && oldDesc) {
+                        irregularItems = [{type: oldType, desc: oldDesc}];
+                    } else {
+                        irregularItems = [];
+                    }
+                }
+            } else {
+                // 旧形式のデータをマイグレーション
+                const oldType = currentIrregularRow.dataset.irregularType || '';
+                const oldDesc = currentIrregularRow.dataset.irregularDesc || '';
+                if (oldType && oldDesc) {
+                    irregularItems = [{type: oldType, desc: oldDesc}];
+                } else {
+                    irregularItems = [];
+                }
+            }
+
+            // フォームをリセット
+            irregularType.value = '';
+            irregularDesc.value = '';
+
+            // 一覧を更新
+            updateIrregularList();
+            updateAddButtonVisibility();
 
             const bsModal = new bootstrap.Modal(irregularModal);
             bsModal.show();
         }
     });
 
-    // 変則勤務モーダルのクリアボタン
+    // 一覧からアイテムを削除
+    if (irregularList) {
+        irregularList.addEventListener('click', e => {
+            const removeBtn = e.target.closest('.irregular-item-remove');
+            if (removeBtn) {
+                const index = parseInt(removeBtn.dataset.index, 10);
+                irregularItems.splice(index, 1);
+                updateIrregularList();
+            }
+        });
+    }
+
+    // プラスボタンで一覧に追加
+    if (addIrregularItemBtn) {
+        addIrregularItemBtn.addEventListener('click', () => {
+            const typeValue = irregularType?.value || '';
+            const descValue = irregularDesc?.value?.trim() || '';
+
+            if (typeValue && descValue) {
+                // 重複チェック
+                const exists = irregularItems.some(item => item.type === typeValue);
+                if (!exists) {
+                    irregularItems.push({type: typeValue, desc: descValue});
+                    updateIrregularList();
+
+                    // フォームをリセット
+                    irregularType.value = '';
+                    irregularDesc.value = '';
+                    updateAddButtonVisibility();
+                }
+            }
+        });
+    }
+
+    // 入力変更時にボタン状態を更新
+    if (irregularType) {
+        irregularType.addEventListener('change', () => {
+            updateAddButtonVisibility();
+            updateSaveButtonState();
+        });
+    }
+    if (irregularDesc) {
+        irregularDesc.addEventListener('input', () => {
+            updateAddButtonVisibility();
+            updateSaveButtonState();
+        });
+    }
+
+    // 変則勤務モーダルの全クリアボタン
     const clearIrregularBtn = document.getElementById('clearIrregularWork');
     if (clearIrregularBtn) {
         clearIrregularBtn.addEventListener('click', () => {
+            irregularItems = [];
             irregularType.value = '';
             irregularDesc.value = '';
-            // 完了ボタンを強調表示（クリア後は保存が必要）
-            if (saveIrregularBtn) {
-                saveIrregularBtn.classList.remove('btn-primary');
-                saveIrregularBtn.classList.add('btn-danger');
-                saveIrregularBtn.textContent = '完了（保存必須）';
-            }
+            updateIrregularList();
+            updateAddButtonVisibility();
         });
     }
 
     if (saveIrregularBtn) {
         saveIrregularBtn.addEventListener('click', () => {
             if (currentIrregularRow) {
-                const typeValue = irregularType.value;
-                const descValue = irregularDesc.value;
+                // 入力中のデータがあれば追加
+                const typeValue = irregularType?.value || '';
+                const descValue = irregularDesc?.value?.trim() || '';
+                if (typeValue && descValue) {
+                    const exists = irregularItems.some(item => item.type === typeValue);
+                    if (!exists) {
+                        irregularItems.push({type: typeValue, desc: descValue});
+                    }
+                }
 
-                currentIrregularRow.dataset.irregularType = typeValue;
-                currentIrregularRow.dataset.irregularDesc = descValue;
+                // データを保存
+                currentIrregularRow.dataset.irregularData = JSON.stringify(irregularItems);
 
-                // ボタンの表示を更新
+                // 後方互換性のため最初のアイテムをirregularType/Descに設定
+                const firstItem = irregularItems[0] || {type: '', desc: ''};
+                currentIrregularRow.dataset.irregularType = firstItem.type;
+                currentIrregularRow.dataset.irregularDesc = firstItem.desc;
+
+                // ボタンの表示を更新（種類名も表示）
                 const btn = currentIrregularRow.querySelector('.irregular-btn');
+                const typeLabel = currentIrregularRow.querySelector('.irregular-type-label');
                 if (btn) {
-                    if (typeValue) {
+                    if (irregularItems.length > 0) {
                         btn.classList.remove('btn-outline-secondary');
                         btn.classList.add('btn-secondary');
                     } else {
@@ -1933,31 +2245,72 @@
                         btn.classList.add('btn-outline-secondary');
                     }
                 }
+                if (typeLabel) {
+                    if (irregularItems.length > 1) {
+                        typeLabel.textContent = `${firstItem.type} 他${irregularItems.length - 1}件`;
+                    } else {
+                        typeLabel.textContent = firstItem.type || '';
+                    }
+                }
 
-                // 保存
+                // 土日祝判定
+                const iso = currentIrregularRow.querySelector('.date-cell')?.dataset?.iso;
+                const dateForCheck = iso ? new Date(iso + 'T00:00:00') : new Date();
+                const dayOfWeek = dateForCheck.getDay();
+                const isWeekendDay = (dayOfWeek === 0 || dayOfWeek === 6);
+                const isHolidayDay = currentIrregularRow.dataset.isHoliday === '1';
+                const isHolidayOrWeekend = isWeekendDay || isHolidayDay;
+
+                // 土日祝かつ振替出勤・休日出勤の場合
+                const workingIrregulars = ['振替出勤', '休日出勤'];
+                const hasWorkingIrregular = irregularItems.some(item => workingIrregulars.includes(item.type));
+
+                if (isHolidayOrWeekend && hasWorkingIrregular) {
+                    // 勤務時間等を活性化
+                    disableRowInput(currentIrregularRow, false, '');
+                    setRowEditable(currentIrregularRow, true);
+
+                    // 備考を「---」にする
+                    const noteSelect = currentIrregularRow.querySelector('.note-select');
+                    if (noteSelect) {
+                        noteSelect.value = '';
+                    }
+
+                    // 出社区分を活性化
+                    const locationBtn = currentIrregularRow.querySelector('.work-location-btn');
+                    if (locationBtn) {
+                        locationBtn.disabled = false;
+                    }
+                } else if (isHolidayOrWeekend && !hasWorkingIrregular) {
+                    // 土日祝で振替出勤・休日出勤以外の場合は無効化（備考に依存）
+                    const noteSelect = currentIrregularRow.querySelector('.note-select');
+                    const noteValue = noteSelect?.value || '';
+                    const workingNotes = ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'];
+                    if (!workingNotes.includes(noteValue)) {
+                        disableRowInput(currentIrregularRow, true, noteValue);
+                    }
+                }
+
+                // 保存（複数アイテムをJSON形式で保存）
                 saveRowWithExtras(currentIrregularRow, {
-                    irregularWorkType: typeValue || null,
-                    irregularWorkDesc: descValue || null
+                    irregularWorkType: firstItem.type || null,
+                    irregularWorkDesc: firstItem.desc || null,
+                    irregularWorkData: irregularItems.length > 0 ? JSON.stringify(irregularItems) : null
                 });
-
-                // 完了ボタンを元に戻す
-                saveIrregularBtn.classList.remove('btn-danger');
-                saveIrregularBtn.classList.add('btn-primary');
-                saveIrregularBtn.textContent = '完了';
 
                 bootstrap.Modal.getInstance(irregularModal).hide();
             }
         });
     }
 
-    // モーダルが閉じられるときに完了ボタンをリセット
+    // モーダルが閉じられるときにリセット
     if (irregularModal) {
         irregularModal.addEventListener('hidden.bs.modal', () => {
-            if (saveIrregularBtn) {
-                saveIrregularBtn.classList.remove('btn-danger');
-                saveIrregularBtn.classList.add('btn-primary');
-                saveIrregularBtn.textContent = '完了';
-            }
+            irregularItems = [];
+            if (irregularType) irregularType.value = '';
+            if (irregularDesc) irregularDesc.value = '';
+            if (irregularDescError) irregularDescError.style.display = 'none';
+            updateAddButtonVisibility();
         });
     }
 
@@ -1973,6 +2326,20 @@
     // z-index調整を適用
     adjustSubModalZIndex(lateModal);
 
+    // 遅刻モーダルのバリデーション
+    function validateLateModal() {
+        if (saveLateBtn) {
+            if (lateTimeInput.value && lateDescInput.value) {
+                saveLateBtn.disabled = false;
+            } else {
+                saveLateBtn.disabled = true;
+            }
+        }
+    }
+
+    if (lateTimeInput) lateTimeInput.addEventListener('input', validateLateModal);
+    if (lateDescInput) lateDescInput.addEventListener('input', validateLateModal);
+
     // 遅刻ボタンのクリック (documentレベルでイベント委譲)
     document.addEventListener('click', e => {
         const btn = e.target.closest('#workTable .late-btn');
@@ -1984,6 +2351,7 @@
             // 既存のデータを反映
             lateTimeInput.value = currentLateRow.dataset.lateTime || '';
             lateDescInput.value = currentLateRow.dataset.lateDesc || '';
+            validateLateModal();
 
             const bsModal = new bootstrap.Modal(lateModal);
             bsModal.show();
@@ -2019,6 +2387,7 @@
                 saveLateBtn.classList.remove('btn-danger');
                 saveLateBtn.classList.add('btn-primary');
                 saveLateBtn.textContent = '完了';
+                saveLateBtn.disabled = false;
 
                 bootstrap.Modal.getInstance(lateModal).hide();
             }
@@ -2029,6 +2398,7 @@
         clearLateBtn.addEventListener('click', () => {
             lateTimeInput.value = '';
             lateDescInput.value = '';
+            validateLateModal();
             // 完了ボタンを強調表示（クリア後は保存が必要）
             if (saveLateBtn) {
                 saveLateBtn.classList.remove('btn-primary');
@@ -2045,6 +2415,7 @@
                 saveLateBtn.classList.remove('btn-danger');
                 saveLateBtn.classList.add('btn-primary');
                 saveLateBtn.textContent = '完了';
+                saveLateBtn.disabled = false;
             }
         });
     }
@@ -2061,6 +2432,20 @@
     // z-index調整を適用
     adjustSubModalZIndex(earlyModal);
 
+    // 早退モーダルのバリデーション
+    function validateEarlyModal() {
+        if (saveEarlyBtn) {
+            if (earlyTimeInput.value && earlyDescInput.value) {
+                saveEarlyBtn.disabled = false;
+            } else {
+                saveEarlyBtn.disabled = true;
+            }
+        }
+    }
+
+    if (earlyTimeInput) earlyTimeInput.addEventListener('input', validateEarlyModal);
+    if (earlyDescInput) earlyDescInput.addEventListener('input', validateEarlyModal);
+
     // 早退ボタンのクリック (documentレベルでイベント委譲)
     document.addEventListener('click', e => {
         const btn = e.target.closest('#workTable .early-btn');
@@ -2072,6 +2457,7 @@
             // 既存のデータを反映
             earlyTimeInput.value = currentEarlyRow.dataset.earlyTime || '';
             earlyDescInput.value = currentEarlyRow.dataset.earlyDesc || '';
+            validateEarlyModal();
 
             const bsModal = new bootstrap.Modal(earlyModal);
             bsModal.show();
@@ -2107,6 +2493,7 @@
                 saveEarlyBtn.classList.remove('btn-danger');
                 saveEarlyBtn.classList.add('btn-primary');
                 saveEarlyBtn.textContent = '完了';
+                saveEarlyBtn.disabled = false;
 
                 bootstrap.Modal.getInstance(earlyModal).hide();
             }
@@ -2117,6 +2504,7 @@
         clearEarlyBtn.addEventListener('click', () => {
             earlyTimeInput.value = '';
             earlyDescInput.value = '';
+            validateEarlyModal();
             // 完了ボタンを強調表示（クリア後は保存が必要）
             if (saveEarlyBtn) {
                 saveEarlyBtn.classList.remove('btn-primary');
@@ -2133,6 +2521,7 @@
                 saveEarlyBtn.classList.remove('btn-danger');
                 saveEarlyBtn.classList.add('btn-primary');
                 saveEarlyBtn.textContent = '完了';
+                saveEarlyBtn.disabled = false;
             }
         });
     }

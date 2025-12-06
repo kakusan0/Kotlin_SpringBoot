@@ -26,6 +26,7 @@ data class TimesheetEntry(
     // 変則勤務
     val irregularWorkType: String? = null,   // 有給休暇, 特別休暇, 欠勤, 振替出勤, 振替休日, 休日出勤
     val irregularWorkDesc: String? = null,   // 変則勤務の説明
+    val irregularWorkData: String? = null,   // 複数の変則勤務データ (JSON形式)
     // 遅刻
     val lateTime: String? = null,            // 遅刻時間 (例: "0:30")
     val lateDesc: String? = null,            // 遅刻の説明
@@ -54,7 +55,7 @@ data class TimesheetEntry(
     ) : this(
         id, workDate, userName, startTime, endTime, note, createdAt, updatedAt,
         breakMinutes, durationMinutes, workingMinutes, version, holidayWork, workLocation,
-        null, null, null, null, null, null, null
+        null, null, null, null, null, null, null, null
     )
 
     // 互換性のため、旧スキーマ(13カラム: work_locationなし)向けのコンストラクタ
@@ -75,7 +76,7 @@ data class TimesheetEntry(
     ) : this(
         id, workDate, userName, startTime, endTime, note, createdAt, updatedAt,
         breakMinutes, durationMinutes, workingMinutes, version, holidayWork,
-        null, null, null, null, null, null, null, null
+        null, null, null, null, null, null, null, null, null
     )
 }
 

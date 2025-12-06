@@ -203,6 +203,7 @@ class TimesheetController(
             val workLocation = body["workLocation"]?.takeIf { it.isNotBlank() }
             val irregularWorkType = body["irregularWorkType"]?.takeIf { it.isNotBlank() }
             val irregularWorkDesc = body["irregularWorkDesc"]?.takeIf { it.isNotBlank() }
+            val irregularWorkData = body["irregularWorkData"]?.takeIf { it.isNotBlank() }
             val lateTime = body["lateTime"]?.takeIf { it.isNotBlank() }
             val lateDesc = body["lateDesc"]?.takeIf { it.isNotBlank() }
             val earlyTime = body["earlyTime"]?.takeIf { it.isNotBlank() }
@@ -234,6 +235,7 @@ class TimesheetController(
                 workLocation,
                 irregularWorkType,
                 irregularWorkDesc,
+                irregularWorkData,
                 lateTime,
                 lateDesc,
                 earlyTime,

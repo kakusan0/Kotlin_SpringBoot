@@ -254,33 +254,57 @@
 
     <!-- 変則勤務モーダル -->
     <div aria-hidden="true" class="modal fade" id="irregularWorkModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">変則勤務 - <span id="irregularDateLabel"></span></h5>
                     <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label" for="irregularType">種類</label>
-                        <select class="form-select" id="irregularType">
-                            <option value="">---</option>
-                            <option value="有給休暇">有給休暇</option>
-                            <option value="特別休暇">特別休暇</option>
-                            <option value="欠勤">欠勤</option>
-                            <option value="振替出勤">振替出勤</option>
-                            <option value="振替休日">振替休日</option>
-                            <option value="休日出勤">休日出勤</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="irregularDesc">説明</label>
-                        <textarea class="form-control" id="irregularDesc" placeholder="説明を入力..."
-                                  rows="3"></textarea>
+                    <div class="row">
+                        <!-- 左側：登録済み一覧 -->
+                        <div class="col-md-5 border-end">
+                            <h6 class="mb-2"><i class="bi bi-list-ul me-1"></i>登録済み一覧</h6>
+                            <div class="list-group" id="irregularList" style="max-height: 250px; overflow-y: auto;">
+                                <p class="text-muted small" id="irregularListEmpty">登録がありません</p>
+                            </div>
+                        </div>
+                        <!-- 右側：入力フォーム -->
+                        <div class="col-md-7">
+                            <h6 class="mb-2"><i class="bi bi-plus-circle me-1"></i>新規追加</h6>
+                            <div class="mb-3">
+                                <label class="form-label" for="irregularType">種類 <span
+                                        class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <select class="form-select" id="irregularType">
+                                        <option value="">---</option>
+                                        <option value="有給休暇">有給休暇</option>
+                                        <option value="特別休暇">特別休暇</option>
+                                        <option value="欠勤">欠勤</option>
+                                        <option value="振替出勤">振替出勤</option>
+                                        <option value="振替休日">振替休日</option>
+                                        <option value="休日出勤">休日出勤</option>
+                                    </select>
+                                    <button class="btn btn-outline-success" id="addIrregularItem" style="display: none;"
+                                            title="一覧に追加" type="button">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="irregularDesc">説明 <span
+                                        class="text-danger">*</span></label>
+                                <textarea class="form-control" id="irregularDesc" placeholder="説明を入力..."
+                                          rows="3"></textarea>
+                                <div class="form-text text-danger" id="irregularDescError" style="display: none;">
+                                    説明は必須です
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline-danger" id="clearIrregularWork" type="button">クリア</button>
+                    <button class="btn btn-outline-danger" id="clearIrregularWork" type="button">全クリア</button>
                     <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
                     <button class="btn btn-primary" id="saveIrregularWork" type="button">完了</button>
                 </div>

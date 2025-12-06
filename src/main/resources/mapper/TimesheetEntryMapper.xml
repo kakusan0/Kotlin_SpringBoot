@@ -19,6 +19,7 @@
         <result property="workLocation" column="work_location"/>
         <result property="irregularWorkType" column="irregular_work_type"/>
         <result property="irregularWorkDesc" column="irregular_work_desc"/>
+        <result property="irregularWorkData" column="irregular_work_data"/>
         <result property="lateTime" column="late_time"/>
         <result property="lateDesc" column="late_desc"/>
         <result property="earlyTime" column="early_time"/>
@@ -52,11 +53,12 @@
         INSERT INTO
             timesheet_entries( work_date, user_name, start_time, end_time, note, break_minutes, duration_minutes
                              , working_minutes, version, holiday_work, work_location, irregular_work_type
-                             , irregular_work_desc, late_time, late_desc, early_time, early_desc, paid_leave)
+                             , irregular_work_desc, irregular_work_data, late_time, late_desc, early_time, early_desc
+                             , paid_leave)
         VALUES
             ( #{workDate}, #{userName}, #{startTime}, #{endTime}, #{note}, #{breakMinutes}, #{durationMinutes}
             , #{workingMinutes}, #{version}, #{holidayWork}, #{workLocation}, #{irregularWorkType}, #{irregularWorkDesc}
-            , #{lateTime}, #{lateDesc}, #{earlyTime}, #{earlyDesc}, #{paidLeave})
+            , #{irregularWorkData}, #{lateTime}, #{lateDesc}, #{earlyTime}, #{earlyDesc}, #{paidLeave})
     </insert>
 
     <update id="updateTimes" parameterType="com.example.demo.model.TimesheetEntry">
@@ -74,6 +76,7 @@
             , work_location       = #{workLocation}
             , irregular_work_type = #{irregularWorkType}
             , irregular_work_desc = #{irregularWorkDesc}
+            , irregular_work_data = #{irregularWorkData}
             , late_time           = #{lateTime}
             , late_desc           = #{lateDesc}
             , early_time          = #{earlyTime}
@@ -99,6 +102,7 @@
             , work_location       = #{workLocation}
             , irregular_work_type = #{irregularWorkType}
             , irregular_work_desc = #{irregularWorkDesc}
+            , irregular_work_data = #{irregularWorkData}
             , late_time           = #{lateTime}
             , late_desc           = #{lateDesc}
             , early_time          = #{earlyTime}

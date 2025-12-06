@@ -373,6 +373,7 @@ class TimesheetService(
         workLocation: String? = null,
         irregularWorkType: String? = null,
         irregularWorkDesc: String? = null,
+        irregularWorkData: String? = null,
         lateTime: String? = null,
         lateDesc: String? = null,
         earlyTime: String? = null,
@@ -397,6 +398,7 @@ class TimesheetService(
                 // 拡張フィールド: clearフラグがtrueならnull、そうでなければ値があれば更新、なければ既存値
                 irregularWorkType = if (clearIrregular) null else (irregularWorkType ?: existing.irregularWorkType),
                 irregularWorkDesc = if (clearIrregular) null else (irregularWorkDesc ?: existing.irregularWorkDesc),
+                irregularWorkData = if (clearIrregular) null else (irregularWorkData ?: existing.irregularWorkData),
                 lateTime = if (clearLate) null else (lateTime ?: existing.lateTime),
                 lateDesc = if (clearLate) null else (lateDesc ?: existing.lateDesc),
                 earlyTime = if (clearEarly) null else (earlyTime ?: existing.earlyTime),
@@ -424,6 +426,7 @@ class TimesheetService(
                 workLocation = workLocation,
                 irregularWorkType = irregularWorkType,
                 irregularWorkDesc = irregularWorkDesc,
+                irregularWorkData = irregularWorkData,
                 lateTime = lateTime,
                 lateDesc = lateDesc,
                 earlyTime = earlyTime,

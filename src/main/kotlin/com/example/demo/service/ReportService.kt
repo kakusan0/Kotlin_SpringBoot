@@ -657,9 +657,23 @@ class ReportService(
                     if (!entry?.earlyDesc.isNullOrBlank()) {
                         descriptions.add("早退: ${entry?.earlyDesc}")
                     }
-                    if (!entry?.irregularWorkDesc.isNullOrBlank()) {
-                        descriptions.add("${entry?.irregularWorkType ?: "変則"}: ${entry?.irregularWorkDesc}")
+
+                    // 変則勤務データを取得（複数対応）
+                    val irregularItems = parseIrregularWorkData(
+                        entry?.irregularWorkData,
+                        entry?.irregularWorkType,
+                        entry?.irregularWorkDesc
+                    )
+
+                    // 変則勤務の説明をAB列に追加
+                    for (item in irregularItems) {
+                        if (item.desc.isNotBlank()) {
+                            descriptions.add("${item.type}: ${item.desc}")
+                        } else {
+                            descriptions.add(item.type)
+                        }
                     }
+
                     if (descriptions.isNotEmpty()) {
                         // セル内改行（ALT+Enter相当）は \n を使用、各項目の前に「・」をつける
                         descCell.setCellValue(descriptions.joinToString("\n") { "・$it" })
@@ -694,15 +708,16 @@ class ReportService(
                         annualLeaveCell.setCellValue("〇")
                     }
 
-                    // 変則勤務による〇入力
-                    val irregularType = entry?.irregularWorkType
-                    when (irregularType) {
-                        "有給休暇" -> annualLeaveCell.setCellValue("〇")
-                        "特別休暇" -> specialLeaveCell.setCellValue("〇")
-                        "欠勤" -> absenceCell.setCellValue("〇")
-                        "振替休日" -> substituteHolidayCell.setCellValue("〇")
-                        "振替出勤" -> substituteWorkCell.setCellValue("〇")
-                        "休日出勤" -> holidayWorkCell.setCellValue("〇")
+                    // 変則勤務による〇入力（複数対応）
+                    for (item in irregularItems) {
+                        when (item.type) {
+                            "有給休暇" -> annualLeaveCell.setCellValue("〇")
+                            "特別休暇" -> specialLeaveCell.setCellValue("〇")
+                            "欠勤" -> absenceCell.setCellValue("〇")
+                            "振替休日" -> substituteHolidayCell.setCellValue("〇")
+                            "振替出勤" -> substituteWorkCell.setCellValue("〇")
+                            "休日出勤" -> holidayWorkCell.setCellValue("〇")
+                        }
                     }
 
                     // 土日祝で午前休・午後休の場合は休日出勤にも〇
@@ -718,5 +733,43 @@ class ReportService(
             }
         }
         return baos.toByteArray()
+    }
+
+    /**
+     * 変則勤務データをパースする
+     * JSON形式のirregularWorkDataがあればそれを使用、なければ旧形式のirregularWorkType/Descを使用
+     */
+    private data class IrregularItem(val type: String, val desc: String)
+
+    private fun parseIrregularWorkData(
+        irregularWorkData: String?,
+        irregularWorkType: String?,
+        irregularWorkDesc: String?
+    ): List<IrregularItem> {
+        // JSON形式のデータがある場合
+        if (!irregularWorkData.isNullOrBlank()) {
+            try {
+                val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+                val typeRef = object : com.fasterxml.jackson.core.type.TypeReference<List<Map<String, String>>>() {}
+                val items: List<Map<String, String>> = mapper.readValue(irregularWorkData, typeRef)
+                return items.mapNotNull { item ->
+                    val type = item["type"] ?: return@mapNotNull null
+                    val desc = item["desc"] ?: ""
+                    IrregularItem(type, desc)
+                }
+            } catch (e: Exception) {
+                // パース失敗時は旧形式にフォールバック
+                logger.warn("[UNISS] irregularWorkData parse error: ${e.message} irregularWorkData=[$irregularWorkData]")
+                // パース失敗時は空リストを返す（そのまま出力しない）
+                return emptyList()
+            }
+        }
+
+        // 旧形式のデータを使用
+        if (!irregularWorkType.isNullOrBlank()) {
+            return listOf(IrregularItem(irregularWorkType, irregularWorkDesc ?: ""))
+        }
+
+        return emptyList()
     }
 }
