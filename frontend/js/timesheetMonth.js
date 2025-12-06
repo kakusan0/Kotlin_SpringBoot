@@ -1001,7 +1001,7 @@
                 `<td class="break-cell" contenteditable="true"></td>` +
                 `<td class="duration-cell"></td>` +
                 `<td class="working-cell"></td>` +
-                `<td class="clear-cell"><button class='btn btn-outline-secondary btn-sm clear-row-btn' type='button'>クリア</button></td>`;
+                `<td class="clear-cell"><button class='btn btn-outline-secondary btn-sm reset-row-btn' type='button'>リセット</button></td>`;
             tbody.appendChild(tr);
 
             // 平日は編集可能、土日は編集不可
@@ -1221,9 +1221,9 @@
     }
 
 
-    // クリアボタン（各行）
+    // リセットボタン（各行）- 勤務時間・休憩・備考を初期状態に戻す
     document.getElementById('workTable').addEventListener('click', e => {
-        const btn = e.target.closest('.clear-row-btn');
+        const btn = e.target.closest('.reset-row-btn');
         if (!btn) return;
         const row = btn.closest('tr');
         if (!row) return;
@@ -1238,14 +1238,40 @@
             working: row.querySelector('.working-cell')
         };
 
+        // 勤務時間をクリア
         Object.values(cells).forEach(cell => {
             if (cell) cell.textContent = '';
         });
 
-        const hs = row.querySelector('.holiday-switch');
-        if (hs) {
-            hs.checked = false;
-            setRowEditable(row, false);
+        // 日付を取得して土日祝判定
+        const iso = row.querySelector('.date-cell')?.dataset?.iso;
+        const isWeekend = iso ? isWeekendIso(iso) : false;
+        const isHoliday = row.dataset.isHoliday === '1';
+
+        // 備考を初期状態に戻す（土日=休日、祝日=祝日、平日=空欄）
+        const noteSelect = row.querySelector('.note-select');
+        if (noteSelect) {
+            if (isHoliday) {
+                noteSelect.value = '祝日';
+            } else if (isWeekend) {
+                noteSelect.value = '休日';
+            } else {
+                noteSelect.value = '';
+            }
+        }
+
+        // 出社区分を「出社」に戻す
+        const locationBtn = row.querySelector('.work-location-btn');
+        if (locationBtn) {
+            locationBtn.dataset.location = '出社';
+            locationBtn.textContent = '出社';
+            locationBtn.classList.remove('btn-success');
+            locationBtn.classList.add('btn-primary');
+        }
+
+        // 土日祝の場合は入力を無効化
+        if (isWeekend || isHoliday) {
+            disableRowInput(row, true);
         } else {
             setRowEditable(row, true);
         }

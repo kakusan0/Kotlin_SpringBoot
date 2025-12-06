@@ -325,8 +325,9 @@
         min-height: 44px;
     }
 
-    /* ボタンのタッチ対応 */
-    .clear-row-btn {
+    /* クリア/リセットボタンを小さく */
+    .clear-row-btn,
+    .reset-row-btn {
         padding: 4px 8px;
         font-size: 12px;
     }
@@ -453,8 +454,9 @@
         padding: 6px 10px;
     }
 
-    /* クリアボタンを小さく */
-    .clear-row-btn {
+    /* クリア/リセットボタンを小さく */
+    .clear-row-btn,
+    .reset-row-btn {
         padding: 2px 6px;
         font-size: 11px;
     }
