@@ -18,7 +18,16 @@
         prevBtn: document.getElementById('prevMonth'),
         nextBtn: document.getElementById('nextMonth'),
         workTable: document.getElementById('workTable'),
-        tableBody: document.getElementById('tableBody')
+        tableBody: document.getElementById('tableBody'),
+        // スマホ用モーダル要素
+        mobilePickerModal: document.getElementById('timePickerModal'),
+        mobileDisplay: document.getElementById('mobileTimeDisplay'),
+        mobileHand: document.getElementById('mobileHand'),
+        mobileModeLabel: document.getElementById('mobileModeLabel'),
+        mobileDragArea: document.getElementById('mobileDragArea'),
+        mobileClock: document.getElementById('mobileClock'),
+        mobileSelectedDateLabel: document.getElementById('mobileSelectedDateLabel'),
+        mobileCellTypeLabel: document.getElementById('mobileCellTypeLabel')
     };
 
     // 後方互換性のために個別変数も定義
@@ -395,18 +404,9 @@
         const dateCell = row.querySelector('.date-cell');
         const iso = dateCell ? dateCell.dataset.iso : '';
 
-        selectedDateLabel.textContent = '日付: ' + iso;
-        cellTypeLabel.textContent = '種類: ' + (type === 'start' ? '出勤' : '退勤');
-        holidayLabel.style.display = 'none';
-
         const init = cell.textContent.trim();
 
-        // タッチ端末ではネイティブ time input を使う
-        if (isTouchDevice) {
-            showNativeTimePicker(cell, type);
-            return;
-        }
-
+        // 時間の初期値を設定
         let parsed = false;
         if (TIME_PATTERNS.FULL.test(init)) {
             const parts = init.split(':');
@@ -429,21 +429,47 @@
         }
 
         selectingHour = true;
-        modeLabel.textContent = '時を設定してください (0-23)';
-        updateDisplay();
-        setHand();
 
-        const r = cell.getBoundingClientRect();
-        picker.style.left = Math.max(8, r.left) + 'px';
-        picker.style.top = (r.bottom + 6) + 'px';
-        picker.style.display = 'block';
-        picker.setAttribute('aria-hidden', 'false');
+        // スマホ判定（768px以下）
+        const isMobile = window.innerWidth < 768;
 
-        if (overlay) overlay.style.display = 'block';
+        if (isMobile && elements.mobilePickerModal) {
+            // スマホ: Bootstrapモーダルを使用
+            elements.mobileSelectedDateLabel.textContent = '日付: ' + iso;
+            elements.mobileCellTypeLabel.textContent = type === 'start' ? '出勤' : '退勤';
+            elements.mobileModeLabel.textContent = '時を設定してください (0-23)';
+            updateMobileDisplay();
+            setMobileHand();
+
+            const bsModal = new bootstrap.Modal(elements.mobilePickerModal);
+            bsModal.show();
+        } else {
+            // PC: 従来のピッカーを使用
+            selectedDateLabel.textContent = '日付: ' + iso;
+            cellTypeLabel.textContent = '種類: ' + (type === 'start' ? '出勤' : '退勤');
+            holidayLabel.style.display = 'none';
+            modeLabel.textContent = '時を設定してください (0-23)';
+            updateDisplay();
+            setHand();
+
+            const r = cell.getBoundingClientRect();
+            picker.style.left = Math.max(8, r.left) + 'px';
+            picker.style.top = (r.bottom + 6) + 'px';
+            picker.style.display = 'block';
+            picker.setAttribute('aria-hidden', 'false');
+
+            if (overlay) overlay.style.display = 'block';
+        }
     });
 
     function updateDisplay() {
         display.textContent = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+    }
+
+    function updateMobileDisplay() {
+        if (elements.mobileDisplay) {
+            elements.mobileDisplay.textContent = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+        }
     }
 
     function setHand() {
@@ -451,12 +477,154 @@
         hand.style.transform = `rotate(${angle}deg)`;
     }
 
+    function setMobileHand() {
+        if (elements.mobileHand) {
+            const angle = selectingHour ? (hour % 24) * 15 : minute * 6;
+            elements.mobileHand.style.transform = `rotate(${angle}deg)`;
+        }
+    }
+
+    // モバイル用ドラッグイベント
+    if (elements.mobileDragArea) {
+        elements.mobileDragArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            dragStarted = false;
+            dragStartTime = Date.now();
+        }, {passive: false});
+
+        elements.mobileDragArea.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 0) return;
+            const touch = e.touches[0];
+            dragStarted = true;
+            const rect = elements.mobileClock.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dx = touch.clientX - cx;
+            const dy = touch.clientY - cy;
+            const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
+            elements.mobileHand.style.transform = `rotate(${angle}deg)`;
+            if (selectingHour) {
+                hour = Math.round(angle / 15) % 24;
+            } else {
+                minute = Math.round(angle / 6) % 60;
+            }
+            updateMobileDisplay();
+        }, {passive: false});
+
+        elements.mobileDragArea.addEventListener('touchend', () => {
+            if (selectingHour && dragStarted) {
+                selectingHour = false;
+                elements.mobileModeLabel.textContent = '分を設定してください (0-59)';
+                setMobileHand();
+            }
+            dragStarted = false;
+        });
+    }
+
+    // モバイル用確定ボタン
+    const mobilePickerConfirmBtn = document.getElementById('mobilePickerConfirm');
+    if (mobilePickerConfirmBtn) {
+        mobilePickerConfirmBtn.addEventListener('click', () => {
+            if (currentCell) {
+                const commitValue = elements.mobileDisplay.textContent;
+                const iso = currentCell.parentElement?.querySelector('.date-cell')?.dataset?.iso;
+                console.debug('[TS] mobile picker confirm', iso, commitValue);
+                currentCell.textContent = commitValue;
+                currentCell.classList.remove('active');
+                updateRowMetrics(currentCell.parentElement);
+                autoSaveRow(currentCell.parentElement);
+            }
+            // モーダルを閉じる
+            const modalInstance = bootstrap.Modal.getInstance(elements.mobilePickerModal);
+            if (modalInstance) modalInstance.hide();
+            // リセット
+            selectingHour = true;
+            currentCell = null;
+        });
+    }
+
+    // モバイルモーダルが閉じられた時の処理
+    if (elements.mobilePickerModal) {
+        elements.mobilePickerModal.addEventListener('hidden.bs.modal', () => {
+            if (currentCell) {
+                currentCell.classList.remove('active');
+                const r = currentCell.parentElement;
+                if (r && r.dataset.localEditing) delete r.dataset.localEditing;
+            }
+            currentCell = null;
+            selectingHour = true;
+        });
+    }
+
+    // マウスイベント (PC用)
     dragArea.addEventListener('mousedown', () => {
         dragStarted = false;
         dragStartTime = Date.now();
         document.addEventListener('mousemove', onDrag);
         document.addEventListener('mouseup', onDrop);
     });
+
+    // タッチイベント（スマホ対応）
+    dragArea.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        dragStarted = false;
+        dragStartTime = Date.now();
+        document.addEventListener('touchmove', onTouchDrag, {passive: false});
+        document.addEventListener('touchend', onTouchDrop);
+    }, {passive: false});
+
+    function onTouchDrag(ev) {
+        ev.preventDefault();
+        if (ev.touches.length === 0) return;
+        const touch = ev.touches[0];
+        dragStarted = true;
+        const rect = clock.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = touch.clientX - cx;
+        const dy = touch.clientY - cy;
+        const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
+        hand.style.transform = `rotate(${angle}deg)`;
+        if (selectingHour) {
+            hour = Math.round(angle / 15) % 24;
+        } else {
+            minute = Math.round(angle / 6) % 60;
+        }
+        updateDisplay();
+        if (currentCell) {
+            currentCell.dataset.preview = display.textContent;
+        }
+    }
+
+    function onTouchDrop() {
+        document.removeEventListener('touchmove', onTouchDrag);
+        document.removeEventListener('touchend', onTouchDrop);
+        // onDropと同じ処理
+        if (selectingHour) {
+            selectingHour = false;
+            modeLabel.textContent = '分を設定してください (0-59)';
+            setHand();
+            return;
+        }
+        if (currentCell) {
+            if (dragStarted) {
+                const commitValue = currentCell.dataset.preview || display.textContent;
+                const iso = currentCell.parentElement.querySelector('.date-cell')?.dataset?.iso;
+                console.debug('[TS] picker commit (touch)', iso, commitValue);
+                currentCell.textContent = commitValue;
+                delete currentCell.dataset.preview;
+                currentCell.classList.remove('active');
+                updateRowMetrics(currentCell.parentElement);
+                autoSaveRow(currentCell.parentElement);
+            } else {
+                if (currentCell.dataset && currentCell.dataset.preview) delete currentCell.dataset.preview;
+                currentCell.classList.remove('active');
+            }
+        }
+        dragStarted = false;
+        closePicker();
+    }
 
     function onDrag(ev) {
         dragStarted = true;
@@ -536,6 +704,35 @@
             picker.setAttribute('aria-hidden', 'true');
         }
         if (overlay) overlay.style.display = 'none';
+        // モードをリセット
+        selectingHour = true;
+        dragStarted = false;
+    }
+
+    // 確定ボタン
+    const pickerConfirmBtn = document.getElementById('pickerConfirm');
+    if (pickerConfirmBtn) {
+        pickerConfirmBtn.addEventListener('click', () => {
+            if (currentCell) {
+                const commitValue = display.textContent;
+                const iso = currentCell.parentElement?.querySelector('.date-cell')?.dataset?.iso;
+                console.debug('[TS] picker confirm button', iso, commitValue);
+                currentCell.textContent = commitValue;
+                delete currentCell.dataset.preview;
+                currentCell.classList.remove('active');
+                updateRowMetrics(currentCell.parentElement);
+                autoSaveRow(currentCell.parentElement);
+            }
+            closePicker();
+        });
+    }
+
+    // キャンセルボタン
+    const pickerCancelBtn = document.getElementById('pickerCancel');
+    if (pickerCancelBtn) {
+        pickerCancelBtn.addEventListener('click', () => {
+            closePicker();
+        });
     }
 
     // Escape キーでピッカーを閉じる
@@ -546,9 +743,11 @@
     });
 
     // オーバーレイクリックで閉じる
-    overlay.addEventListener('mousedown', () => {
-        closePicker();
-    });
+    if (overlay) {
+        overlay.addEventListener('mousedown', () => {
+            closePicker();
+        });
+    }
 
     // デバウンス用 map
     const saveTimers = new Map();
@@ -738,9 +937,21 @@
             if (row) {
                 const noteValue = select.value;
 
+                // 土日祝判定
+                const iso = row.querySelector('.date-cell')?.dataset?.iso;
+                const dateForCheck = iso ? new Date(iso + 'T00:00:00') : new Date();
+                const dayOfWeek = dateForCheck.getDay();
+                const isWeekendDay = (dayOfWeek === 0 || dayOfWeek === 6);
+                const isHolidayDay = row.dataset.isHoliday === '1';
+                const isHolidayOrWeekend = isWeekendDay || isHolidayDay;
+
                 // 休日・祝日・年休などの場合は入力値をクリアして無効化
                 const clearNotes = ['休日', '祝日', '会社休', '対象外'];
+                // 勤務系の備考（土日祝でも入力可能）
+                const workingNotes = ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'];
+
                 if (clearNotes.includes(noteValue)) {
+                    // 完全休みの備考の場合は入力値をクリアして無効化
                     const startCell = row.querySelector('.time-cell[data-type="start"]');
                     const endCell = row.querySelector('.time-cell[data-type="end"]');
                     const breakCell = row.querySelector('.break-cell');
@@ -757,8 +968,11 @@
 
                     // 入力を無効化
                     disableRowInput(row, true, noteValue);
+                } else if (isHolidayOrWeekend && !workingNotes.includes(noteValue)) {
+                    // 土日祝で勤務系備考がない場合（「---」含む）は無効化（クリアはしない）
+                    disableRowInput(row, true, noteValue);
                 } else {
-                    // 休日系以外の場合は入力を有効化
+                    // 平日、または土日祝で勤務系備考がある場合は有効化
                     disableRowInput(row, false, noteValue);
                 }
                 // 警告チェック
@@ -1147,26 +1361,37 @@
 
                     // reflect note data
                     const noteSelect = row.querySelector('.note-select');
-                    if (noteSelect && data.note) {
-                        noteSelect.value = data.note;
+                    const noteValue = data.note || '';
+                    if (noteSelect && noteValue) {
+                        noteSelect.value = noteValue;
+                    }
 
-                        // 備考が休日系の場合は入力を無効化
-                        const clearNotes = ['休日', '祝日', '会社休', '対象外'];
-                        if (clearNotes.includes(data.note)) {
-                            disableRowInput(row, true, data.note);
-                        } else {
-                            // editable for normal days
-                            setRowEditable(row, true);
-                            disableRowInput(row, false, data.note);
-                        }
+                    // 土日祝判定
+                    const dateForCheck = new Date(iso + 'T00:00:00');
+                    const dayOfWeek = dateForCheck.getDay();
+                    const isWeekendDay = (dayOfWeek === 0 || dayOfWeek === 6);
+                    const isHolidayDay = row.dataset.isHoliday === '1';
+                    const isHolidayOrWeekend = isWeekendDay || isHolidayDay;
+
+                    // 備考が休日系の場合は入力を無効化
+                    const clearNotes = ['休日', '祝日', '会社休', '対象外'];
+                    // 勤務系の備考（土日祝でも入力可能）
+                    const workingNotes = ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'];
+
+                    if (clearNotes.includes(noteValue)) {
+                        // 完全休みの備考
+                        disableRowInput(row, true, noteValue);
+                    } else if (isHolidayOrWeekend && !workingNotes.includes(noteValue)) {
+                        // 土日祝で勤務系備考がない場合（「---」含む）は無効化
+                        disableRowInput(row, true, noteValue);
                     } else {
-                        // editable for normal days without note
+                        // 平日、または土日祝で勤務系備考がある場合は有効化
                         setRowEditable(row, true);
+                        disableRowInput(row, false, noteValue);
                     }
 
                     // ensure weekday shown
-                    const date = new Date(iso + 'T00:00:00');
-                    const wd = shortDay(date);
+                    const wd = shortDay(dateForCheck);
                     const wdEl = row.querySelector('.weekday-cell');
                     if (wdEl) wdEl.textContent = wd;
                     // update shading
@@ -1291,6 +1516,105 @@
             autoSaveRow(row);
         }, 0);
     });
+
+    // 全体リセットボタン - 勤務表テーブル全体をリセット
+    const resetAllBtn = document.getElementById('resetAllBtn');
+    if (resetAllBtn) {
+        resetAllBtn.addEventListener('click', () => {
+            if (!confirm('当月の勤務表を全てリセットしますか？\n（勤務時間・休憩・備考・出社区分が初期状態に戻ります）')) {
+                return;
+            }
+
+            const tbody = document.getElementById('tableBody');
+            if (!tbody) return;
+
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(row => {
+                row.dataset.suppressAutoSave = '1';
+
+                const cells = {
+                    start: row.querySelector('.time-cell[data-type="start"]'),
+                    end: row.querySelector('.time-cell[data-type="end"]'),
+                    break: row.querySelector('.break-cell'),
+                    duration: row.querySelector('.duration-cell'),
+                    working: row.querySelector('.working-cell')
+                };
+
+                // 勤務時間をクリア
+                Object.values(cells).forEach(cell => {
+                    if (cell) cell.textContent = '';
+                });
+
+                // 日付を取得して土日祝判定
+                const iso = row.querySelector('.date-cell')?.dataset?.iso;
+                const isWeekend = iso ? isWeekendIso(iso) : false;
+                const isHoliday = row.dataset.isHoliday === '1';
+
+                // 備考を初期状態に戻す（土日=休日、祝日=祝日、平日=空欄）
+                const noteSelect = row.querySelector('.note-select');
+                if (noteSelect) {
+                    if (isHoliday) {
+                        noteSelect.value = '祝日';
+                    } else if (isWeekend) {
+                        noteSelect.value = '休日';
+                    } else {
+                        noteSelect.value = '';
+                    }
+                }
+
+                // 出社区分を「出社」に戻す
+                const locationBtn = row.querySelector('.work-location-btn');
+                if (locationBtn) {
+                    locationBtn.dataset.location = '出社';
+                    locationBtn.textContent = '出社';
+                    locationBtn.classList.remove('btn-success');
+                    locationBtn.classList.add('btn-primary');
+                }
+
+                // 変則勤務・遅刻・早退データをクリア
+                delete row.dataset.irregularType;
+                delete row.dataset.irregularDesc;
+                delete row.dataset.lateTime;
+                delete row.dataset.lateDesc;
+                delete row.dataset.earlyTime;
+                delete row.dataset.earlyDesc;
+
+                // ボタンの表示を更新
+                const irregularBtn = row.querySelector('.irregular-btn');
+                if (irregularBtn) {
+                    irregularBtn.classList.remove('btn-secondary');
+                    irregularBtn.classList.add('btn-outline-secondary');
+                }
+                const lateBtn = row.querySelector('.late-btn');
+                if (lateBtn) {
+                    lateBtn.classList.remove('has-data');
+                }
+                const earlyBtn = row.querySelector('.early-btn');
+                if (earlyBtn) {
+                    earlyBtn.classList.remove('has-data');
+                }
+
+                // 土日祝の場合は入力を無効化
+                const noteValue = noteSelect?.value || '';
+                if (isWeekend || isHoliday) {
+                    disableRowInput(row, true, noteValue);
+                } else {
+                    setRowEditable(row, true);
+                }
+
+                updateRowMetrics(row);
+                checkRowWarnings(row);
+                applyRowShade(row);
+
+                setTimeout(() => {
+                    delete row.dataset.suppressAutoSave;
+                    autoSaveRow(row);
+                }, 0);
+            });
+
+            console.log('[TS] 全体リセット完了');
+        });
+    }
 
     // Define the downloadReport function to handle Excel and PDF downloads
     async function downloadReport(format) {

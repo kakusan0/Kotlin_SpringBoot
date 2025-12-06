@@ -54,6 +54,9 @@
                             id="fullscreenBtn" title="フルスクリーン表示" type="button">
                         <i class="bi bi-arrows-fullscreen"></i>
                     </button>
+                    <button class="btn btn-sm btn-outline-danger" id="resetAllBtn" title="全体リセット" type="button">
+                        <i class="bi bi-arrow-counterclockwise"></i> 全リセット
+                    </button>
                 </div>
             </div>
 
@@ -142,7 +145,7 @@
         </div>
     </div>
 
-    <!-- Time Picker -->
+    <!-- Time Picker (PC用 - 従来のポップアップ) -->
     <div aria-hidden="true" class="time-picker" id="timePicker" style="display:none;">
         <div class="picker-header">
             <div>
@@ -159,6 +162,42 @@
             <div class="hand" id="hand"></div>
             <div class="center-dot"></div>
             <div class="drag-area" id="dragArea"></div>
+        </div>
+
+        <div class="picker-buttons mt-3 d-flex justify-content-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm" id="pickerCancel" type="button">キャンセル</button>
+            <button class="btn btn-primary btn-sm" id="pickerConfirm" type="button">確定</button>
+        </div>
+    </div>
+
+    <!-- Time Picker モーダル (スマホ用) -->
+    <div aria-hidden="true" class="modal fade d-md-none" id="timePickerModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">
+                        <span id="mobileSelectedDateLabel">日付: —</span>
+                        <span class="ms-2 text-muted" id="mobileCellTypeLabel">種類: —</span>
+                    </h6>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="display" id="mobileTimeDisplay">00:00</div>
+                    <div class="mode mb-3" id="mobileModeLabel">時を設定してください (0-23)</div>
+
+                    <div class="clock mx-auto" id="mobileClock">
+                        <div class="hand" id="mobileHand"></div>
+                        <div class="center-dot"></div>
+                        <div class="drag-area" id="mobileDragArea"></div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal" id="mobilePickerCancel"
+                            type="button">キャンセル
+                    </button>
+                    <button class="btn btn-primary" id="mobilePickerConfirm" type="button">確定</button>
+                </div>
+            </div>
         </div>
     </div>
 

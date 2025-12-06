@@ -199,6 +199,15 @@
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     z-index: 9999;
+    touch-action: none;
+}
+
+.picker-buttons {
+    margin-top: 12px;
+}
+
+.picker-buttons .btn {
+    min-width: 80px;
 }
 
 .picker-header {
@@ -374,42 +383,47 @@
         height: 1.25em;
     }
 
-    /* Time Picker モバイル対応 */
+    /* Time Picker モバイル - PC用ピッカーは非表示 */
     .time-picker {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        top: auto;
-        width: 100%;
-        max-width: 100%;
-        border-radius: 16px 16px 0 0;
-        padding: 16px;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        display: none !important;
     }
 
-    .clock {
-        width: 180px;
-        height: 180px;
+    /* モバイル用オーバーレイは不要 */
+    #timePickerOverlay {
+        display: none !important;
     }
 
-    .hand {
-        height: 75px;
-        left: 88.5px;
+    /* モバイルモーダル内の時計スタイル */
+    #timePickerModal .clock {
+        width: 200px;
+        height: 200px;
     }
 
-    .center-dot {
-        top: 83px;
-        left: 83px;
+    #timePickerModal .hand {
+        height: 85px;
+        left: 98.5px;
     }
 
-    .drag-area {
-        width: 180px;
-        height: 180px;
+    #timePickerModal .center-dot {
+        top: 93px;
+        left: 93px;
     }
 
-    .display {
-        font-size: 28px;
+    #timePickerModal .drag-area {
+        width: 200px;
+        height: 200px;
+    }
+
+    #timePickerModal .display {
+        font-size: 32px;
+        font-weight: bold;
+        color: #0066cc;
+        font-family: 'Courier New', monospace;
+    }
+
+    #timePickerModal .mode {
+        font-size: 14px;
+        color: #555;
     }
 
     /* アコーディオンのコンパクト化 */
