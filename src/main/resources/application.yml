@@ -15,6 +15,16 @@ spring:
         backend: ${VAULT_KV_BACKEND:secret}
         default-context: ${VAULT_KV_CONTEXT:application}
         profile-separator: /
+      # Kubernetes認証（K8s環境用）
+      kubernetes:
+        role: ${VAULT_K8S_ROLE:}
+        kubernetes-path: ${VAULT_K8S_PATH:kubernetes}
+        service-account-token-file: ${VAULT_K8S_TOKEN_FILE:/var/run/secrets/kubernetes.io/serviceaccount/token}
+      # AppRole認証（CI/CD用）
+      app-role:
+        role-id: ${VAULT_APPROLE_ROLE_ID:}
+        secret-id: ${VAULT_APPROLE_SECRET_ID:}
+        app-role-path: ${VAULT_APPROLE_PATH:approle}
   session:
     jdbc:
       initialize-schema: always

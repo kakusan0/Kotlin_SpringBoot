@@ -28,7 +28,7 @@ class MainController {
     @GetMapping("/tools")
     fun tools(model: Model): String {
         model.addAttribute("screens", emptyList<Any>())
-        model.addAttribute("currentScreen", "tools")
+        model.addAttribute("currentScreen", "ツール")
         model.addAttribute("selectedScreenName", "ツール")
         model.addAttribute("currentScreenPath", "toolsList")
         return "main"
@@ -47,7 +47,7 @@ class MainController {
             } ?: YearMonth.now()
         val dates = TimesheetGenerator.generateDates(yearMonth)
         model.apply {
-            addAttribute("currentScreen", "timesheet")
+            addAttribute("currentScreen", "勤務表")
             addAttribute("selectedScreenName", "勤務表")
             addAttribute("currentScreenPath", "timesheetMonth")
             addAttribute("monthDisplay", TimesheetGenerator.formatYearMonth(yearMonth))

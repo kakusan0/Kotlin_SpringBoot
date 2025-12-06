@@ -2,10 +2,17 @@ spring:
   config:
     activate:
       on-profile: war
+  cloud:
+    vault:
+      enabled: ${VAULT_ENABLED:true}
+  # Vaultから取得する値（環境変数でオーバーライド可能）
+  # Vaultパス: secret/application/war に以下のキーを設定
+  #   - db.url, db.username, db.password
+  #   - redis.host, redis.port, redis.password
   datasource:
-    url: ${APP_DB_URL:jdbc:postgresql://db-host:5432/demo_db}
-    username: ${APP_DB_USER:demo_user}
-    password: ${APP_DB_PASSWORD:demo_pass}
+    url: ${db.url:${APP_DB_URL:jdbc:postgresql://db-host:5432/demo_db}}
+    username: ${db.username:${APP_DB_USER:demo_user}}
+    password: ${db.password:${APP_DB_PASSWORD:demo_pass}}
     hikari:
       maximum-pool-size: ${APP_DB_MAX_POOL:20}
       minimum-idle: ${APP_DB_MIN_IDLE:5}
@@ -23,8 +30,9 @@ spring:
       namespace: ${APP_SESSION_NAMESPACE:app:sessions}
   data:
     redis:
-      host: ${APP_REDIS_HOST:redis-host}
-      port: ${APP_REDIS_PORT:6379}
+      host: ${redis.host:${APP_REDIS_HOST:redis-host}}
+      port: ${redis.port:${APP_REDIS_PORT:6379}}
+      password: ${redis.password:}
 
 server:
   servlet:

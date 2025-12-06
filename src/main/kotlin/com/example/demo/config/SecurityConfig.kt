@@ -99,15 +99,23 @@ class SecurityConfig(
                         "/favicon.ico", "/favicon.svg", "/.well-known/**",
                         "/login"
                     ).permitAll()
-                    // APIエンドポイントは認証必須に変更
+                    // メイン画面は認証不要（閲覧のみ）
+                    .requestMatchers("/", "/home", "/home/**", "/tools", "/tools/**").permitAll()
+                    // 勤務表はUNISSロールのみアクセス可能
+                    .requestMatchers("/timesheet", "/timesheet/**").hasRole("UNISS")
+                    // 祝日APIは閲覧のみ認証不要
+                    .requestMatchers("/api/calendar/holidays").permitAll()
+                    .requestMatchers("/api/calendar/holidays/list").permitAll()
+                    .requestMatchers("/api/calendar/holidays/range").permitAll()
+                    .requestMatchers("/api/calendar/holidays/**").authenticated() // 追加・削除は認証必須
+                    // 管理画面は認証必須
+                    .requestMatchers("/manage/**").authenticated()
+                    // その他のAPIは認証必須
                     .requestMatchers("/api/**").authenticated()
-                    // Actuatorエンドポイントは制限を検討
+                    // Actuatorエンドポイントは制限
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                    .requestMatchers("/actuator/**").denyAll() // その他のactuatorエンドポイントは拒否
-                    // /home, /tools, /timesheet, /manage, /content はログイン必須
-                    .requestMatchers("/home/**", "/tools/**", "/timesheet/**", "/manage/**", "/content/**")
-                    .authenticated()
-                    // その他は全て許可（将来的に認証を追加する場合はここを変更）
+                    .requestMatchers("/actuator/**").denyAll()
+                    // その他は全て許可
                     .anyRequest().permitAll()
             }
 
@@ -128,13 +136,13 @@ class SecurityConfig(
             .httpBasic { it.disable() }
             .logout {
                 it.logoutUrl("/logout")
-                it.logoutSuccessUrl("/login?logout")
+                it.logoutSuccessUrl("/home") // ログアウト後はホームへ
                 it.permitAll()
             }
 
             // セッション管理: セッション無効（タイムアウトや強制ログアウト）時のリダイレクト先
             .sessionManagement { sm ->
-                sm.invalidSessionUrl("/login")
+                sm.invalidSessionUrl("/home") // セッション無効時もホームへ
             }
 
             // セッション管理: 同一ユーザ最大セッション数を 1 にして古いセッションを切断（新ログインを許可）
@@ -174,7 +182,7 @@ class SecurityConfig(
         val user1 = User.builder()
             .username("角谷亮洋")
             .password(passwordEncoder.encode("角谷亮洋"))
-            .roles("USER")
+            .roles("USER", "UNISS") // UNISSロールを追加（勤務表アクセス用）
             .build()
         return InMemoryUserDetailsManager(user1)
     }

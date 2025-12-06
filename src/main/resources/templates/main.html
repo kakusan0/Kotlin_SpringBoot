@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="ja" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" xmlns:th="http://www.thymeleaf.org">
 
 <head th:replace="~{fragments/head :: commonHead(${currentScreen ?: 'メインページ'})}">
     <!-- Static fallback title to satisfy template validators; runtime fragment will replace head content -->
@@ -23,21 +23,24 @@
             </button>
         </div>
         <div class="position-absolute top-50 start-50 translate-middle d-flex align-items-center">
-            <button class="btn btn-secondary" data-bs-target="#scrollableModal" data-bs-toggle="modal"
-                    id="itemSelectButton"
-                    type="button">
-                <span id="selectedItemName" th:text="${selectedScreenName ?: '画面を選択'}"></span>
-            </button>
+            <h1 class="h5 mb-0 fw-bold text-dark" id="currentScreenTitle" th:text="${currentScreen ?: 'ホーム'}"></h1>
         </div>
-        <!-- 右側：ログアウトボタン -->
+        <!-- 右側：ログイン/ログアウトボタン -->
         <div class="position-absolute top-50 end-0 translate-middle-y pe-3">
-            <form action="/logout" class="m-0" method="post" th:action="@{/logout}">
+            <!-- ログイン済みの場合：ログアウトボタン -->
+            <form action="/logout" class="m-0" method="post" sec:authorize="isAuthenticated()" th:action="@{/logout}">
                 <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden">
                 <button class="btn btn-outline-danger btn-sm" type="submit">
                     <i class="bi bi-box-arrow-right"></i>
                     <span class="d-none d-md-inline ms-1">ログアウト</span>
                 </button>
             </form>
+            <!-- 未ログインの場合：ログインボタン -->
+            <button class="btn btn-primary btn-sm" data-bs-target="#loginModal" data-bs-toggle="modal"
+                    sec:authorize="!isAuthenticated()" type="button">
+                <i class="bi bi-box-arrow-in-right"></i>
+                <span class="d-none d-md-inline ms-1">ログイン</span>
+            </button>
         </div>
     </div>
 </header>
@@ -55,7 +58,8 @@
                     <span>ツール</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <!-- 勤務表: UNISSロールのみ表示 -->
+            <li class="nav-item" sec:authorize="hasRole('UNISS')">
                 <a class="nav-link text-dark"
                    th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/timesheet')} ? ' active'"
                    th:href="@{/timesheet}">
@@ -63,7 +67,8 @@
                     <span>勤務表</span>
                 </a>
             </li>
-            <li class="nav-item">
+            <!-- 管理: ログイン必須 -->
+            <li class="nav-item" sec:authorize="isAuthenticated()">
                 <a class="nav-link text-dark"
                    th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/manage')} ? ' active'"
                    th:href="@{/manage}">
@@ -97,7 +102,140 @@
 <!-- モーダル -->
 <div th:replace="~{fragments/modals/errorModal :: content}"></div>
 
+<!-- ログインモーダル -->
+<div aria-hidden="true" aria-labelledby="loginModalLabel" class="modal fade" id="loginModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="loginModalLabel">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>ログイン
+                </h5>
+                <button aria-label="閉じる" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger d-none" id="loginErrorAlert"></div>
+                <form action="/login" id="loginModalForm" method="post" th:action="@{/login}">
+                    <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden">
+                    <div class="form-floating mb-3">
+                        <input autocomplete="username" class="form-control" id="modalUsername" name="username"
+                               placeholder="ユーザー名" required type="text">
+                        <label for="modalUsername">ユーザー名</label>
+                    </div>
+                    <div class="form-floating mb-3 position-relative">
+                        <input autocomplete="current-password" class="form-control" id="modalPassword" name="password"
+                               placeholder="パスワード" required type="password">
+                        <label for="modalPassword">パスワード</label>
+                        <button class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted"
+                                id="modalTogglePassword" style="z-index: 10;" type="button">
+                            <i class="bi bi-eye" id="modalToggleIcon"></i>
+                        </button>
+                    </div>
+                    <div class="d-grid">
+                        <button class="btn btn-primary" id="loginSubmitBtn" type="submit">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>ログイン
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
-</body>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    (function () {
+        const loginModal = document.getElementById('loginModal');
+        if (!loginModal) return;
 
-</html>
+        const form = document.getElementById('loginModalForm');
+        const usernameInput = document.getElementById('modalUsername');
+        const passwordInput = document.getElementById('modalPassword');
+        const toggleBtn = document.getElementById('modalTogglePassword');
+        const toggleIcon = document.getElementById('modalToggleIcon');
+        const errorAlert = document.getElementById('loginErrorAlert');
+        const submitBtn = document.getElementById('loginSubmitBtn');
+
+        // モーダル表示時にユーザー名にフォーカス
+        loginModal.addEventListener('shown.bs.modal', () => {
+            usernameInput.focus();
+        });
+
+        // モーダルを閉じた時にフォームをリセット
+        loginModal.addEventListener('hidden.bs.modal', () => {
+            form.reset();
+            errorAlert.classList.add('d-none');
+            errorAlert.textContent = '';
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        });
+
+        // パスワード表示切替
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const type = passwordInput.type === 'password' ? 'text' : 'password';
+                passwordInput.type = type;
+                toggleIcon.classList.toggle('bi-eye');
+                toggleIcon.classList.toggle('bi-eye-slash');
+            });
+        }
+
+        // Ajaxでログイン処理
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!username || !password) {
+                errorAlert.textContent = 'ユーザー名とパスワードを入力してください。';
+                errorAlert.classList.remove('d-none');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>ログイン中...';
+            errorAlert.classList.add('d-none');
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                    redirect: 'follow'
+                });
+
+                if (response.ok || response.redirected) {
+                    // ログイン成功 - ページをリロード
+                    window.location.reload();
+                } else {
+                    const text = await response.text();
+                    if (text.includes('error') || response.status === 401) {
+                        errorAlert.textContent = 'ユーザー名またはパスワードが正しくありません。';
+                    } else {
+                        errorAlert.textContent = 'ログインに失敗しました。';
+                    }
+                    errorAlert.classList.remove('d-none');
+                }
+            } catch (err) {
+                errorAlert.textContent = 'ネットワークエラーが発生しました。';
+                errorAlert.classList.remove('d-none');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>ログイン';
+            }
+        });
+
+        // Enterキーでログイン
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                form.dispatchEvent(new Event('submit'));
+            }
+        });
+    })();
+    /*]]>*/
+</script>
+
