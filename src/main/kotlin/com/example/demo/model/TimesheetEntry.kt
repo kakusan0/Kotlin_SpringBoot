@@ -22,14 +22,14 @@ data class TimesheetEntry(
     val workingMinutes: Int? = null,        // 実働(稼働 - 休憩, 分)
     // MyBatis の constructor mapping で java.lang.Integer を期待する場合があるため
     // ボックス型 (Int?) にしておく。デフォルトは既存と同じ 0 を保持。
-    val version: Int? = 0                     // 楽観ロック用バージョン
-    ,
+    val version: Int? = 0,                   // 楽観ロック用バージョン
     // DBマイグレーションで追加されたフラグ列を反映
-    val holidayWork: Boolean? = false
+    val holidayWork: Boolean? = false,
+    // 出社区分: "出社", "在宅", null
+    val workLocation: String? = null
 ) {
-    // 互換性のため、旧スキーマ(holiday_work カラムが無い)向けのコンストラクタを追加
-    // MyBatis は resultMap のカラム数に合わせてコンストラクタを探すため、
-    // 12 引数 (holidayWork を含まない) シグネチャが必要になる場合がある。
+    // 互換性のため、旧スキーマ(work_location カラムが無い)向けの13引数コンストラクタ
+    // MyBatis は resultMap のカラム数に合わせてコンストラクタを探すため必要
     constructor(
         id: Long?,
         workDate: LocalDate,
@@ -42,7 +42,8 @@ data class TimesheetEntry(
         breakMinutes: Int?,
         durationMinutes: Int?,
         workingMinutes: Int?,
-        version: Int?
+        version: Int?,
+        holidayWork: Boolean?
     ) : this(
         id,
         workDate,
@@ -56,7 +57,8 @@ data class TimesheetEntry(
         durationMinutes,
         workingMinutes,
         version,
-        false
+        holidayWork,
+        null  // workLocation defaults to null
     )
 }
 

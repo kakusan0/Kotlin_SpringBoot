@@ -29,6 +29,10 @@
                             <button class="btn btn-sm btn-primary" id="applyDefaults" title="空セルに適用">
                                 <i class="bi bi-check2"></i>
                             </button>
+                            <button class="btn btn-sm btn-success ms-2" id="downloadUnissXlsx"
+                                    title="UNISS勤務表をダウンロード">
+                                <i class="bi bi-file-earmark-excel"></i> UNISS
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -75,7 +79,7 @@
                 <tr>
                     <th class="col-date">日付</th>
                     <th class="col-weekday">曜日</th>
-                    <th class="col-holiday">休日出勤</th>
+                    <th class="col-location">出社区分</th>
                     <th class="col-note">備考</th>
                     <th class="col-start">出勤</th>
                     <th class="col-end">退勤</th>
@@ -93,11 +97,11 @@
                         <span class="holiday" style="display:none;"></span>
                     </td>
                     <td class="weekday-cell"></td>
-                    <td class="holiday-cell">
-                        <div class="form-check form-switch">
-                            <input aria-label="休日出勤" class="form-check-input holiday-switch" role="switch"
-                                   type="checkbox">
-                        </div>
+                    <td class="location-cell">
+                        <button class="btn btn-sm btn-primary work-location-btn" data-location="出社"
+                                type="button">
+                            出社
+                        </button>
                     </td>
                     <td class="note-cell">
                         <label class="visually-hidden"
@@ -107,6 +111,16 @@
                             <option value="">---</option>
                             <option value="午前休">午前休</option>
                             <option value="午後休">午後休</option>
+                            <option value="年休">年休</option>
+                            <option value="振替出勤">振替出勤</option>
+                            <option value="振替休日">振替休日</option>
+                            <option value="特別休暇">特別休暇</option>
+                            <option value="欠勤">欠勤</option>
+                            <option value="休日">休日</option>
+                            <option value="祝日">祝日</option>
+                            <option value="会社休">会社休</option>
+                            <option value="対象外">対象外</option>
+                            <option value="休日出勤">休日出勤</option>
                         </select>
                     </td>
                     <td class="time-cell" data-type="start"></td>

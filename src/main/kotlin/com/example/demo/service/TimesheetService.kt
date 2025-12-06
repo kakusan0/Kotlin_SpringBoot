@@ -176,7 +176,8 @@ class TimesheetService(
         endTime: LocalTime?,
         breakMinutes: Int? = null,
         force: Boolean = false,
-        holidayWork: Boolean = false
+        holidayWork: Boolean = false,
+        workLocation: String? = null
     ): TimesheetEntry {
         val existing = dbCall("selectByUserAndDate", userName, workDate) {
             timesheetEntryMapper.selectByUserAndDate(
@@ -189,7 +190,8 @@ class TimesheetService(
                 startTime = startTime ?: existing.startTime,
                 endTime = endTime ?: existing.endTime,
                 breakMinutes = breakMinutes ?: existing.breakMinutes,
-                holidayWork = holidayWork
+                holidayWork = holidayWork,
+                workLocation = workLocation ?: existing.workLocation
             )
             val recalced = applyCalc(merged)
             val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
@@ -207,7 +209,8 @@ class TimesheetService(
                 startTime = startTime,
                 endTime = endTime,
                 breakMinutes = breakMinutes,
-                holidayWork = holidayWork
+                holidayWork = holidayWork,
+                workLocation = workLocation
             )
             val created = applyCalc(createdBase)
             try {
@@ -224,7 +227,8 @@ class TimesheetService(
                     startTime = startTime ?: nowExisting.startTime,
                     endTime = endTime ?: nowExisting.endTime,
                     breakMinutes = breakMinutes ?: nowExisting.breakMinutes,
-                    holidayWork = holidayWork
+                    holidayWork = holidayWork,
+                    workLocation = workLocation ?: nowExisting.workLocation
                 )
                 val recalced = applyCalc(merged)
                 val updatedCount =
@@ -259,7 +263,8 @@ class TimesheetService(
         breakProvided: Boolean,
         breakMinutes: Int?,
         force: Boolean = false,
-        holidayWork: Boolean = false
+        holidayWork: Boolean = false,
+        workLocation: String? = null
     ): TimesheetEntry {
         val existing = dbCall("selectByUserAndDate", userName, workDate) {
             timesheetEntryMapper.selectByUserAndDate(
@@ -272,10 +277,11 @@ class TimesheetService(
             val newEnd = if (endProvided) endTime else existing.endTime
             val newBreak = if (breakProvided) breakMinutes else existing.breakMinutes
             val newHoliday = holidayWork
+            val newWorkLocation = workLocation ?: existing.workLocation
 
             // If nothing changed, avoid DB write and just return evaluated existing
             val nothingChanged =
-                (existing.startTime == newStart) && (existing.endTime == newEnd) && (existing.breakMinutes == newBreak) && (existing.holidayWork == newHoliday)
+                (existing.startTime == newStart) && (existing.endTime == newEnd) && (existing.breakMinutes == newBreak) && (existing.holidayWork == newHoliday) && (existing.workLocation == newWorkLocation)
             if (nothingChanged && !force) {
                 return applyCalc(existing)
             }
@@ -284,7 +290,8 @@ class TimesheetService(
                 startTime = newStart,
                 endTime = newEnd,
                 breakMinutes = newBreak,
-                holidayWork = newHoliday
+                holidayWork = newHoliday,
+                workLocation = newWorkLocation
             )
             val recalced = applyCalc(merged)
             val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
@@ -302,7 +309,8 @@ class TimesheetService(
                 startTime = if (startProvided) startTime else null,
                 endTime = if (endProvided) endTime else null,
                 breakMinutes = if (breakProvided) breakMinutes else null,
-                holidayWork = holidayWork
+                holidayWork = holidayWork,
+                workLocation = workLocation
             )
             val created = applyCalc(createdBase)
             try {
@@ -318,7 +326,8 @@ class TimesheetService(
                     startTime = if (startProvided) startTime else nowExisting.startTime,
                     endTime = if (endProvided) endTime else nowExisting.endTime,
                     breakMinutes = if (breakProvided) breakMinutes else nowExisting.breakMinutes,
-                    holidayWork = holidayWork
+                    holidayWork = holidayWork,
+                    workLocation = workLocation ?: nowExisting.workLocation
                 )
                 val recalced = applyCalc(merged)
                 val updatedCount =
@@ -355,7 +364,8 @@ class TimesheetService(
         force: Boolean = false,
         holidayWork: Boolean = false,
         noteProvided: Boolean,
-        note: String?
+        note: String?,
+        workLocation: String? = null
     ): TimesheetEntry {
         val existing = dbCall("selectByUserAndDate", userName, workDate) {
             timesheetEntryMapper.selectByUserAndDate(userName, workDate)
@@ -366,7 +376,8 @@ class TimesheetService(
                 endTime = if (endProvided) endTime else existing.endTime,
                 breakMinutes = if (breakProvided) breakMinutes else existing.breakMinutes,
                 holidayWork = holidayWork,
-                note = if (noteProvided) note else existing.note
+                note = if (noteProvided) note else existing.note,
+                workLocation = workLocation ?: existing.workLocation
             )
             val recalced = applyCalc(merged)
             val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
@@ -385,7 +396,8 @@ class TimesheetService(
                 endTime = endTime,
                 breakMinutes = breakMinutes,
                 holidayWork = holidayWork,
-                note = note
+                note = note,
+                workLocation = workLocation
             )
             val created = applyCalc(createdBase)
             dbCall("insert", userName, workDate) { timesheetEntryMapper.insert(created) }

@@ -151,4 +151,31 @@ class TimesheetReportController(
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeName")
         return ResponseEntity.ok().headers(headers).body(bytes)
     }
+
+    /**
+     * UNISS勤務表テンプレートを使用したエクセル出力
+     */
+    @GetMapping("/uniss-xlsx")
+    fun unissXlsx(
+        @RequestParam username: String,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        principal: Principal
+    ): ResponseEntity<ByteArray> {
+        if (principal.name != username) {
+            val auth = org.springframework.security.core.context.SecurityContextHolder.getContext().authentication
+            val hasAdmin = auth?.authorities?.any { it.authority == "ROLE_ADMIN" } ?: false
+            if (!hasAdmin) return ResponseEntity.status(403).build()
+        }
+        val bytes = reportService.generateUnissXlsxBytes(username, from, to)
+        val headers = HttpHeaders()
+        headers.contentType =
+            MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        val safeNameXlsx = URLEncoder.encode(
+            "${from.year}年${String.format("%02d", from.monthValue)}月度UNISS勤務表(${username}).xlsx",
+            StandardCharsets.UTF_8.toString()
+        )
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''$safeNameXlsx")
+        return ResponseEntity.ok().headers(headers).body(bytes)
+    }
 }

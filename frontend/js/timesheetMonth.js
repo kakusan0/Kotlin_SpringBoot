@@ -240,7 +240,81 @@
 
         durationCell.textContent = metrics.durationMinutes != null ? fmtHM(metrics.durationMinutes) : '';
         workingCell.textContent = metrics.workingMinutes != null ? fmtHM(metrics.workingMinutes) : '';
+
+        // 警告チェックを実行
+        checkRowWarnings(row);
     }
+
+    /**
+     * 行の警告状態をチェックして表示する
+     * - 勤務時間が空欄で備考も空欄の場合は備考を点滅
+     * - 出勤・退勤・休憩のいずれかが入力されていて、いずれかが未入力の場合は枠線を色付け
+     */
+    function checkRowWarnings(row) {
+        const startCell = row.querySelector('.time-cell[data-type="start"]');
+        const endCell = row.querySelector('.time-cell[data-type="end"]');
+        const breakCell = row.querySelector('.break-cell');
+        const noteCell = row.querySelector('.note-cell');
+        const noteSelect = row.querySelector('.note-select');
+
+        if (!startCell || !endCell || !breakCell) return;
+
+        const start = startCell.textContent.trim();
+        const end = endCell.textContent.trim();
+        const breakVal = breakCell.textContent.trim();
+        const note = noteSelect?.value || '';
+
+        // 土日祝の場合は警告をスキップ（休日系の備考がある場合も）
+        const iso = row.querySelector('.date-cell')?.dataset?.iso;
+        const isWeekend = iso ? isWeekendIso(iso) : false;
+        const isHoliday = row.dataset.isHoliday === '1';
+        const holidayNotes = ['休日', '祝日', '年休', '会社休', '対象外', '振替休日', '特別休暇', '欠勤'];
+        const isHolidayNote = holidayNotes.includes(note);
+
+        // 休日系の場合は警告を解除
+        if (isWeekend || isHoliday || isHolidayNote) {
+            noteCell?.classList.remove('blink-warning');
+            startCell.classList.remove('incomplete-warning');
+            endCell.classList.remove('incomplete-warning');
+            breakCell.classList.remove('incomplete-warning');
+            row.classList.remove('row-incomplete');
+            return;
+        }
+
+        // 1. 勤務時間が空欄で備考も空欄の場合は備考を点滅
+        const hasNoTime = !start && !end && !breakVal;
+        const hasNoNote = !note;
+
+        if (hasNoTime && hasNoNote) {
+            noteCell?.classList.add('blink-warning');
+        } else {
+            noteCell?.classList.remove('blink-warning');
+        }
+
+        // 2. 出勤・退勤・休憩のいずれかが入力されていて、いずれかが未入力の場合
+        const hasAnyTime = start || end || breakVal;
+        const hasAllTime = start && end && breakVal;
+
+        if (hasAnyTime && !hasAllTime) {
+            // 未入力のセルに警告枠線
+            if (!start) startCell.classList.add('incomplete-warning');
+            else startCell.classList.remove('incomplete-warning');
+
+            if (!end) endCell.classList.add('incomplete-warning');
+            else endCell.classList.remove('incomplete-warning');
+
+            if (!breakVal) breakCell.classList.add('incomplete-warning');
+            else breakCell.classList.remove('incomplete-warning');
+
+            row.classList.add('row-incomplete');
+        } else {
+            startCell.classList.remove('incomplete-warning');
+            endCell.classList.remove('incomplete-warning');
+            breakCell.classList.remove('incomplete-warning');
+            row.classList.remove('row-incomplete');
+        }
+    }
+
 
     applyDefaultsBtn.addEventListener('click', () => {
         const s = ensureSeconds(defaultStart.value);
@@ -259,13 +333,13 @@
             if (!iso) return;
 
             // 土日はスキップ
-            if (isWeekend(iso)) {
+            if (isWeekendIso(iso)) {
                 console.debug('[TS] applyDefaults skip weekend', iso);
                 return;
             }
 
             // 祝日はスキップ
-            if (isHolidayDate(iso)) {
+            if (isHolidayIso(iso)) {
                 console.debug('[TS] applyDefaults skip holiday', iso);
                 return;
             }
@@ -549,7 +623,7 @@
         const startCell = row.querySelector('.time-cell[data-type="start"]');
         const endCell = row.querySelector('.time-cell[data-type="end"]');
         const breakCell = row.querySelector('.break-cell');
-        const hs = row.querySelector('.holiday-switch');
+        const locationBtn = row.querySelector('.work-location-btn');
         const noteSelect = row.querySelector('.note-select');
 
         if (!dateCell) return;
@@ -558,7 +632,7 @@
         const start = startCell?.textContent.trim() || '';
         const end = endCell?.textContent.trim() || '';
         const breakVal = breakCell?.textContent.trim() || '';
-        const holidayWork = hs ? !!hs.checked : false;
+        const workLocation = locationBtn?.dataset.location || null;
         const note = noteSelect?.value || null;
 
         // 既存のタイマーがあればクリア
@@ -573,12 +647,12 @@
             startTime: start || null,
             endTime: end || null,
             breakMinutes: breakVal || null,
-            holidayWork: holidayWork,
+            workLocation: workLocation,
             note: note
         };
 
         // すべて空欄の場合はforce=trueで明示的にクリアをサーバへ伝える
-        if (!start && !end && !breakVal && !holidayWork) {
+        if (!start && !end && !breakVal && !workLocation) {
             payload.force = true;
         }
 
@@ -623,42 +697,40 @@
         saveTimers.set(iso, t);
     });
 
-    // holiday switch change: toggle editability and save
-    elements.workTable.addEventListener('change', e => {
-        const hs = e.target.closest('.holiday-switch');
-        if (hs) {
-            const row = hs.closest('tr');
-            const checked = !!hs.checked;
-            setRowEditable(row, checked);
+    // 出社区分ボタンのクリックイベント
+    elements.workTable.addEventListener('click', e => {
+        const btn = e.target.closest('.work-location-btn');
+        if (btn) {
+            const currentLocation = btn.dataset.location || '出社';
+            let newLocation;
+            // 出社 -> 在宅 -> 出社 のサイクル
+            if (currentLocation === '出社') {
+                newLocation = '在宅';
+            } else {
+                newLocation = '出社';
+            }
+            btn.dataset.location = newLocation;
+            btn.textContent = newLocation;
 
-            try {
-                const startCell = row.querySelector('.time-cell[data-type="start"]');
-                const endCell = row.querySelector('.time-cell[data-type="end"]');
-                const breakCell = row.querySelector('.break-cell');
-                const durationCell = row.querySelector('.duration-cell');
-                const workingCell = row.querySelector('.working-cell');
-
-                if (startCell) startCell.textContent = '';
-                if (endCell) endCell.textContent = '';
-                if (breakCell) breakCell.textContent = '';
-                if (durationCell) durationCell.textContent = '';
-                if (workingCell) workingCell.textContent = '';
-
-                updateRowMetrics(row);
-            } catch (err) {
-                console.warn('[TS] failed to clear cells on holiday switch', err);
+            // ボタンのスタイルを更新
+            btn.classList.remove('btn-primary', 'btn-success');
+            if (newLocation === '出社') {
+                btn.classList.add('btn-primary');
+            } else {
+                btn.classList.add('btn-success');
             }
 
-            const iso = row.querySelector('.date-cell')?.dataset?.iso;
-            if (iso && saveTimers.has(iso)) {
-                clearTimeout(saveTimers.get(iso));
-                saveTimers.delete(iso);
+            // 自動保存
+            const row = btn.closest('tr');
+            if (row) {
+                autoSaveRow(row);
             }
 
-            saveHolidayFlag(row, checked);
-            return;
         }
+    });
 
+    // 備考プルダウンの変更で自動保存
+    elements.workTable.addEventListener('change', e => {
         // 備考プルダウンの変更で自動保存
         const select = e.target.closest('.note-select');
         if (select) {
@@ -666,7 +738,7 @@
             if (row) {
                 const noteValue = select.value;
                 // 休日・祝日・年休などの場合は入力値をクリアして無効化
-                const clearNotes = ['休日', '祝日', '年休', '会社休', '対象外'];
+                const clearNotes = ['休日', '祝日', '年休', '会社休', '対象外', '振替休日', '特別休暇', '欠勤'];
                 if (clearNotes.includes(noteValue)) {
                     const startCell = row.querySelector('.time-cell[data-type="start"]');
                     const endCell = row.querySelector('.time-cell[data-type="end"]');
@@ -688,6 +760,8 @@
                     // 休日系以外の場合は入力を有効化
                     disableRowInput(row, false);
                 }
+                // 警告チェック
+                checkRowWarnings(row);
                 autoSaveRow(row);
             }
         }
@@ -717,51 +791,10 @@
             breakCell.style.cursor = disable ? 'not-allowed' : '';
         }
 
-        // 休日出勤スイッチも無効化
-        const holidaySwitch = row.querySelector('.holiday-switch');
-        if (holidaySwitch) {
-            holidaySwitch.disabled = disable;
-        }
-    }
-
-    // Immediately POST holidayWork change for a row. This sends start/end/break as null to ensure server stores flag and clears times.
-    async function saveHolidayFlag(row, holidayWork) {
-        if (!row) return;
-        const iso = row.querySelector('.date-cell')?.dataset?.iso;
-        if (!iso) return;
-        // skip if same as last saved to avoid redundant POST
-        const last = row.dataset.lastSavedHoliday === '1';
-        if (last === !!holidayWork) return;
-        const csrf = getCsrf();
-        const payload = {
-            workDate: iso,
-            startTime: null,
-            endTime: null,
-            breakMinutes: null,
-            holidayWork: !!holidayWork
-        };
-        try {
-            const headers = {'Content-Type': 'application/json'};
-            if (csrf) headers[csrf.header] = csrf.token;
-            const resp = await fetch('/timesheet/api/entry', {
-                method: 'POST',
-                headers,
-                credentials: 'same-origin',
-                body: JSON.stringify(payload)
-            });
-            if (resp.status === 409) {
-                showConflictModal(row, payload);
-                return;
-            }
-            const json = await resp.json().catch(() => ({}));
-            if (!resp.ok || !json.success) {
-                console.warn('[TS] holiday flag save failed', json);
-                return;
-            }
-            // on success record lastSavedHoliday
-            row.dataset.lastSavedHoliday = holidayWork ? '1' : '0';
-        } catch (e) {
-            console.error('[TS] holiday flag save error', e);
+        // 出社区分ボタンも無効化
+        const locationBtn = row.querySelector('.work-location-btn');
+        if (locationBtn) {
+            locationBtn.disabled = disable;
         }
     }
 
@@ -943,22 +976,24 @@
             const tr = document.createElement('tr');
             if (iso === new Date().toISOString().substring(0, 10)) tr.classList.add('table-primary');
             const isWeekend = isWeekendIso(iso);
-            // only render a holiday-work switch for weekends; weekday holidays will get a switch dynamically after fetching holidays
-            const switchHtml = isWeekend ? '<div class="form-check form-switch"><input aria-label="休日出勤" class="form-check-input holiday-switch" role="switch" type="checkbox"></div>' : '';
             tr.innerHTML = `<td class="date-cell" data-iso="${iso}"><span>${dayLabel(date)}</span><span class="holiday" style="display:none;"></span></td>` +
                 `<td class="weekday-cell">${shortDay(date)}</td>` +
-                `<td class="holiday-cell">${switchHtml}</td>` +
+                `<td class="location-cell"><button class="btn btn-sm btn-primary work-location-btn" type="button" data-location="出社">出社</button></td>` +
                 `<td class="note-cell">
                     <select class="form-select form-select-sm note-select">
                         <option value="">---</option>
-                                <option value="年休">年休</option>
-                                <option value="AM年休">AM年休</option>
-                                <option value="PM年休">PM年休</option>
-                                <option value="休日">休日</option>
-                                <option value="祝日">祝日</option>
-                                <option value="会社休">会社休</option>
-                                <option value="対象外">対象外</option>
-                                <option value="休日出勤">休日出勤</option>
+                        <option value="午前休">午前休</option>
+                        <option value="午後休">午後休</option>
+                        <option value="年休">年休</option>
+                        <option value="振替出勤">振替出勤</option>
+                        <option value="振替休日">振替休日</option>
+                        <option value="特別休暇">特別休暇</option>
+                        <option value="欠勤">欠勤</option>
+                        <option value="休日">休日</option>
+                        <option value="祝日">祝日</option>
+                        <option value="会社休">会社休</option>
+                        <option value="対象外">対象外</option>
+                        <option value="休日出勤">休日出勤</option>
                     </select>
                 </td>` +
                 `<td class="time-cell" data-type="start"></td>` +
@@ -969,17 +1004,11 @@
                 `<td class="clear-cell"><button class='btn btn-outline-secondary btn-sm clear-row-btn' type='button'>クリア</button></td>`;
             tbody.appendChild(tr);
 
-            // For weekend rows we rendered a switch; for weekdays no switch is shown and row should be editable by default
-            const hsInit = tr.querySelector('.holiday-switch');
-            if (hsInit) {
-                // weekends: switch exists but disabled until allowed (we'll enable after holiday fetch if needed)
-                hsInit.checked = false;
+            // 平日は編集可能、土日は編集不可
+            if (isWeekend) {
                 setRowEditable(tr, false);
-                tr.dataset.lastSavedHoliday = '0';
             } else {
-                // weekdays (no switch): editable by default
                 setRowEditable(tr, true);
-                tr.dataset.lastSavedHoliday = '0';
             }
 
             // 土曜日・日曜日の場合は備考列のプルダウンをデフォルトで「休日」を設定
@@ -996,38 +1025,15 @@
         (async () => {
             try {
                 const monthInput = document.getElementById('monthInput');
-                const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number); // Get selected year and month
+                const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number);
                 const holidayMap = holidayCache[selectedYear] || await fetchHolidays(selectedYear);
-                populateHolidayInfo(holidayMap, selectedMonth); // Populate the accordion with holidays for the selected month
+                populateHolidayInfo(holidayMap, selectedMonth);
                 tbody.querySelectorAll('.date-cell').forEach(cell => {
                     const iso = cell.dataset.iso;
                     if (holidayMap[iso]) {
                         const tr = cell.closest('tr');
                         if (tr) {
-                            // if this is a weekday (no switch rendered), create a switch for the holiday
-                            let hs = tr.querySelector('.holiday-switch');
-                            if (!hs) {
-                                const hc = tr.querySelector('.holiday-cell');
-                                if (hc) {
-                                    const div = document.createElement('div');
-                                    div.className = 'form-check form-switch';
-                                    const input = document.createElement('input');
-                                    input.type = 'checkbox';
-                                    input.className = 'form-check-input holiday-switch';
-                                    input.setAttribute('aria-label', '休日出勤');
-                                    div.appendChild(input);
-                                    hc.appendChild(div);
-                                    hs = tr.querySelector('.holiday-switch');
-                                }
-                            }
-                            if (hs) {
-                                // enable the switch for holidays; initial unchecked -> non-editable until user turns it on
-                                hs.disabled = false;
-                                hs.checked = false;
-                                setRowEditable(tr, false);
-                                tr.dataset.isHoliday = '1';
-                                tr.dataset.lastSavedHoliday = '0';
-                            }
+                            tr.dataset.isHoliday = '1';
 
                             // 祝日の場合は備考列のプルダウンをデフォルトで「祝日」を設定
                             const noteSelect = tr.querySelector('.note-select');
@@ -1080,8 +1086,9 @@
                 // suppress observer-triggered auto-save for this programmatic update
                 row.dataset.suppressAutoSave = '1';
                 try {
-                    const allowed = isWeekendIso(iso) || !!holidayMap[iso];
-                    let hs = row.querySelector('.holiday-switch');
+                    const isWeekend = isWeekendIso(iso);
+                    const isHoliday = !!holidayMap[iso];
+
                     if (!data) {
                         // clear cells
                         console.debug('[TS] loadTimesheetData clear row', iso);
@@ -1091,14 +1098,13 @@
                         row.querySelector('.duration-cell').textContent = '';
                         row.querySelector('.working-cell').textContent = '';
 
-                        // if a switch exists (weekend or holiday), reset and disable/enable according to allowed
-                        if (hs) {
-                            hs.checked = false;
-                            hs.disabled = !allowed;
-                            setRowEditable(row, false);
-                        } else {
-                            // weekday without switch: editable
-                            setRowEditable(row, true);
+                        // 出社区分ボタンをデフォルト「出社」に設定
+                        const locationBtn = row.querySelector('.work-location-btn');
+                        if (locationBtn) {
+                            locationBtn.dataset.location = '出社';
+                            locationBtn.textContent = '出社';
+                            locationBtn.classList.remove('btn-success');
+                            locationBtn.classList.add('btn-primary');
                         }
 
                         // set weekday from date
@@ -1119,43 +1125,36 @@
                     row.querySelector('.duration-cell').textContent = data.durationMinutes != null ? fmtHM(data.durationMinutes) : '';
                     row.querySelector('.working-cell').textContent = data.workingMinutes != null ? fmtHM(data.workingMinutes) : '';
 
-                    // reflect holidayWork. If needed create switch for weekday holidays
-                    if (!hs && holidayMap[iso]) {
-                        const hc = row.querySelector('.holiday-cell');
-                        if (hc) {
-                            const div = document.createElement('div');
-                            div.className = 'form-check form-switch';
-                            const input = document.createElement('input');
-                            input.type = 'checkbox';
-                            input.className = 'form-check-input holiday-switch';
-                            input.setAttribute('aria-label', '休日出勤');
-                            div.appendChild(input);
-                            hc.appendChild(div);
-                            hs = row.querySelector('.holiday-switch');
+                    // reflect workLocation (出社区分ボタン)
+                    const locationBtn = row.querySelector('.work-location-btn');
+                    if (locationBtn) {
+                        const loc = data.workLocation || '出社';
+                        locationBtn.dataset.location = loc;
+                        locationBtn.textContent = loc;
+                        locationBtn.classList.remove('btn-primary', 'btn-success');
+                        if (loc === '出社') {
+                            locationBtn.classList.add('btn-primary');
+                        } else {
+                            locationBtn.classList.add('btn-success');
                         }
-                    }
-                    if (hs) {
-                        hs.disabled = !allowed;
-                        hs.checked = allowed && !!data.holidayWork;
-                        // editable only when holidayWork is ON
-                        setRowEditable(row, !!data.holidayWork);
-                        row.dataset.lastSavedHoliday = hs.checked ? '1' : '0';
-                    } else {
-                        // no switch -> weekday normal editable
-                        setRowEditable(row, true);
-                        row.dataset.lastSavedHoliday = '0';
                     }
 
                     // reflect note data
                     const noteSelect = row.querySelector('.note-select');
-                    if (noteSelect) {
-                        noteSelect.value = data.note || '';
+                    if (noteSelect && data.note) {
+                        noteSelect.value = data.note;
 
                         // 備考が休日系の場合は入力を無効化
-                        const clearNotes = ['休日', '祝日', '年休', '会社休', '対象外'];
+                        const clearNotes = ['休日', '祝日', '年休', '会社休', '対象外', '振替休日', '特別休暇', '欠勤'];
                         if (clearNotes.includes(data.note)) {
                             disableRowInput(row, true);
+                        } else {
+                            // editable for normal days
+                            setRowEditable(row, true);
                         }
+                    } else {
+                        // editable for normal days without note
+                        setRowEditable(row, true);
                     }
 
                     // ensure weekday shown
@@ -1165,6 +1164,9 @@
                     if (wdEl) wdEl.textContent = wd;
                     // update shading
                     applyRowShade(row);
+
+                    // 警告チェック
+                    checkRowWarnings(row);
                 } finally {
                     // remove suppression after microtask to allow MutationObserver to ignore this programmatic change
                     setTimeout(() => {
@@ -1256,6 +1258,103 @@
         }, 0);
     });
 
+    // Define the downloadReport function to handle Excel and PDF downloads
+    async function downloadReport(format) {
+        const msgEl = document.getElementById('reportMessage');
+        try {
+            if (msgEl) msgEl.textContent = 'レポートを生成しています...';
+            const ym = (monthInput && monthInput.value) ? monthInput.value : (new Date().toISOString().substring(0, 7));
+            const [y, m] = ym.split('-').map(Number);
+            const from = `${y}-${String(m).padStart(2, '0')}-01`;
+            const last = new Date(y, m, 0).getDate();
+            const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+            const username = (window.currentUserName || 'user1');
+            console.log('Username:', username);
+            const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
+            console.log('URL:', url);
+            const resp = await fetch(url, {credentials: 'same-origin'});
+            if (!resp.ok) {
+                const text = await resp.text().catch(() => '');
+                if (msgEl) msgEl.textContent = `レポート生成失敗 (${resp.status})`;
+                throw new Error('report fetch failed ' + resp.status + ' ' + text);
+            }
+            const blob = await resp.blob();
+            const disposition = resp.headers.get('Content-Disposition') || '';
+            const fnMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
+            const filename = fnMatch ? decodeURIComponent(fnMatch[1].replace(/"/g, '')) : `timesheet_${from}_to_${to}.${format}`;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            if (msgEl) msgEl.textContent = 'ダウンロード完了';
+        } finally {
+        }
+    }
+
+    // UNISS勤務表テンプレートをダウンロードする機能
+    async function downloadUnissXlsx() {
+        const msgEl = document.getElementById('reportMessage');
+        const btn = document.getElementById('downloadUnissXlsx');
+        const origHtml = btn ? btn.innerHTML : '';
+
+        try {
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            }
+            if (msgEl) msgEl.textContent = 'UNISS勤務表を生成しています...';
+
+            const ym = (monthInput && monthInput.value) ? monthInput.value : (new Date().toISOString().substring(0, 7));
+            const [y, m] = ym.split('-').map(Number);
+            const from = `${y}-${String(m).padStart(2, '0')}-01`;
+            const last = new Date(y, m, 0).getDate();
+            const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+            const username = (window.currentUserName || 'user1');
+
+            console.log('UNISS Download - Username:', username);
+            const url = `/timesheet/report/uniss-xlsx?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
+            console.log('UNISS Download - URL:', url);
+
+            const resp = await fetch(url, {credentials: 'same-origin'});
+            if (!resp.ok) {
+                const text = await resp.text().catch(() => '');
+                if (msgEl) msgEl.textContent = `UNISS勤務表生成失敗 (${resp.status})`;
+                throw new Error('UNISS report fetch failed ' + resp.status + ' ' + text);
+            }
+
+            const blob = await resp.blob();
+            const disposition = resp.headers.get('Content-Disposition') || '';
+            const fnMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
+            const defaultFilename = `${y}年${String(m).padStart(2, '0')}月度UNISS勤務表(${username}).xlsx`;
+            const filename = fnMatch ? decodeURIComponent(fnMatch[1].replace(/"/g, '')) : defaultFilename;
+
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            if (msgEl) msgEl.textContent = 'UNISS勤務表ダウンロード完了';
+        } catch (e) {
+            console.error('UNISS download error:', e);
+            if (msgEl) msgEl.textContent = 'UNISS勤務表ダウンロードに失敗しました';
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
+    }
+
+    // UNISS勤務表ダウンロードボタンのイベントリスナー
+    const unissBtn = document.getElementById('downloadUnissXlsx');
+    if (unissBtn) {
+        unissBtn.addEventListener('click', downloadUnissXlsx);
+    }
+
     // Ensure previous context menu is closed before opening a new one
     document.addEventListener('contextmenu', e => {
         e.preventDefault();
@@ -1293,8 +1392,21 @@
             document.body.removeChild(menu);
         });
 
+        const downloadUnissOption = document.createElement('div');
+        downloadUnissOption.textContent = 'UNISS勤務表ダウンロード';
+        downloadUnissOption.style.cursor = 'pointer';
+        downloadUnissOption.style.padding = '5px';
+        downloadUnissOption.style.borderTop = '1px solid #eee';
+        downloadUnissOption.style.marginTop = '3px';
+        downloadUnissOption.style.paddingTop = '8px';
+        downloadUnissOption.addEventListener('click', () => {
+            downloadUnissXlsx();
+            document.body.removeChild(menu);
+        });
+
         menu.appendChild(downloadExcelOption);
         menu.appendChild(downloadPdfOption);
+        menu.appendChild(downloadUnissOption);
         document.body.appendChild(menu);
 
         document.addEventListener('click', () => {
@@ -1335,48 +1447,5 @@
             window.scrollTo(0, parseInt(savedPosition, 10));
         }
     });
-
-    // Define the downloadReport function to handle Excel and PDF downloads
-    async function downloadReport(format) {
-        const msgEl = document.getElementById('reportMessage');
-        // if (btn) {
-        //     btn.disabled = true;
-        //     const orig = btn.innerHTML;
-        //     btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 生成中';
-        try {
-            if (msgEl) msgEl.textContent = 'レポートを生成しています...';
-            const ym = (monthInput && monthInput.value) ? monthInput.value : (new Date().toISOString().substring(0, 7));
-            const [y, m] = ym.split('-').map(Number);
-            const from = `${y}-${String(m).padStart(2, '0')}-01`;
-            const last = new Date(y, m, 0).getDate();
-            const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
-            const username = (window.currentUserName || 'user1');
-            console.log('Username:', username);
-            const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
-            console.log('URL:', url);
-            const resp = await fetch(url, {credentials: 'same-origin'});
-            if (!resp.ok) {
-                const text = await resp.text().catch(() => '');
-                if (msgEl) msgEl.textContent = `レポート生成失敗 (${resp.status})`;
-                throw new Error('report fetch failed ' + resp.status + ' ' + text);
-            }
-            const blob = await resp.blob();
-            // derive filename
-            const disposition = resp.headers.get('Content-Disposition') || '';
-            const fnMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
-            const filename = fnMatch ? decodeURIComponent(fnMatch[1].replace(/"/g, '')) : `timesheet_${from}_to_${to}.${format}`;
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            if (msgEl) msgEl.textContent = 'ダウンロード完了';
-        } finally {
-            // btn.disabled = false;
-            // btn.innerHTML = orig;
-        }
-        // }
-    }
 })();
 

@@ -549,6 +549,48 @@
     }
 }
 
+/* 勤務時間が空欄の場合の備考点滅アニメーション */
+@keyframes blink-warning {
+    0%, 100% {
+        background-color: transparent;
+    }
+    50% {
+        background-color: #fff3cd;
+    }
+}
+
+.note-cell.blink-warning .note-select {
+    animation: blink-warning 1s ease-in-out infinite;
+    border-color: #ffc107;
+}
+
+/* 出勤・退勤・休憩のいずれかが未入力の場合の警告枠線 */
+.time-cell.incomplete-warning,
+.break-cell.incomplete-warning {
+    outline: 2px solid #dc3545;
+    outline-offset: -2px;
+    background-color: #fff5f5;
+}
+
+/* 行全体の警告表示 */
+tr.row-incomplete .time-cell,
+tr.row-incomplete .break-cell {
+    background-color: #fff8f8;
+}
+
+/* 出社区分ボタンの追加スタイル */
+.col-location {
+    width: 70px;
+    min-width: 60px;
+    text-align: center;
+}
+
+.work-location-btn {
+    font-size: 12px;
+    padding: 2px 8px;
+    min-width: 50px;
+}
+
 /* 印刷用スタイル */
 @media print {
     .timesheet-table-container {

@@ -14,6 +14,7 @@ import org.apache.poi.ss.usermodel.VerticalAlignment
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.core.io.ClassPathResource
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.net.URI
@@ -155,31 +156,28 @@ class ReportService(
                 wdCell.setCellValue(jpWeek[d.dayOfWeek])
                 wdCell.cellStyle = dayOnlyStyle
 
-                // 休日出勤フラグがオンの場合は備考列を空欄にする
-                val isHolidayWork = e?.holidayWork == true
+                // 備考情報
+                val noteValue = e?.note ?: ""
                 val remarkCell = row.createCell(remarkIdx)
-                if (isHolidayWork) {
-                    remarkCell.setCellValue("")
-                } else {
-                    // 休日出勤がオフの場合はnote情報を表示
-                    val noteValue = e?.note ?: ""
-                    remarkCell.setCellValue(noteValue)
-                }
+                remarkCell.setCellValue(noteValue)
                 remarkCell.cellStyle = defaultTextStyle
 
                 // 判定: その日が祝日かどうか、週末かどうかを分けて計算
                 val isActualHoliday = holidayMap.containsKey(d)
                 val isWeekend =
                     (d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY)
-                val isHoliday = isActualHoliday || isWeekend
+                val isHolidayOrWeekend = isActualHoliday || isWeekend
 
-                // 備考が休日・祝日・年休などの場合も空欄にする
-                val blankNotes = listOf("休日", "祝日", "年休", "会社休", "対象外")
-                val noteValue = e?.note ?: ""
-                val isNoteBlank = blankNotes.contains(noteValue)
+                // 勤務時間を出力するべき備考（土日祝でも出力する）
+                val workingNotes = listOf("午前休", "午後休", "休日出勤", "振替出勤")
+                val isWorkingNote = workingNotes.contains(noteValue)
 
-                // Excel出力で空欄にするか: (休日(祝日 or 週末)かつ休日出勤フラグがOFF) または 備考が休日系 の場合は空欄にする
-                val shouldBlank = (isHoliday && !isHolidayWork) || isNoteBlank
+                // 時間を空欄にすべき備考（完全な休み）
+                val blankNotes = listOf("休日", "祝日", "年休", "会社休", "対象外", "振替休日", "特別休暇", "欠勤")
+                val isBlankNote = blankNotes.contains(noteValue)
+
+                // 土日祝で勤務系の備考がない場合、または完全休みの備考の場合は時間を空欄
+                val shouldBlank = (isHolidayOrWeekend && !isWorkingNote) || isBlankNote
 
                 val sc = row.createCell(scIdx)
                 if (shouldBlank) {
@@ -230,7 +228,7 @@ class ReportService(
                 workCell.cellStyle = timeTextStyle
 
                 // fill weekend/holiday colors
-                if (isHoliday) {
+                if (isHolidayOrWeekend) {
                     // determine if we should use the 'red' color: true for actual holidays and Sundays
                     val isRed = isActualHoliday || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
                     val fillColor =
@@ -360,22 +358,25 @@ class ReportService(
                 var d = from
                 while (!d.isAfter(to)) {
                     val e = entryMap[d]
-                    val holidayName = e?.note ?: ""
-                    val isHolidayWork = e?.holidayWork == true
+                    val noteValue = e?.note ?: ""
                     val isActualHoliday = holidayMap.containsKey(d)
                     val isWeekend =
                         d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
-                    val isHoliday = isActualHoliday || isWeekend
+                    val isHolidayOrWeekend = isActualHoliday || isWeekend
 
-                    // 備考が休日・祝日・年休などの場合も空欄にする
-                    val blankNotes = listOf("休日", "祝日", "年休", "会社休", "対象外")
-                    val isNoteBlank = blankNotes.contains(holidayName)
+                    // 勤務時間を出力するべき備考（土日祝でも出力する）
+                    val workingNotes = listOf("午前休", "午後休", "休日出勤", "振替出勤")
+                    val isWorkingNote = workingNotes.contains(noteValue)
 
-                    // PDF出力で空欄にするか: (休日(祝日 or 週末)かつ休日出勤フラグがOFF) または 備考が休日系 の場合は空欄にする
-                    val shouldBlank = (isHoliday && !isHolidayWork) || isNoteBlank
+                    // 時間を空欄にすべき備考（完全な休み）
+                    val blankNotes = listOf("休日", "祝日", "年休", "会社休", "対象外", "振替休日", "特別休暇", "欠勤")
+                    val isBlankNote = blankNotes.contains(noteValue)
+
+                    // 土日祝で勤務系の備考がない場合、または完全休みの備考の場合は時間を空欄
+                    val shouldBlank = (isHolidayOrWeekend && !isWorkingNote) || isBlankNote
                     rows.add(
                         listOf(
-                            holidayName,
+                            noteValue,
                             "${d.dayOfMonth}日",
                             jpWeek[d.dayOfWeek] ?: "",
                             if (shouldBlank) "" else e?.startTime?.toString() ?: "",
@@ -489,6 +490,183 @@ class ReportService(
         } catch (e: Exception) {
             e.printStackTrace()
             throw e
+        }
+        return baos.toByteArray()
+    }
+
+    /**
+     * UNISS勤務表テンプレートを使用してエクセルファイルを生成する
+     * テンプレート: 2025年10月度UNISS勤務表(角谷亮洋).xlsx
+     */
+    fun generateUnissXlsxBytes(username: String, from: LocalDate, to: LocalDate): ByteArray {
+        val entries = timesheetService.list(username, from, to)
+        val entryMap = entries.associateBy { it.workDate }
+        val baos = ByteArrayOutputStream()
+
+        // テンプレートファイルを読み込む
+        val templatePath = "2025年10月度UNISS勤務表(〇〇).xlsx"
+        val templateResource = ClassPathResource(templatePath)
+
+        templateResource.inputStream.use { templateStream ->
+            XSSFWorkbook(templateStream).use { wb ->
+                val sheet = wb.getSheetAt(0) // 最初のシートを使用
+
+                // 祝日マップを取得
+                val holidayMap = fetchHolidayDates(from.year, to.year)
+
+                // O2セルに月を入力 (O列 = インデックス14, 行2 = インデックス1)
+                val monthRow = sheet.getRow(1) ?: sheet.createRow(1)
+                val monthCell = monthRow.getCell(14) ?: monthRow.createCell(14)
+                monthCell.setCellValue(from.monthValue.toDouble())
+
+                // 固定の列インデックス（0-indexed）
+                // E列=4: 出勤時、F列=5: 出勤分、G列=6: 退勤時、H列=7: 退勤分、I列=8: 休憩
+                val colStartHour = 4   // E列: 出勤時
+                val colStartMin = 5    // F列: 出勤分
+                val colEndHour = 6     // G列: 退勤時
+                val colEndMin = 7      // H列: 退勤分
+                val colBreak = 8       // I列: 休憩
+                val colHalfDay = 10    // K列: 午前休/午後休の場合に「4:00」
+                val colOffice = 13     // N列: 出社
+                val colRemote = 14     // O列: 在宅
+                val colAnnualLeave = 15 // P列: 年休
+                val colSpecialLeave = 16 // Q列: 特別休暇
+                val colAbsence = 17    // R列: 欠勤
+                val colSubstituteHoliday = 18 // S列: 振替休日
+                val colSubstituteWork = 19 // T列: 振替出勤
+                val colHolidayWork = 20 // U列: 休日出勤
+
+                // 10行目（インデックス9）からデータ入力開始
+                val dataStartRow = 9
+                val daysInMonth = from.lengthOfMonth()
+
+                for (day in 1..daysInMonth) {
+                    val rowIdx = dataStartRow + (day - 1)
+                    val date = from.withDayOfMonth(day)
+                    val entry = entryMap[date]
+                    val row = sheet.getRow(rowIdx) ?: sheet.createRow(rowIdx)
+
+                    // 祝日・週末判定
+                    val isActualHoliday = holidayMap.containsKey(date)
+                    val isWeekend = date.dayOfWeek == java.time.DayOfWeek.SATURDAY ||
+                            date.dayOfWeek == java.time.DayOfWeek.SUNDAY
+                    val isHolidayOrWeekend = isActualHoliday || isWeekend
+
+                    // 備考値
+                    val noteValue = entry?.note ?: ""
+
+                    // 勤務時間を出力するべき備考（土日祝でも出力する）
+                    val workingNotes = listOf("午前休", "午後休", "休日出勤", "振替出勤")
+                    val isWorkingNote = workingNotes.contains(noteValue)
+
+                    // 時間を空欄にすべき備考（完全な休み）
+                    val blankNotes = listOf("休日", "祝日", "年休", "会社休", "対象外", "振替休日", "特別休暇", "欠勤")
+                    val isBlankNote = blankNotes.contains(noteValue)
+
+                    // 土日祝で勤務系の備考がない場合、または完全休みの備考の場合は時間を空欄
+                    val shouldBlankTime = (isHolidayOrWeekend && !isWorkingNote) || isBlankNote
+
+                    // 出勤時間を入力（時と分を別々のセルに）
+                    val startHourCell = row.getCell(colStartHour) ?: row.createCell(colStartHour)
+                    val startMinCell = row.getCell(colStartMin) ?: row.createCell(colStartMin)
+                    if (!shouldBlankTime && entry?.startTime != null) {
+                        startHourCell.setCellValue(entry.startTime.hour.toDouble())
+                        startMinCell.setCellValue(entry.startTime.minute.toDouble())
+                    } else {
+                        startHourCell.setBlank()
+                        startMinCell.setBlank()
+                    }
+
+                    // 退勤時間を入力（時と分を別々のセルに）
+                    val endHourCell = row.getCell(colEndHour) ?: row.createCell(colEndHour)
+                    val endMinCell = row.getCell(colEndMin) ?: row.createCell(colEndMin)
+                    if (!shouldBlankTime && entry?.endTime != null) {
+                        endHourCell.setCellValue(entry.endTime.hour.toDouble())
+                        endMinCell.setCellValue(entry.endTime.minute.toDouble())
+                    } else {
+                        endHourCell.setBlank()
+                        endMinCell.setBlank()
+                    }
+
+                    // 休憩時間を入力
+                    val breakCell = row.getCell(colBreak) ?: row.createCell(colBreak)
+                    if (!shouldBlankTime && entry?.breakMinutes != null) {
+                        breakCell.setCellValue(entry.breakMinutes.toDouble())
+                    } else {
+                        breakCell.setBlank()
+                    }
+
+                    // K列: 午前休または午後休の場合に「4:00」を入力（土日祝以外のみ）
+                    val halfDayCell = row.getCell(colHalfDay) ?: row.createCell(colHalfDay)
+                    if (!isHolidayOrWeekend && (noteValue == "午前休" || noteValue == "午後休")) {
+                        halfDayCell.setCellValue("4:00")
+                    } else {
+                        halfDayCell.setBlank()
+                    }
+
+                    // 出社区分: N列(出社)、O列(在宅)に〇
+                    // 休日系や土日祝で勤務しない場合は空欄
+                    val officeCell = row.getCell(colOffice) ?: row.createCell(colOffice)
+                    val remoteCell = row.getCell(colRemote) ?: row.createCell(colRemote)
+                    val workLocation = entry?.workLocation ?: ""
+                    val shouldBlankLocation = isBlankNote || (isHolidayOrWeekend && !isWorkingNote)
+
+                    if (shouldBlankLocation) {
+                        officeCell.setBlank()
+                        remoteCell.setBlank()
+                    } else if (workLocation == "出社") {
+                        officeCell.setCellValue("〇")
+                        remoteCell.setBlank()
+                    } else if (workLocation == "在宅") {
+                        officeCell.setBlank()
+                        remoteCell.setCellValue("〇")
+                    } else {
+                        officeCell.setBlank()
+                        remoteCell.setBlank()
+                    }
+
+                    // 備考による各列への〇入力
+                    val annualLeaveCell = row.getCell(colAnnualLeave) ?: row.createCell(colAnnualLeave)
+                    val specialLeaveCell = row.getCell(colSpecialLeave) ?: row.createCell(colSpecialLeave)
+                    val absenceCell = row.getCell(colAbsence) ?: row.createCell(colAbsence)
+                    val substituteHolidayCell =
+                        row.getCell(colSubstituteHoliday) ?: row.createCell(colSubstituteHoliday)
+                    val substituteWorkCell = row.getCell(colSubstituteWork) ?: row.createCell(colSubstituteWork)
+                    val holidayWorkCell = row.getCell(colHolidayWork) ?: row.createCell(colHolidayWork)
+
+                    // すべてクリア
+                    annualLeaveCell.setBlank()
+                    specialLeaveCell.setBlank()
+                    absenceCell.setBlank()
+                    substituteHolidayCell.setBlank()
+                    substituteWorkCell.setBlank()
+                    holidayWorkCell.setBlank()
+
+                    // 備考に応じて〇を入力
+                    when (noteValue) {
+                        "年休" -> annualLeaveCell.setCellValue("〇")
+                        "午前休", "午後休" -> {
+                            // 土日祝の場合は休日出勤のみ、平日は有給休暇
+                            if (isHolidayOrWeekend) {
+                                holidayWorkCell.setCellValue("〇")
+                            } else {
+                                annualLeaveCell.setCellValue("〇")
+                            }
+                        }
+
+                        "特別休暇" -> specialLeaveCell.setCellValue("〇")
+                        "欠勤" -> absenceCell.setCellValue("〇")
+                        "振替休日" -> substituteHolidayCell.setCellValue("〇")
+                        "振替出勤" -> substituteWorkCell.setCellValue("〇")
+                        "休日出勤" -> holidayWorkCell.setCellValue("〇")
+                    }
+                }
+
+                // 数式を再計算
+                wb.forceFormulaRecalculation = true
+
+                wb.write(baos)
+            }
         }
         return baos.toByteArray()
     }

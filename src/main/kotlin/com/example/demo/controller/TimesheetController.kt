@@ -200,6 +200,7 @@ class TimesheetController(
             val holidayWork = body["holidayWork"]?.toBoolean() ?: false
             val note = body["note"]?.takeIf { it.isNotBlank() }
             val noteProvided = body.containsKey("note")
+            val workLocation = body["workLocation"]?.takeIf { it.isNotBlank() }
             // detect presence of keys to allow explicit null -> clear behavior
             val startProvided = body.containsKey("startTime")
             val endProvided = body.containsKey("endTime")
@@ -216,7 +217,8 @@ class TimesheetController(
                 force,
                 holidayWork,
                 noteProvided,
-                note
+                note,
+                workLocation
             )
             // ブロードキャストして（同一ユーザの）他クライアントへ反映
             broadcast("timesheet-updated", saved, auth.name)

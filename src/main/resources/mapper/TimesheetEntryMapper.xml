@@ -3,7 +3,7 @@
 <mapper namespace="com.example.demo.mapper.TimesheetEntryMapper">
 
     <resultMap id="TimesheetEntryResult" type="com.example.demo.model.TimesheetEntry">
-        <!-- Kotlin data class constructor order: id, workDate, userName, startTime, endTime, note, createdAt, updatedAt, breakMinutes, durationMinutes, workingMinutes, version, holidayWork -->
+        <!-- Kotlin data class constructor order: id, workDate, userName, startTime, endTime, note, createdAt, updatedAt, breakMinutes, durationMinutes, workingMinutes, version, holidayWork, workLocation -->
         <id property="id" column="id"/>
         <result property="workDate" column="work_date"/>
         <result property="userName" column="user_name"/>
@@ -17,6 +17,7 @@
         <result property="workingMinutes" column="working_minutes" javaType="java.lang.Integer"/>
         <result property="version" column="version" javaType="java.lang.Integer"/>
         <result property="holidayWork" column="holiday_work" javaType="java.lang.Boolean"/>
+        <result property="workLocation" column="work_location"/>
     </resultMap>
 
     <select id="selectByUserAndDate" resultMap="TimesheetEntryResult">
@@ -44,10 +45,10 @@
     <insert id="insert" parameterType="com.example.demo.model.TimesheetEntry" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO
             timesheet_entries( work_date, user_name, start_time, end_time, note, break_minutes, duration_minutes
-                             , working_minutes, version, holiday_work)
+                             , working_minutes, version, holiday_work, work_location)
         VALUES
             ( #{workDate}, #{userName}, #{startTime}, #{endTime}, #{note}, #{breakMinutes}, #{durationMinutes}
-            , #{workingMinutes}, #{version}, #{holidayWork})
+            , #{workingMinutes}, #{version}, #{holidayWork}, #{workLocation})
     </insert>
 
     <update id="updateTimes" parameterType="com.example.demo.model.TimesheetEntry">
@@ -62,6 +63,7 @@
             , working_minutes  = #{workingMinutes}
             , version          = version + 1
             , holiday_work     = #{holidayWork}
+            , work_location    = #{workLocation}
         WHERE
             id = #{id}
             AND version = #{version}
@@ -79,6 +81,7 @@
             , working_minutes  = #{workingMinutes}
             , version          = version + 1
             , holiday_work     = #{holidayWork}
+            , work_location    = #{workLocation}
         WHERE
             id = #{id}
     </update>
