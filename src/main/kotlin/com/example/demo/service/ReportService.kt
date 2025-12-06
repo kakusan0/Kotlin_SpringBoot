@@ -172,8 +172,14 @@ class ReportService(
                 val isWeekend =
                     (d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY)
                 val isHoliday = isActualHoliday || isWeekend
-                // Excel出力で空欄にするか: 休日(祝日 or 週末)かつ休日出勤フラグがOFF の場合は空欄にする
-                val shouldBlank = isHoliday && !isHolidayWork
+
+                // 備考が休日・祝日・年休などの場合も空欄にする
+                val blankNotes = listOf("休日", "祝日", "年休", "会社休", "対象外")
+                val noteValue = e?.note ?: ""
+                val isNoteBlank = blankNotes.contains(noteValue)
+
+                // Excel出力で空欄にするか: (休日(祝日 or 週末)かつ休日出勤フラグがOFF) または 備考が休日系 の場合は空欄にする
+                val shouldBlank = (isHoliday && !isHolidayWork) || isNoteBlank
 
                 val sc = row.createCell(scIdx)
                 if (shouldBlank) {
@@ -360,7 +366,13 @@ class ReportService(
                     val isWeekend =
                         d.dayOfWeek == java.time.DayOfWeek.SATURDAY || d.dayOfWeek == java.time.DayOfWeek.SUNDAY
                     val isHoliday = isActualHoliday || isWeekend
-                    val shouldBlank = isHoliday && !isHolidayWork
+
+                    // 備考が休日・祝日・年休などの場合も空欄にする
+                    val blankNotes = listOf("休日", "祝日", "年休", "会社休", "対象外")
+                    val isNoteBlank = blankNotes.contains(holidayName)
+
+                    // PDF出力で空欄にするか: (休日(祝日 or 週末)かつ休日出勤フラグがOFF) または 備考が休日系 の場合は空欄にする
+                    val shouldBlank = (isHoliday && !isHolidayWork) || isNoteBlank
                     rows.add(
                         listOf(
                             holidayName,

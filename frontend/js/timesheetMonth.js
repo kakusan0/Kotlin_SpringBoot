@@ -250,13 +250,35 @@
         console.debug('[TS] applyDefaults clicked', {s, e, b});
 
         document.querySelectorAll('#tableBody tr').forEach(row => {
+            // 休日出勤チェック済みの行はスキップ
             const hs = row.querySelector('.holiday-switch');
-            if (hs && hs.checked) return; // skip holidayWork rows
+            if (hs && hs.checked) return;
+
+            // 日付を取得
+            const iso = row.querySelector('.date-cell')?.dataset?.iso;
+            if (!iso) return;
+
+            // 土日はスキップ
+            if (isWeekend(iso)) {
+                console.debug('[TS] applyDefaults skip weekend', iso);
+                return;
+            }
+
+            // 祝日はスキップ
+            if (isHolidayDate(iso)) {
+                console.debug('[TS] applyDefaults skip holiday', iso);
+                return;
+            }
+
+            // table-secondaryクラス（休日/祝日表示用）がある行もスキップ
+            if (row.classList.contains('table-secondary')) {
+                console.debug('[TS] applyDefaults skip table-secondary row', iso);
+                return;
+            }
 
             const sc = row.querySelector('.time-cell[data-type="start"]');
             const ec = row.querySelector('.time-cell[data-type="end"]');
             const bc = row.querySelector('.break-cell');
-            const iso = row.querySelector('.date-cell')?.dataset?.iso;
 
             if (sc.textContent.trim() === '' && TIME_PATTERNS.HH_MM_00.test(s)) {
                 console.debug('[TS] applyDefaults set start', iso, s);
@@ -641,9 +663,66 @@
         const select = e.target.closest('.note-select');
         if (select) {
             const row = select.closest('tr');
-            if (row) autoSaveRow(row);
+            if (row) {
+                const noteValue = select.value;
+                // 休日・祝日・年休などの場合は入力値をクリアして無効化
+                const clearNotes = ['休日', '祝日', '年休', '会社休', '対象外'];
+                if (clearNotes.includes(noteValue)) {
+                    const startCell = row.querySelector('.time-cell[data-type="start"]');
+                    const endCell = row.querySelector('.time-cell[data-type="end"]');
+                    const breakCell = row.querySelector('.break-cell');
+                    const durationCell = row.querySelector('.duration-cell');
+                    const workingCell = row.querySelector('.working-cell');
+
+                    if (startCell) startCell.textContent = '';
+                    if (endCell) endCell.textContent = '';
+                    if (breakCell) breakCell.textContent = '';
+                    if (durationCell) durationCell.textContent = '';
+                    if (workingCell) workingCell.textContent = '';
+
+                    console.debug('[TS] cleared row due to note:', noteValue);
+
+                    // 入力を無効化
+                    disableRowInput(row, true);
+                } else {
+                    // 休日系以外の場合は入力を有効化
+                    disableRowInput(row, false);
+                }
+                autoSaveRow(row);
+            }
         }
     });
+
+    // 行の入力を無効化/有効化する関数
+    function disableRowInput(row, disable) {
+        const timeCells = row.querySelectorAll('.time-cell');
+        timeCells.forEach(cell => {
+            if (disable) {
+                cell.classList.add('disabled');
+                cell.style.pointerEvents = 'none';
+                cell.style.opacity = '0.5';
+                cell.style.cursor = 'not-allowed';
+            } else {
+                cell.classList.remove('disabled');
+                cell.style.pointerEvents = '';
+                cell.style.opacity = '';
+                cell.style.cursor = '';
+            }
+        });
+
+        const breakCell = row.querySelector('.break-cell');
+        if (breakCell) {
+            breakCell.contentEditable = disable ? 'false' : 'true';
+            breakCell.style.opacity = disable ? '0.5' : '';
+            breakCell.style.cursor = disable ? 'not-allowed' : '';
+        }
+
+        // 休日出勤スイッチも無効化
+        const holidaySwitch = row.querySelector('.holiday-switch');
+        if (holidaySwitch) {
+            holidaySwitch.disabled = disable;
+        }
+    }
 
     // Immediately POST holidayWork change for a row. This sends start/end/break as null to ensure server stores flag and clears times.
     async function saveHolidayFlag(row, holidayWork) {
@@ -907,6 +986,8 @@
             const noteSelect = tr.querySelector('.note-select');
             if (isWeekend && noteSelect) {
                 noteSelect.value = '休日';
+                // 休日の場合は入力を無効化
+                disableRowInput(tr, true);
             }
 
             applyRowShade(tr);
@@ -952,6 +1033,8 @@
                             const noteSelect = tr.querySelector('.note-select');
                             if (noteSelect) {
                                 noteSelect.value = '祝日';
+                                // 祝日の場合は入力を無効化
+                                disableRowInput(tr, true);
                             }
 
                             applyRowShade(tr);
@@ -1067,6 +1150,12 @@
                     const noteSelect = row.querySelector('.note-select');
                     if (noteSelect) {
                         noteSelect.value = data.note || '';
+
+                        // 備考が休日系の場合は入力を無効化
+                        const clearNotes = ['休日', '祝日', '年休', '会社休', '対象外'];
+                        if (clearNotes.includes(data.note)) {
+                            disableRowInput(row, true);
+                        }
                     }
 
                     // ensure weekday shown

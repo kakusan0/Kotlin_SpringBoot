@@ -11,19 +11,41 @@
 }
 
 /* テーブル基本スタイル */
-#workTable {
+#workTable,
+#fullscreenWorkTable {
     margin-bottom: 0;
     white-space: nowrap;
 }
 
 /* ヘッダー固定 */
-#workTable thead.sticky-header th {
+#workTable thead.sticky-header th,
+#fullscreenWorkTable thead.sticky-header th {
     position: sticky;
     top: 0;
     background: #f8f9fa;
     z-index: 10;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border-bottom: 2px solid #dee2e6;
+}
+
+/* フルスクリーンモーダル */
+#fullscreenModal .modal-body {
+    background: #fff;
+}
+
+#fullscreenTableContainer {
+    overflow: auto;
+    max-height: calc(100vh - 70px);
+}
+
+#fullscreenWorkTable {
+    font-size: 14px;
+}
+
+#fullscreenWorkTable th,
+#fullscreenWorkTable td {
+    padding: 8px 12px;
+    vertical-align: middle;
 }
 
 /* テーブル列の幅定義 */

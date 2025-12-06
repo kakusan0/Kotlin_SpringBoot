@@ -3,87 +3,72 @@
 </head>
 <div th:fragment="content">
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <!-- Existing content on the left side -->
-            <div></div>
-
-            <!-- Moved content to the right side -->
-            <div class="d-flex gap-2 align-items-center">
-                <button class="btn btn-sm btn-outline-secondary" id="prevMonth" title="前の月" type="button">
-                    <i class="bi bi-chevron-left"></i>
-                </button>
-                <input class="form-control form-control-sm" id="monthInput" style="width:160px;"
-                       th:value="${yearMonthValue}" title="表示する月" type="month">
-                <button class="btn btn-sm btn-outline-secondary" id="nextMonth" title="次の月" type="button">
-                    <i class="bi bi-chevron-right"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Report buttons: placed above the table, right-aligned -->
-        <div class="d-flex justify-content-end align-items-center mb-2">
-            <div class="d-flex gap-2">
-                <!-- Removed CSV, PDF, and Excel download buttons -->
-            </div>
-        </div>
-        <div aria-live="polite" class="text-muted small mb-2" id="reportMessage"></div>
-
-        <!-- デフォルト設定アコーディオン -->
-        <div class="accordion mb-3" id="defaultSettingsAccordion">
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingDefaults">
-                    <button aria-controls="collapseDefaults" aria-expanded="false" class="accordion-button collapsed"
-                            data-bs-target="#collapseDefaults" data-bs-toggle="collapse" type="button">
-                        デフォルト設定
-                    </button>
-                </h2>
-                <div aria-labelledby="headingDefaults" class="accordion-collapse collapse"
-                     data-bs-parent="#defaultSettingsAccordion"
-                     id="collapseDefaults">
-                    <div class="accordion-body">
-                        <div class="d-flex gap-2 align-items-center">
-                            <div class="form-floating" style="width:110px;">
-                                <input class="form-control form-control-sm" id="defaultStart"
-                                       title="出勤時刻のデフォルト値"
-                                       type="time" value="09:00">
-                                <label for="defaultStart">出勤</label>
+        <!-- 上部コントロール: 月選択 + デフォルト設定 + 祝日 -->
+        <div class="row align-items-start mb-3 g-2">
+            <!-- 左側: デフォルト設定 -->
+            <div class="col-12 col-lg-4 order-2 order-lg-1">
+                <div class="card h-100">
+                    <div class="card-header py-1 px-2">
+                        <i class="bi bi-gear me-1"></i><small>デフォルト設定</small>
+                    </div>
+                    <div class="card-body py-2 px-2">
+                        <div class="d-flex gap-2 align-items-end flex-wrap">
+                            <div style="width: 80px;">
+                                <label class="form-label small mb-0" for="defaultStart">出勤</label>
+                                <input class="form-control form-control-sm" id="defaultStart" type="time" value="09:00">
                             </div>
-                            <div class="form-floating" style="width:110px;">
-                                <input class="form-control form-control-sm" id="defaultEnd"
-                                       title="退勤時刻のデフォルト値"
-                                       type="time" value="18:00">
-                                <label for="defaultEnd">退勤</label>
+                            <div style="width: 80px;">
+                                <label class="form-label small mb-0" for="defaultEnd">退勤</label>
+                                <input class="form-control form-control-sm" id="defaultEnd" type="time" value="18:00">
                             </div>
-                            <div class="form-floating" style="width:90px;">
+                            <div style="width: 70px;">
+                                <label class="form-label small mb-0" for="defaultBreak">休憩</label>
                                 <input class="form-control form-control-sm" id="defaultBreak" min="0" type="number"
                                        value="60">
-                                <label for="defaultBreak">休憩(分)</label>
                             </div>
-                            <button class="btn btn-sm btn-secondary" id="applyDefaults">空セルに適用</button>
+                            <button class="btn btn-sm btn-primary" id="applyDefaults" title="空セルに適用">
+                                <i class="bi bi-check2"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- 祝日アコーディオン -->
-        <div class="accordion mb-3" id="holidayAccordion">
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingHolidays">
-                    <button aria-controls="collapseHolidays" aria-expanded="false" class="accordion-button collapsed"
-                            data-bs-target="#collapseHolidays" data-bs-toggle="collapse" type="button">
-                        当月の祝日
+            <!-- 中央: 月選択 + フルスクリーンボタン -->
+            <div class="col-12 col-lg-4 order-1 order-lg-2">
+                <div class="d-flex gap-2 align-items-center justify-content-center">
+                    <button class="btn btn-sm btn-outline-secondary" id="prevMonth" title="前の月" type="button">
+                        <i class="bi bi-chevron-left"></i>
                     </button>
-                </h2>
-                <div aria-labelledby="headingHolidays" class="accordion-collapse collapse" id="collapseHolidays">
-                    <div class="accordion-body" id="holidayInfo">
-                        <!-- JavaScriptで祝日情報を挿入 -->
+                    <input class="form-control form-control-sm" id="monthInput" style="width:160px;"
+                           th:value="${yearMonthValue}" title="表示する月" type="month">
+                    <button class="btn btn-sm btn-outline-secondary" id="nextMonth" title="次の月" type="button">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-target="#fullscreenModal"
+                            data-bs-toggle="modal"
+                            id="fullscreenBtn" title="フルスクリーン表示" type="button">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右側: 当月の祝日 -->
+            <div class="col-12 col-lg-4 order-3">
+                <div class="card h-100">
+                    <div class="card-header py-1 px-2">
+                        <i class="bi bi-calendar-event me-1"></i><small>当月の祝日</small>
+                    </div>
+                    <div class="card-body py-1 px-2" id="holidayInfo" style="max-height: 80px; overflow-y: auto;">
+                        <p class="text-muted small mb-0">読み込み中...</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- テーブルヘッダ拡張 -->
+        <div aria-live="polite" class="text-muted small mb-2" id="reportMessage"></div>
+
+        <!-- テーブル -->
         <div class="timesheet-table-container">
             <table class="table table-sm table-bordered table-hover" id="workTable">
                 <thead class="table-light sticky-header">
@@ -108,7 +93,7 @@
                         <span class="holiday" style="display:none;"></span>
                     </td>
                     <td class="weekday-cell"></td>
-                    <td class="holiday-cell d-none d-md-table-cell">
+                    <td class="holiday-cell">
                         <div class="form-check form-switch">
                             <input aria-label="休日出勤" class="form-check-input holiday-switch" role="switch"
                                    type="checkbox">
@@ -126,13 +111,11 @@
                     </td>
                     <td class="time-cell" data-type="start"></td>
                     <td class="time-cell" data-type="end"></td>
-                    <td class="break-cell d-none d-sm-table-cell" contenteditable="true"></td>
-                    <td class="duration-cell d-none d-md-table-cell"></td>
-                    <td class="working-cell d-none d-lg-table-cell"></td>
+                    <td class="break-cell" contenteditable="true"></td>
+                    <td class="duration-cell"></td>
+                    <td class="working-cell"></td>
                     <td class="clear-cell">
-                        <button class="btn btn-outline-secondary btn-sm clear-row-btn" type="button">
-                            <span class="d-none d-sm-inline">クリア</span>
-                            <i class="bi bi-x-lg d-sm-none"></i>
+                        <button class="btn btn-outline-secondary btn-sm clear-row-btn" type="button">クリア
                         </button>
                     </td>
                 </tr>
@@ -140,11 +123,9 @@
             </table>
         </div>
 
-        <!-- Add three line breaks at the bottom of the table for the mobile version -->
+        <!-- モバイル用余白 -->
         <div class="d-block d-md-none">
-            <br>
-            <br>
-            <br>
+            <br><br><br>
         </div>
     </div>
 
@@ -189,9 +170,201 @@
         </div>
     </div>
 
+    <!-- フルスクリーンモーダル -->
+    <div aria-hidden="true" aria-labelledby="fullscreenModalLabel" class="modal fade" id="fullscreenModal"
+         tabindex="-1">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title" id="fullscreenModalLabel">
+                        <i class="bi bi-calendar3 me-2"></i>勤務表
+                        <span class="text-muted ms-2" id="fullscreenMonthDisplay"></span>
+                    </h5>
+                    <button aria-label="閉じる" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body p-2" style="overflow: auto;">
+                    <div id="fullscreenTableContainer">
+                        <!-- テーブルがここにクローンされる -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script defer th:src="@{/js/timesheetMonth.js}"></script>
     <script th:inline="javascript">
         window.currentUserName = /*[[${currentUserName}]]*/ 'user1';
+
+        // フルスクリーンモーダル用スクリプト
+        (function () {
+            const fullscreenModal = document.getElementById('fullscreenModal');
+            if (!fullscreenModal) return;
+
+            const originalContainer = document.querySelector('.timesheet-table-container');
+            const fullscreenContainer = document.getElementById('fullscreenTableContainer');
+            const monthInput = document.getElementById('monthInput');
+            const monthDisplay = document.getElementById('fullscreenMonthDisplay');
+
+            if (!originalContainer || !fullscreenContainer) return;
+
+            // フルスクリーン状態を追跡
+            window.isFullscreenMode = false;
+
+            // モーダルが開く時: テーブルをフルスクリーンコンテナに移動
+            fullscreenModal.addEventListener('show.bs.modal', function () {
+                window.isFullscreenMode = true;
+
+                // 月表示を更新
+                if (monthInput && monthDisplay) {
+                    const [year, month] = monthInput.value.split('-');
+                    monthDisplay.textContent = year + '年' + parseInt(month) + '月';
+                }
+
+                // テーブルコンテナをフルスクリーンモーダルに移動
+                fullscreenContainer.appendChild(originalContainer);
+
+                // フルスクリーン用にスタイル調整
+                originalContainer.style.maxHeight = 'calc(100vh - 80px)';
+                originalContainer.style.border = 'none';
+            });
+
+            // モーダルが閉じる時: テーブルを元の位置に戻す
+            fullscreenModal.addEventListener('hidden.bs.modal', function () {
+                window.isFullscreenMode = false;
+
+                // 元の位置を取得
+                const reportMessage = document.getElementById('reportMessage');
+                if (reportMessage && reportMessage.parentNode) {
+                    // reportMessageの後に挿入
+                    reportMessage.parentNode.insertBefore(originalContainer, reportMessage.nextSibling);
+                }
+
+                // スタイルを元に戻す
+                originalContainer.style.maxHeight = '';
+                originalContainer.style.border = '';
+
+                // 右クリックメニューがあれば削除
+                const contextMenu = document.getElementById('contextMenu');
+                if (contextMenu) {
+                    contextMenu.remove();
+                }
+            });
+
+            // フルスクリーンモーダル内での右クリック処理を上書き
+            fullscreenModal.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // 既存のコンテキストメニューを削除
+                const existingMenu = document.getElementById('contextMenu');
+                if (existingMenu) {
+                    existingMenu.remove();
+                }
+
+                // コンテキストメニューを作成
+                const contextMenu = document.createElement('div');
+                contextMenu.id = 'contextMenu';
+                contextMenu.style.cssText = `
+                    position: fixed;
+                    top: ${e.clientY}px;
+                    left: ${e.clientX}px;
+                    z-index: 99999;
+                    background: #fff;
+                    border: 1px solid #ccc;
+                    padding: 5px;
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                `;
+
+                // Excelダウンロードボタン
+                const excelBtn = document.createElement('div');
+                excelBtn.textContent = 'Excelダウンロード';
+                excelBtn.style.cssText = 'cursor: pointer; padding: 5px 10px;';
+                excelBtn.addEventListener('click', function () {
+                    window.dispatchEvent(new CustomEvent('downloadReport', {detail: 'xlsx'}));
+                    contextMenu.remove();
+                });
+                excelBtn.addEventListener('mouseenter', function () {
+                    this.style.background = '#f0f0f0';
+                });
+                excelBtn.addEventListener('mouseleave', function () {
+                    this.style.background = '';
+                });
+
+                // PDFダウンロードボタン
+                const pdfBtn = document.createElement('div');
+                pdfBtn.textContent = 'PDFダウンロード';
+                pdfBtn.style.cssText = 'cursor: pointer; padding: 5px 10px;';
+                pdfBtn.addEventListener('click', function () {
+                    window.dispatchEvent(new CustomEvent('downloadReport', {detail: 'pdf'}));
+                    contextMenu.remove();
+                });
+                pdfBtn.addEventListener('mouseenter', function () {
+                    this.style.background = '#f0f0f0';
+                });
+                pdfBtn.addEventListener('mouseleave', function () {
+                    this.style.background = '';
+                });
+
+                contextMenu.appendChild(excelBtn);
+                contextMenu.appendChild(pdfBtn);
+
+                // モーダル内に追加（z-indexが効くように）
+                fullscreenModal.appendChild(contextMenu);
+
+                // クリックで閉じる
+                const closeMenu = function (ev) {
+                    if (!contextMenu.contains(ev.target)) {
+                        contextMenu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', closeMenu), 0);
+            });
+        })();
+
+        // ダウンロードイベントをリッスン
+        window.addEventListener('downloadReport', function (e) {
+            const format = e.detail;
+            const monthInput = document.getElementById('monthInput');
+            const reportMessage = document.getElementById('reportMessage');
+
+            (async function () {
+                try {
+                    if (reportMessage) reportMessage.textContent = 'レポートを生成しています...';
+
+                    const monthValue = monthInput?.value || new Date().toISOString().substring(0, 7);
+                    const [year, month] = monthValue.split('-').map(Number);
+                    const from = year + '-' + String(month).padStart(2, '0') + '-01';
+                    const lastDay = new Date(year, month, 0).getDate();
+                    const to = year + '-' + String(month).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+                    const username = window.currentUserName || 'user1';
+
+                    const url = '/timesheet/report/' + format + '?username=' + encodeURIComponent(username) + '&from=' + from + '&to=' + to;
+                    const response = await fetch(url, {credentials: 'same-origin'});
+
+                    if (!response.ok) {
+                        if (reportMessage) reportMessage.textContent = 'レポート生成失敗 (' + response.status + ')';
+                        return;
+                    }
+
+                    const blob = await response.blob();
+                    const disposition = response.headers.get('Content-Disposition') || '';
+                    const filenameMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
+                    const filename = filenameMatch ? decodeURIComponent(filenameMatch[1].replace(/"/g, '')) : 'timesheet_' + from + '_to_' + to + '.' + format;
+
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+
+                    if (reportMessage) reportMessage.textContent = 'ダウンロード完了';
+                } catch (err) {
+                    console.error('Download error:', err);
+                    if (reportMessage) reportMessage.textContent = 'ダウンロードエラー';
+                }
+            })();
+        });
     </script>
 </div>
