@@ -24,9 +24,7 @@ const MAX_WORKERS = os.cpus().length;
                 if (!file) return;
 
                 const inputPath = path.join(srcDir, file);
-
                 const outputPath = path.join(outDir, file); // 拡張子はそのまま
-                const outputPath = path.join(outDir, file.replace(".js", ".min.js"));
 
                 console.log(`Processing: ${file}`);
 
