@@ -5,7 +5,7 @@ const {minify} = require("terser");
 const JavaScriptObfuscator = require("javascript-obfuscator");
 const os = require("os");
 
-const srcDir = path.resolve(__dirname, "js");
+const srcDir = path.resolve(__dirname, "obfuscate");
 const outDir = path.resolve(__dirname, "../src/main/resources/static/js");
 
 const MAX_WORKERS = os.cpus().length;
@@ -24,7 +24,7 @@ const MAX_WORKERS = os.cpus().length;
                 if (!file) return;
 
                 const inputPath = path.join(srcDir, file);
-                const outputPath = path.join(outDir, file); // 拡張子はそのまま
+                const outputPath = path.join(outDir, file.replace(".js", ".min.js"));
 
                 console.log(`Processing: ${file}`);
 
