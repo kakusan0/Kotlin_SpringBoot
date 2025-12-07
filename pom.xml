@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.7</version>
+        <version>3.2.5</version>
         <relativePath/>
     </parent>
     <groupId>com.jp.demo</groupId>
@@ -16,14 +16,14 @@
     <description>Demo project for Spring Boot with Kotlin and MyBatis</description>
 
     <properties>
-        <java.version>25</java.version>
-        <kotlin.version>2.3.0-RC</kotlin.version>
+        <java.version>21</java.version>
+        <kotlin.version>1.9.23</kotlin.version>
         <mainClass>com.example.demo.DemoApplicationKt</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <flyway.version>11.18.0</flyway.version>
         <postgresql.version>42.7.8</postgresql.version>
-        <spring-cloud.version>2025.0.0</spring-cloud.version>
+        <spring-cloud.version>2023.0.2</spring-cloud.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -220,6 +220,27 @@
                 </dependencies>
             </plugin>
             <!-- JDK ツールチェーン (任意) -->
+            <!--
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>toolchain</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <toolchains>
+                        <jdk>
+                            <version>${java.version}</version>
+                        </jdk>
+                    </toolchains>
+                </configuration>
+            </plugin>
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
