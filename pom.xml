@@ -219,28 +219,6 @@
                     <!-- kotlin-maven-noarg 削除: JPAエンティティ用の引数なしコンストラクタ生成は不要 -->
                 </dependencies>
             </plugin>
-            <!-- JDK ツールチェーン (任意) -->
-            <!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-toolchains-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>toolchain</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <toolchains>
-                        <jdk>
-                            <version>${java.version}</version>
-                        </jdk>
-                    </toolchains>
-                </configuration>
-            </plugin>
-            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -281,15 +259,14 @@
 
                     <!-- JS難読化を prepare-package フェーズで実行 -->
                     <execution>
-                        <id>npm-run-obfuscate</id>
+                        <id>npm-run-obfuscate-minify</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
                         <phase>prepare-package</phase>
                         <configuration>
-                            <!-- package.json があるフォルダを指定 -->
                             <workingDirectory>${project.basedir}/frontend</workingDirectory>
-                            <arguments>run obfuscate</arguments>
+                            <arguments>run obfuscate-minify</arguments>
                         </configuration>
                     </execution>
                 </executions>
