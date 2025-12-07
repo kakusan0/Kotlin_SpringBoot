@@ -11,7 +11,7 @@
     <groupId>com.jp.demo</groupId>
     <artifactId>app</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>war</packaging>
+    <packaging>jar</packaging>
     <name>app</name>
     <description>Demo project for Spring Boot with Kotlin and MyBatis</description>
 
@@ -188,6 +188,14 @@
                     <mainClass>${mainClass}</mainClass>
                     <!-- 静的リソース変更もクラスパスに即時反映 -->
                     <addResources>true</addResources>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
             </plugin>
             <plugin>
