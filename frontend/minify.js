@@ -5,7 +5,7 @@ const {minify} = require("terser");
 const JavaScriptObfuscator = require("javascript-obfuscator");
 const os = require("os");
 
-const srcDir = path.resolve(__dirname, "obfuscate");
+const srcDir = path.resolve(__dirname, "js");
 const outDir = path.resolve(__dirname, "../src/main/resources/static/js");
 
 const MAX_WORKERS = os.cpus().length;
