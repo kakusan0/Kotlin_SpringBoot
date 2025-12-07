@@ -11,12 +11,12 @@
     <groupId>com.jp.demo</groupId>
     <artifactId>app</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>war</packaging>
+    <packaging>jar</packaging>
     <name>app</name>
     <description>Demo project for Spring Boot with Kotlin and MyBatis</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>21</java.version>
         <kotlin.version>2.3.0-RC</kotlin.version>
         <mainClass>com.example.demo.DemoApplicationKt</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -191,6 +191,14 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <configuration>
@@ -211,7 +219,6 @@
                     <!-- kotlin-maven-noarg 削除: JPAエンティティ用の引数なしコンストラクタ生成は不要 -->
                 </dependencies>
             </plugin>
-            <!-- JDK ツールチェーン (任意) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -252,15 +259,14 @@
 
                     <!-- JS難読化を prepare-package フェーズで実行 -->
                     <execution>
-                        <id>npm-run-obfuscate</id>
+                        <id>npm-run-obfuscate-minify</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
                         <phase>prepare-package</phase>
                         <configuration>
-                            <!-- package.json があるフォルダを指定 -->
                             <workingDirectory>${project.basedir}/frontend</workingDirectory>
-                            <arguments>run obfuscate</arguments>
+                            <arguments>run obfuscate-minify</arguments>
                         </configuration>
                     </execution>
                 </executions>
@@ -294,8 +300,13 @@
         <profile>
             <id>prod</id>
             <properties>
+                <!-- Spring 実行プロファイル -->
                 <spring.profiles.active>prod</spring.profiles.active>
+
+                <!-- ★★ WAR でビルドするための設定 ★★ -->
+                <packaging>war</packaging>
             </properties>
         </profile>
+
     </profiles>
 </project>

@@ -51,3 +51,4 @@ frontend/node
 frontend/node_modules
 frontend/package-lock.json
 src/main/resources/static/js/*.js
+/frontend/obfuscate/*.js
