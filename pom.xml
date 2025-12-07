@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version>
+        <version>3.5.7</version>
         <relativePath/>
     </parent>
     <groupId>com.jp.demo</groupId>
@@ -17,13 +17,13 @@
 
     <properties>
         <java.version>21</java.version>
-        <kotlin.version>1.9.23</kotlin.version>
+        <kotlin.version>2.3.0-RC</kotlin.version>
         <mainClass>com.example.demo.DemoApplicationKt</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <flyway.version>11.18.0</flyway.version>
         <postgresql.version>42.7.8</postgresql.version>
-        <spring-cloud.version>2023.0.2</spring-cloud.version>
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -315,8 +315,13 @@
         <profile>
             <id>prod</id>
             <properties>
+                <!-- Spring 実行プロファイル -->
                 <spring.profiles.active>prod</spring.profiles.active>
+
+                <!-- ★★ WAR でビルドするための設定 ★★ -->
+                <packaging>war</packaging>
             </properties>
         </profile>
+
     </profiles>
 </project>
