@@ -128,11 +128,11 @@ class SecurityConfig(
                 it.defaultSuccessUrl("/home")
                 it.failureHandler(customAuthenticationFailureHandler)
             }
-            .webAuthn {
-                it.rpName("Spring Security Relying Party")
-                it.rpId("localhost")
-                it.allowedOrigins(setOf("http://localhost:8080"))
-            }
+//            .webAuthn {
+//                it.rpName("Spring Security Relying Party")
+//                it.rpId("localhost")
+//                it.allowedOrigins(setOf("http://localhost:8080"))
+//            }
             .httpBasic { it.disable() }
             .logout {
                 it.logoutUrl("/logout")
