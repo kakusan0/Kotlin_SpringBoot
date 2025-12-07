@@ -176,6 +176,10 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-vault-config</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
 
     </dependencies>
     <build>
@@ -219,28 +223,6 @@
                     <!-- kotlin-maven-noarg 削除: JPAエンティティ用の引数なしコンストラクタ生成は不要 -->
                 </dependencies>
             </plugin>
-            <!-- JDK ツールチェーン (任意) -->
-            <!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-toolchains-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>toolchain</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <toolchains>
-                        <jdk>
-                            <version>${java.version}</version>
-                        </jdk>
-                    </toolchains>
-                </configuration>
-            </plugin>
-            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -312,10 +294,6 @@
                     <groupId>org.flywaydb</groupId>
                     <artifactId>flyway-database-postgresql</artifactId>
                     <version>${flyway.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-actuator</artifactId>
                 </dependency>
             </dependencies>
         </profile>
