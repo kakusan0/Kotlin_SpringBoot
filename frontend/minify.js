@@ -31,39 +31,32 @@ const MAX_WORKERS = os.cpus().length;
                 // ① 元コード読み込み
                 const code = await fs.readFile(inputPath, "utf8");
 
-                // ② 一旦 Terser で軽量 minify（高速化のため）
-                const preMinified = await minify(code, {
+                // ② Obfuscator（難読化）
+                const obfuscated = JavaScriptObfuscator.obfuscate(code, {
+                    compact: true,
+                    controlFlowFlattening: true,
+                    controlFlowFlatteningThreshold: 1,
+                    deadCodeInjection: true,
+                    deadCodeInjectionThreshold: 1,
+                    stringArray: true,
+                    rotateStringArray: true,
+                    stringArrayThreshold: 1,
+                }).getObfuscatedCode();
+
+                // ③ Terser で最終 minify
+                const minified = await minify(obfuscated, {
                     compress: true,
                     mangle: true
                 });
 
-                // ③ Obfuscator（難読化）
-                const obfuscated = JavaScriptObfuscator.obfuscate(
-                    preMinified.code,
-                    {
-                        compact: true,
-                        controlFlowFlattening: false,       // ← 重いので無効でも強い難読化
-                        deadCodeInjection: false,           // ← 重い
-                        stringArray: true,
-                        rotateStringArray: true,
-                        stringArrayThreshold: 0.8
-                    }
-                ).getObfuscatedCode();
-
-                // ④ 最後にもう一度 Terser（任意）
-                const finalMinified = await minify(obfuscated, {
-                    compress: true,
-                    mangle: true
-                });
-
-                // ⑤ 出力
-                await fs.writeFile(outputPath, finalMinified.code, "utf8");
+                // ④ 出力
+                await fs.writeFile(outputPath, minified.code, "utf8");
             }
         }
 
         await Promise.all(workers);
 
-        console.log("✔ All processed (minify → obfuscate → minify)!");
+        console.log("✔ All obfuscated & minified!");
     } catch (err) {
         console.error(err);
         process.exit(1);
