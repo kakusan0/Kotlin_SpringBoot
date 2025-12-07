@@ -281,15 +281,14 @@
 
                     <!-- JS難読化を prepare-package フェーズで実行 -->
                     <execution>
-                        <id>npm-run-obfuscate</id>
+                        <id>npm-run-obfuscate-minify</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
                         <phase>prepare-package</phase>
                         <configuration>
-                            <!-- package.json があるフォルダを指定 -->
                             <workingDirectory>${project.basedir}/frontend</workingDirectory>
-                            <arguments>run obfuscate</arguments>
+                            <arguments>run obfuscate-minify</arguments>
                         </configuration>
                     </execution>
                 </executions>

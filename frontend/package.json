@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "obfuscate": "javascript-obfuscator js --output ../src/main/resources/static/js"
+    "obfuscate-minify": "node minify.js"
   },
   "devDependencies": {
     "javascript-obfuscator": "latest",
