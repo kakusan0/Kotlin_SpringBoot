@@ -1,0 +1,582 @@
+<head th:replace="fragments/head :: commonHead('タイムシート')">
+    <title>タイムシート</title>
+</head>
+<div th:fragment="content">
+    <div class="container-fluid">
+        <!-- 上部コントロール: 月選択 + デフォルト設定 + 祝日 -->
+        <div class="row align-items-start mb-3 g-2">
+            <!-- 左側: デフォルト設定 -->
+            <div class="col-12 col-lg-4 order-2 order-lg-1">
+                <div class="card h-100">
+                    <div class="card-header py-1 px-2">
+                        <i class="bi bi-gear me-1"></i><small>デフォルト設定</small>
+                    </div>
+                    <div class="card-body py-2 px-2">
+                        <div class="d-flex gap-2 align-items-end flex-wrap">
+                            <div style="width: 80px;">
+                                <label class="form-label small mb-0" for="defaultStart">出勤</label>
+                                <input class="form-control form-control-sm" id="defaultStart" type="time" value="09:00">
+                            </div>
+                            <div style="width: 80px;">
+                                <label class="form-label small mb-0" for="defaultEnd">退勤</label>
+                                <input class="form-control form-control-sm" id="defaultEnd" type="time" value="18:00">
+                            </div>
+                            <div style="width: 70px;">
+                                <label class="form-label small mb-0" for="defaultBreak">休憩</label>
+                                <input class="form-control form-control-sm" id="defaultBreak" min="0" type="number"
+                                       value="60">
+                            </div>
+                            <button class="btn btn-sm btn-primary" id="applyDefaults" title="空セルに適用">
+                                <i class="bi bi-check2"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success ms-2" id="downloadUnissXlsx"
+                                    title="UNISS勤務表をダウンロード">
+                                <i class="bi bi-file-earmark-excel"></i> UNISS
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中央: 月選択 + フルスクリーンボタン -->
+            <div class="col-12 col-lg-4 order-1 order-lg-2">
+                <div class="d-flex gap-2 align-items-center justify-content-center">
+                    <button class="btn btn-sm btn-outline-secondary" id="prevMonth" title="前の月" type="button">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <input class="form-control form-control-sm" id="monthInput" style="width:160px;"
+                           th:value="${yearMonthValue}" title="表示する月" type="month">
+                    <button class="btn btn-sm btn-outline-secondary" id="nextMonth" title="次の月" type="button">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-target="#fullscreenModal"
+                            data-bs-toggle="modal"
+                            id="fullscreenBtn" title="フルスクリーン表示" type="button">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" id="resetAllBtn" title="全体リセット" type="button">
+                        <i class="bi bi-arrow-counterclockwise"></i> 全リセット
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右側: 当月の祝日 -->
+            <div class="col-12 col-lg-4 order-3">
+                <div class="card h-100">
+                    <div class="card-header py-1 px-2">
+                        <i class="bi bi-calendar-event me-1"></i><small>当月の祝日</small>
+                    </div>
+                    <div class="card-body py-1 px-2" id="holidayInfo" style="max-height: 80px; overflow-y: auto;">
+                        <p class="text-muted small mb-0">読み込み中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div aria-live="polite" class="text-muted small mb-2" id="reportMessage"></div>
+
+        <!-- テーブル -->
+        <div class="timesheet-table-container">
+            <table class="table table-sm table-bordered table-hover" id="workTable">
+                <thead class="table-light sticky-header">
+                <tr>
+                    <th class="col-date">日付</th>
+                    <th class="col-weekday">曜日</th>
+                    <th class="col-location">出社区分</th>
+                    <th class="col-note">備考</th>
+                    <th class="col-irregular">変則勤務</th>
+                    <th class="col-start">出勤</th>
+                    <th class="col-end">退勤</th>
+                    <th class="col-break">休憩</th>
+                    <th class="col-duration">稼働</th>
+                    <th class="col-working">実働</th>
+                    <th class="col-lateearly"></th>
+                    <th class="col-action">操作</th>
+                </tr>
+                </thead>
+                <tbody id="tableBody">
+                <tr th:classappend="${d == T(java.time.LocalDate).now()} ? 'table-primary' : ''"
+                    th:each="d : ${dates}">
+                    <td class="date-cell" th:data-iso="${#temporals.format(d,'yyyy-MM-dd')}">
+                        <span th:text="${d.dayOfMonth + '日'}">1日</span>
+                        <span class="holiday" style="display:none;"></span>
+                    </td>
+                    <td class="weekday-cell"></td>
+                    <td class="location-cell">
+                        <button class="btn btn-sm btn-primary work-location-btn" data-location="出社" type="button">
+                            出社
+                        </button>
+                    </td>
+                    <td class="note-cell">
+                        <select class="form-select form-select-sm note-select" title="備考">
+                            <option value="">---</option>
+                            <option value="午前休">午前休</option>
+                            <option value="午後休">午後休</option>
+                            <option value="休日">休日</option>
+                            <option value="祝日">祝日</option>
+                            <option value="会社休">会社休</option>
+                            <option value="現場休">現場休</option>
+                            <option value="対象外">対象外</option>
+                        </select>
+                    </td>
+                    <td class="irregular-cell">
+                        <button class="btn btn-sm btn-outline-secondary irregular-btn" type="button">表示</button>
+                    </td>
+                    <td class="time-cell" data-type="start"></td>
+                    <td class="time-cell" data-type="end"></td>
+                    <td class="break-cell" contenteditable="true"></td>
+                    <td class="duration-cell"></td>
+                    <td class="working-cell"></td>
+                    <td class="lateearly-cell">
+                        <button class="btn btn-sm btn-outline-warning late-btn" type="button">遅刻</button>
+                        <button class="btn btn-sm btn-outline-info early-btn" type="button">早退</button>
+                    </td>
+                    <td class="clear-cell">
+                        <button class="btn btn-outline-secondary btn-sm reset-row-btn" type="button">リセット</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- モバイル用余白 -->
+        <div class="d-block d-md-none">
+            <br><br><br>
+        </div>
+    </div>
+
+    <!-- Time Picker (PC用 - 従来のポップアップ) -->
+    <div aria-hidden="true" class="time-picker" id="timePicker" style="display:none;">
+        <div class="picker-header">
+            <div>
+                <span class="selected-date" id="selectedDateLabel">日付: —</span>
+                <span aria-hidden="true" class="selected-holiday" id="holidayLabel" style="display:none;"></span>
+            </div>
+            <div class="label-small" id="cellTypeLabel">種類: —</div>
+        </div>
+
+        <div class="display" id="timeDisplay">00:00</div>
+        <div class="mode" id="modeLabel">時を設定してください (0-23)</div>
+
+        <div class="clock" id="clock">
+            <div class="hand" id="hand"></div>
+            <div class="center-dot"></div>
+            <div class="drag-area" id="dragArea"></div>
+        </div>
+
+        <div class="picker-buttons mt-3 d-flex justify-content-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm" id="pickerCancel" type="button">キャンセル</button>
+            <button class="btn btn-primary btn-sm" id="pickerConfirm" type="button">確定</button>
+        </div>
+    </div>
+
+    <!-- Time Picker モーダル (スマホ用) -->
+    <div aria-hidden="true" class="modal fade d-md-none" id="timePickerModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">
+                        <span id="mobileSelectedDateLabel">日付: —</span>
+                        <span class="ms-2 text-muted" id="mobileCellTypeLabel">種類: —</span>
+                    </h6>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="display" id="mobileTimeDisplay">00:00</div>
+                    <div class="mode mb-3" id="mobileModeLabel">時を設定してください (0-23)</div>
+
+                    <div class="clock mx-auto" id="mobileClock">
+                        <div class="hand" id="mobileHand"></div>
+                        <div class="center-dot"></div>
+                        <div class="drag-area" id="mobileDragArea"></div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal" id="mobilePickerCancel"
+                            type="button">キャンセル
+                    </button>
+                    <button class="btn btn-primary" id="mobilePickerConfirm" type="button">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conflict Modal -->
+    <div aria-hidden="true" class="modal fade" id="conflictModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">競合が発生しました</h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <p>他の端末で同じ日付が更新されました。どうしますか？</p>
+                    <p class="small text-muted">
+                        再読み込みすると最新データを取得します。強制上書きを選ぶと現在の編集内容で上書きします。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="conflictReload" type="button">再読み込み</button>
+                    <button class="btn btn-danger" id="conflictForce" type="button">強制上書き</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- デフォルト設定強制モーダル -->
+    <div aria-hidden="true" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false"
+         id="defaultSettingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">デフォルト設定が必要です</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger">勤務表を入力する前に、デフォルト設定を入力してください。</p>
+                    <div class="mb-3">
+                        <label class="form-label" for="modalDefaultStart">出勤時間</label>
+                        <input class="form-control" id="modalDefaultStart" type="time" value="09:00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="modalDefaultEnd">退勤時間</label>
+                        <input class="form-control" id="modalDefaultEnd" type="time" value="18:00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="modalDefaultBreak">休憩時間（分）</label>
+                        <input class="form-control" id="modalDefaultBreak" min="0" type="number" value="60">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="saveDefaultSettings" type="button">設定を保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 変則勤務モーダル -->
+    <div aria-hidden="true" class="modal fade" id="irregularWorkModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">変則勤務 - <span id="irregularDateLabel"></span></h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- 左側：登録済み一覧 -->
+                        <div class="col-md-5 border-end">
+                            <h6 class="mb-2"><i class="bi bi-list-ul me-1"></i>登録済み一覧</h6>
+                            <div class="list-group" id="irregularList" style="max-height: 250px; overflow-y: auto;">
+                                <p class="text-muted small" id="irregularListEmpty">登録がありません</p>
+                            </div>
+                        </div>
+                        <!-- 右側：入力フォーム -->
+                        <div class="col-md-7">
+                            <h6 class="mb-2"><i class="bi bi-plus-circle me-1"></i>新規追加</h6>
+                            <div class="mb-3">
+                                <label class="form-label" for="irregularType">種類 <span
+                                        class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <select class="form-select" id="irregularType">
+                                        <option value="">---</option>
+                                        <option value="有給休暇">有給休暇</option>
+                                        <option value="特別休暇">特別休暇</option>
+                                        <option value="欠勤">欠勤</option>
+                                        <option value="振替出勤">振替出勤</option>
+                                        <option value="振替休日">振替休日</option>
+                                        <option value="休日出勤">休日出勤</option>
+                                    </select>
+                                    <button class="btn btn-outline-success" id="addIrregularItem" style="display: none;"
+                                            title="一覧に追加" type="button">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="irregularDesc">説明 <span
+                                        class="text-danger">*</span></label>
+                                <textarea class="form-control" id="irregularDesc" placeholder="説明を入力..."
+                                          rows="3"></textarea>
+                                <div class="form-text text-danger" id="irregularDescError" style="display: none;">
+                                    説明は必須です
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-danger" id="clearIrregularWork" type="button">全クリア</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
+                    <button class="btn btn-primary" id="saveIrregularWork" type="button">完了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遅刻モーダル -->
+    <div aria-hidden="true" class="modal fade" id="lateModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">遅刻 - <span id="lateDateLabel"></span></h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="lateTime">遅刻時間</label>
+                        <input class="form-control" id="lateTimeInput" placeholder="0:30" type="time">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="lateDesc">説明</label>
+                        <textarea class="form-control" id="lateDescInput" placeholder="遅刻の理由を入力..."
+                                  rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-danger" id="clearLate" type="button">クリア</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
+                    <button class="btn btn-primary" id="saveLate" type="button">完了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 早退モーダル -->
+    <div aria-hidden="true" class="modal fade" id="earlyModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">早退 - <span id="earlyDateLabel"></span></h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="earlyTime">早退時間</label>
+                        <input class="form-control" id="earlyTimeInput" placeholder="1:00" type="time">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="earlyDesc">説明</label>
+                        <textarea class="form-control" id="earlyDescInput" placeholder="早退の理由を入力..."
+                                  rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-danger" id="clearEarly" type="button">クリア</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
+                    <button class="btn btn-primary" id="saveEarly" type="button">完了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- フルスクリーンモーダル -->
+    <div aria-labelledby="fullscreenModalLabel" class="modal fade" data-bs-backdrop="false"
+         data-bs-focus="false" data-bs-keyboard="true" id="fullscreenModal">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title" id="fullscreenModalLabel">
+                        <i class="bi bi-calendar3 me-2"></i>勤務表
+                        <span class="text-muted ms-2" id="fullscreenMonthDisplay"></span>
+                    </h5>
+                    <button aria-label="閉じる" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body p-2" style="overflow: auto;">
+                    <div id="fullscreenTableContainer">
+                        <!-- テーブルがここにクローンされる -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script defer th:src="@{/js/timesheetMonth.js}"></script>
+    <script th:inline="javascript">
+        window.currentUserName = /*[[${currentUserName}]]*/ 'user1';
+
+        // フルスクリーンモーダル用スクリプト
+        (function () {
+            const fullscreenModal = document.getElementById('fullscreenModal');
+            if (!fullscreenModal) return;
+
+            const originalContainer = document.querySelector('.timesheet-table-container');
+            const fullscreenContainer = document.getElementById('fullscreenTableContainer');
+            const monthInput = document.getElementById('monthInput');
+            const monthDisplay = document.getElementById('fullscreenMonthDisplay');
+
+            if (!originalContainer || !fullscreenContainer) return;
+
+            // フルスクリーン状態を追跡
+            window.isFullscreenMode = false;
+
+            // モーダルが開く時: テーブルをフルスクリーンコンテナに移動
+            fullscreenModal.addEventListener('show.bs.modal', function () {
+                window.isFullscreenMode = true;
+
+                // 月表示を更新
+                if (monthInput && monthDisplay) {
+                    const [year, month] = monthInput.value.split('-');
+                    monthDisplay.textContent = year + '年' + parseInt(month) + '月';
+                }
+
+                // テーブルコンテナをフルスクリーンモーダルに移動
+                fullscreenContainer.appendChild(originalContainer);
+
+                // フルスクリーン用にスタイル調整
+                originalContainer.style.maxHeight = 'calc(100vh - 80px)';
+                originalContainer.style.border = 'none';
+                originalContainer.style.pointerEvents = 'auto';
+            });
+
+            // モーダルが表示された後にフォーカストラップを解除
+            fullscreenModal.addEventListener('shown.bs.modal', function () {
+                // モーダル内の要素へのフォーカスを許可
+                const modalBody = fullscreenModal.querySelector('.modal-body');
+                if (modalBody) {
+                    modalBody.style.pointerEvents = 'auto';
+                }
+                // テーブル内のすべてのインタラクティブ要素を有効化
+                fullscreenModal.querySelectorAll('button, select, input, [contenteditable]').forEach(el => {
+                    el.style.pointerEvents = 'auto';
+                });
+            });
+
+            // モーダルが閉じる時: テーブルを元の位置に戻す
+            fullscreenModal.addEventListener('hidden.bs.modal', function () {
+                window.isFullscreenMode = false;
+
+                // 元の位置を取得
+                const reportMessage = document.getElementById('reportMessage');
+                if (reportMessage && reportMessage.parentNode) {
+                    // reportMessageの後に挿入
+                    reportMessage.parentNode.insertBefore(originalContainer, reportMessage.nextSibling);
+                }
+
+                // スタイルを元に戻す
+                originalContainer.style.maxHeight = '';
+                originalContainer.style.border = '';
+
+                // 右クリックメニューがあれば削除
+                const contextMenu = document.getElementById('contextMenu');
+                if (contextMenu) {
+                    contextMenu.remove();
+                }
+            });
+
+            // フルスクリーンモーダル内での右クリック処理を上書き
+            fullscreenModal.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // 既存のコンテキストメニューを削除
+                const existingMenu = document.getElementById('contextMenu');
+                if (existingMenu) {
+                    existingMenu.remove();
+                }
+
+                // コンテキストメニューを作成
+                const contextMenu = document.createElement('div');
+                contextMenu.id = 'contextMenu';
+                contextMenu.style.cssText = `
+                    position: fixed;
+                    top: ${e.clientY}px;
+                    left: ${e.clientX}px;
+                    z-index: 99999;
+                    background: #fff;
+                    border: 1px solid #ccc;
+                    padding: 5px;
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                `;
+
+                // Excelダウンロードボタン
+                const excelBtn = document.createElement('div');
+                excelBtn.textContent = 'Excelダウンロード';
+                excelBtn.style.cssText = 'cursor: pointer; padding: 5px 10px;';
+                excelBtn.addEventListener('click', function () {
+                    window.dispatchEvent(new CustomEvent('downloadReport', {detail: 'xlsx'}));
+                    contextMenu.remove();
+                });
+                excelBtn.addEventListener('mouseenter', function () {
+                    this.style.background = '#f0f0f0';
+                });
+                excelBtn.addEventListener('mouseleave', function () {
+                    this.style.background = '';
+                });
+
+                // PDFダウンロードボタン
+                const pdfBtn = document.createElement('div');
+                pdfBtn.textContent = 'PDFダウンロード';
+                pdfBtn.style.cssText = 'cursor: pointer; padding: 5px 10px;';
+                pdfBtn.addEventListener('click', function () {
+                    window.dispatchEvent(new CustomEvent('downloadReport', {detail: 'pdf'}));
+                    contextMenu.remove();
+                });
+                pdfBtn.addEventListener('mouseenter', function () {
+                    this.style.background = '#f0f0f0';
+                });
+                pdfBtn.addEventListener('mouseleave', function () {
+                    this.style.background = '';
+                });
+
+                contextMenu.appendChild(excelBtn);
+                contextMenu.appendChild(pdfBtn);
+
+                // モーダル内に追加（z-indexが効くように）
+                fullscreenModal.appendChild(contextMenu);
+
+                // クリックで閉じる
+                const closeMenu = function (ev) {
+                    if (!contextMenu.contains(ev.target)) {
+                        contextMenu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', closeMenu), 0);
+            });
+        })();
+
+        // ダウンロードイベントをリッスン
+        window.addEventListener('downloadReport', function (e) {
+            const format = e.detail;
+            const monthInput = document.getElementById('monthInput');
+            const reportMessage = document.getElementById('reportMessage');
+
+            (async function () {
+                try {
+                    if (reportMessage) reportMessage.textContent = 'レポートを生成しています...';
+
+                    const monthValue = monthInput?.value || new Date().toISOString().substring(0, 7);
+                    const [year, month] = monthValue.split('-').map(Number);
+                    const from = year + '-' + String(month).padStart(2, '0') + '-01';
+                    const lastDay = new Date(year, month, 0).getDate();
+                    const to = year + '-' + String(month).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+                    const username = window.currentUserName || 'user1';
+
+                    const url = '/timesheet/report/' + format + '?username=' + encodeURIComponent(username) + '&from=' + from + '&to=' + to;
+                    const response = await fetch(url, {credentials: 'same-origin'});
+
+                    if (!response.ok) {
+                        if (reportMessage) reportMessage.textContent = 'レポート生成失敗 (' + response.status + ')';
+                        return;
+                    }
+
+                    const blob = await response.blob();
+                    const disposition = response.headers.get('Content-Disposition') || '';
+                    const filenameMatch = /filename\*=UTF-8''(.+)$/.exec(disposition) || /filename=(.+)$/.exec(disposition);
+                    const filename = filenameMatch ? decodeURIComponent(filenameMatch[1].replace(/"/g, '')) : 'timesheet_' + from + '_to_' + to + '.' + format;
+
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+
+                    if (reportMessage) reportMessage.textContent = 'ダウンロード完了';
+                } catch (err) {
+                    console.error('Download error:', err);
+                    if (reportMessage) reportMessage.textContent = 'ダウンロードエラー';
+                }
+            })();
+        });
+    </script>
+</div>
