@@ -24,7 +24,16 @@
 
     <select id="selectById" resultMap="ReportJobMap" parameterType="long">
         SELECT
-            *
+            id
+            , username
+            , from_date
+            , to_date
+            , format
+            , status
+            , file_path
+            , error_message
+            , created_at
+            , updated_at
         FROM
             report_jobs
         WHERE
@@ -44,7 +53,16 @@
 
     <select id="selectPending" resultMap="ReportJobMap">
         SELECT
-            *
+            id
+            , username
+            , from_date
+            , to_date
+            , format
+            , status
+            , file_path
+            , error_message
+            , created_at
+            , updated_at
         FROM
             report_jobs
         WHERE

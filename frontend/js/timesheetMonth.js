@@ -1311,6 +1311,7 @@
             const entries = await resp.json();
             const map = {};
             for (const e of entries) map[e.workDate] = e;
+            console.log(map)
             // ensure holiday info is available for the month so we can create switches for weekday holidays
             const ymYear = Number(monthInput.value.split('-')[0]);
             const holidayMap = holidayCache[ymYear] || await fetchHolidays(ymYear);
@@ -2404,6 +2405,7 @@
                 saveLateBtn.classList.remove('btn-primary');
                 saveLateBtn.classList.add('btn-danger');
                 saveLateBtn.textContent = '完了（保存必須）';
+                saveLateBtn.disabled = false;
             }
         });
     }
@@ -2510,6 +2512,7 @@
                 saveEarlyBtn.classList.remove('btn-primary');
                 saveEarlyBtn.classList.add('btn-danger');
                 saveEarlyBtn.textContent = '完了（保存必須）';
+                saveEarlyBtn.disabled = false;
             }
         });
     }

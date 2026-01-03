@@ -39,7 +39,28 @@
 
     <select id="selectByUserAndRange" resultMap="TimesheetEntryResult">
         SELECT
-            *
+            id
+            , work_date
+            , user_name
+            , start_time
+            , end_time
+            , note
+            , created_at
+            , updated_at
+            , break_minutes
+            , duration_minutes
+            , working_minutes
+            , version
+            , holiday_work
+            , work_location
+            , irregular_work_type
+            , irregular_work_desc
+            , irregular_work_data
+            , late_time
+            , late_desc
+            , early_time
+            , early_desc
+            , paid_leave
         FROM
             timesheet_entries
         WHERE

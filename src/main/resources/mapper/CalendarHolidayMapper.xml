@@ -13,7 +13,12 @@
 
     <select id="selectByYear" resultMap="CalendarHolidayResult">
         SELECT
-            *
+            id
+            , holiday_date
+            , name
+            , year
+            , created_at
+            , updated_at
         FROM
             calendar_holidays
         WHERE
@@ -24,7 +29,12 @@
 
     <select id="selectByDateRange" resultMap="CalendarHolidayResult">
         SELECT
-            *
+            id
+            , holiday_date
+            , name
+            , year
+            , created_at
+            , updated_at
         FROM
             calendar_holidays
         WHERE
@@ -35,7 +45,12 @@
 
     <select id="selectByDate" resultMap="CalendarHolidayResult">
         SELECT
-            *
+            id
+            , holiday_date
+            , name
+            , year
+            , created_at
+            , updated_at
         FROM
             calendar_holidays
         WHERE
