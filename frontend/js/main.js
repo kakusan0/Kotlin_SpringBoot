@@ -21,6 +21,18 @@
         MODAL_BACKDROP: '.modal-backdrop'
     };
 
+    // グローバル: サイドバーとメインコンテンツから is-collapsed を除去
+    const ensureSidebarExpanded = () => {
+        const sidebar = document.querySelector(SELECTORS.SIDEBAR_MENU);
+        if (sidebar) sidebar.classList.remove('is-collapsed');
+        document.querySelectorAll(SELECTORS.MAIN_CONTENT).forEach(m => m.classList.remove('is-collapsed'));
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ensureSidebarExpanded, {once: true});
+    } else {
+        ensureSidebarExpanded();
+    }
+
     // Ensure pages restored from bfcache are reloaded to avoid showing stale or protected content
     window.addEventListener('pageshow', event => {
         if (event.persisted) window.location.reload();
@@ -90,10 +102,22 @@
         const applyHeaderBottomClass = () => {
             document.body.classList.toggle('header-bottom', mq?.matches);
         };
+        const ensureDesktopSidebarOpen = () => {
+            if (mq && !mq.matches) {
+                ensureSidebarExpanded();
+            }
+        };
+        const handleViewportChange = () => {
+            applyHeaderBottomClass();
+            ensureDesktopSidebarOpen();
+        };
 
         if (mq) {
+            handleViewportChange();
+            mq.addEventListener?.('change', handleViewportChange) || mq.addListener?.(handleViewportChange);
+        } else {
             applyHeaderBottomClass();
-            mq.addEventListener?.('change', applyHeaderBottomClass) || mq.addListener?.(applyHeaderBottomClass);
+            ensureSidebarExpanded();
         }
 
         // トースト表示
@@ -220,4 +244,3 @@
     });
 
 })();
-

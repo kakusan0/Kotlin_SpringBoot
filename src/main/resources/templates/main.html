@@ -46,7 +46,7 @@
 </header>
 
 <!-- サイドバー（モバイルではオフキャンバス） -->
-<div aria-labelledby="sidebarMenuLabel" class="offcanvas offcanvas-start offcanvas-md is-collapsed" id="sidebarMenu"
+<div aria-labelledby="sidebarMenuLabel" class="offcanvas offcanvas-start offcanvas-md" id="sidebarMenu"
      tabindex="-1">
     <div class="offcanvas-body p-0">
         <ul class="nav flex-column">
@@ -81,7 +81,7 @@
 </div>
 
 <!-- メインコンテンツ（currentScreen に応じて切替） -->
-<main class="main-content p-4 is-collapsed">
+<main class="main-content p-4">
     <div class="container-fluid">
         <div class="mb-3" th:if="${errorMessage != null and errorMessage != ''}">
             <div class="alert alert-danger" th:text="${errorMessage}"></div>
@@ -238,4 +238,6 @@
     })();
     /*]]>*/
 </script>
+
+
 
