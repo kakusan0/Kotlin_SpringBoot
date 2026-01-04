@@ -144,22 +144,9 @@
         }
         if (holidayCache[numericYear]) return holidayCache[numericYear];
         try {
-            // まずDBから取得を試みる
-            const res = await fetch(`/api/calendar/holidays?year=${numericYear}`, {credentials: 'same-origin'});
-            if (res.ok) {
-                const map = await res.json();
-                holidayCache[numericYear] = map;
-                return map;
-            }
-            console.warn('祝日取得失敗 (DB):', res.status, '- 外部APIにフォールバック');
-        } catch (err) {
-            console.warn('祝日取得失敗 (DB):', err, '- 外部APIにフォールバック');
-        }
-
-        // フォールバック: 外部APIから取得
-        try {
-            const extRes = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/JP`);
+            const extRes = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${numericYear}/JP`);
             if (!extRes.ok) {
+                console.warn('祝日取得失敗 (外部API):', extRes.status);
                 holidayCache[numericYear] = {};
                 return {};
             }
