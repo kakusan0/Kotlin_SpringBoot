@@ -718,3 +718,15 @@ tr.row-incomplete .break-cell {
         display: none !important;
     }
 }
+
+.timesheet-total-card {
+    padding: 0.6rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    min-width: 150px;
+}
+
+.timesheet-total-card .small {
+    letter-spacing: 0.02em;
+}

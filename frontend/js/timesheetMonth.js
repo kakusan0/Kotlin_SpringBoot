@@ -137,13 +137,18 @@
 
     // DBから祝日を取得（失敗時は外部APIにフォールバック）
     async function fetchHolidays(year) {
-        if (holidayCache[year]) return holidayCache[year];
+        const numericYear = Number(year);
+        if (!Number.isFinite(numericYear) || numericYear <= 0) {
+            console.warn('祝日取得スキップ: 無効な年', year);
+            return {};
+        }
+        if (holidayCache[numericYear]) return holidayCache[numericYear];
         try {
             // まずDBから取得を試みる
-            const res = await fetch(`/api/calendar/holidays?year=${year}`, {credentials: 'same-origin'});
+            const res = await fetch(`/api/calendar/holidays?year=${numericYear}`, {credentials: 'same-origin'});
             if (res.ok) {
                 const map = await res.json();
-                holidayCache[year] = map;
+                holidayCache[numericYear] = map;
                 return map;
             }
             console.warn('祝日取得失敗 (DB):', res.status, '- 外部APIにフォールバック');
@@ -155,7 +160,7 @@
         try {
             const extRes = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/JP`);
             if (!extRes.ok) {
-                holidayCache[year] = {};
+                holidayCache[numericYear] = {};
                 return {};
             }
             const data = await extRes.json();
@@ -163,11 +168,11 @@
             for (const h of data) {
                 map[h.date] = h.localName || h.name || '';
             }
-            holidayCache[year] = map;
+            holidayCache[numericYear] = map;
             return map;
         } catch (err) {
             console.warn('祝日取得失敗 (外部API):', err);
-            holidayCache[year] = {};
+            holidayCache[numericYear] = {};
             return {};
         }
     }
@@ -1311,7 +1316,6 @@
             const entries = await resp.json();
             const map = {};
             for (const e of entries) map[e.workDate] = e;
-            console.log(map)
             // ensure holiday info is available for the month so we can create switches for weekday holidays
             const ymYear = Number(monthInput.value.split('-')[0]);
             const holidayMap = holidayCache[ymYear] || await fetchHolidays(ymYear);
@@ -2578,5 +2582,41 @@
             console.error('[TS] 拡張データ保存エラー', e);
         }
     }
+
+    (function () {
+        const tableBody = document.getElementById('tableBody');
+        const totalDisplay = document.getElementById('totalWorkingDisplay');
+        if (!tableBody || !totalDisplay) return;
+
+        function parseWorkingCell(text) {
+            if (!text) return 0;
+            const match = text.match(/(\d+)時間(\d+)分/);
+            if (!match) return 0;
+            const hours = parseInt(match[1], 10);
+            const minutes = parseInt(match[2], 10);
+            if (Number.isNaN(hours) || Number.isNaN(minutes)) return 0;
+            return hours * 60 + minutes;
+        }
+
+        function formatMinutes(total) {
+            const hours = Math.floor(total / 60);
+            const minutes = total % 60;
+            return `${hours}時間${minutes}分`;
+        }
+
+        function refreshTotalWorking() {
+            let totalMinutes = 0;
+            tableBody.querySelectorAll('.working-cell').forEach(cell => {
+                totalMinutes += parseWorkingCell(cell.textContent.trim());
+            });
+            totalDisplay.textContent = formatMinutes(totalMinutes);
+        }
+
+        const observer = new MutationObserver(() => refreshTotalWorking());
+        observer.observe(tableBody, {subtree: true, characterData: true, childList: true});
+
+        window.addEventListener('load', refreshTotalWorking);
+        refreshTotalWorking();
+    })();
 })();
 
