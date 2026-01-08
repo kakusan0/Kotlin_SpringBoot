@@ -13,15 +13,15 @@
                     </div>
                     <div class="card-body py-2 px-2">
                         <div class="d-flex gap-2 align-items-end flex-wrap">
-                            <div style="width: 90px;">
+                            <div class="w-90">
                                 <label class="form-label small mb-0" for="defaultStart">出勤</label>
                                 <input class="form-control form-control-sm" id="defaultStart" type="time" value="09:00">
                             </div>
-                            <div style="width: 90px;">
+                            <div class="w-90">
                                 <label class="form-label small mb-0" for="defaultEnd">退勤</label>
                                 <input class="form-control form-control-sm" id="defaultEnd" type="time" value="18:00">
                             </div>
-                            <div style="width: 50px;">
+                            <div class="w-50">
                                 <label class="form-label small mb-0" for="defaultBreak">休憩</label>
                                 <input class="form-control form-control-sm" id="defaultBreak" min="0" type="number"
                                        value="60">
@@ -103,53 +103,6 @@
                 </tr>
                 </thead>
                 <tbody id="tableBody">
-                <tr th:classappend="${d == T(java.time.LocalDate).now()} ? 'table-primary' : ''"
-                    th:each="d : ${dates}">
-                    <td class="date-cell" th:data-iso="${#temporals.format(d,'yyyy-MM-dd')}">
-                        <span th:text="${d.dayOfMonth + '日'}">1日</span>
-                        <span class="holiday" style="display:none;"></span>
-                    </td>
-                    <td class="weekday-cell"></td>
-                    <td class="location-cell">
-                        <button class="btn btn-sm btn-primary work-location-btn" data-location="出社" type="button">
-                            出社
-                        </button>
-                    </td>
-                    <td class="note-cell">
-                        <select class="form-select form-select-sm note-select" title="備考">
-                            <option value="">---</option>
-                            <option value="午前休">午前休</option>
-                            <option value="午後休">午後休</option>
-                            <option value="休日">休日</option>
-                            <option value="祝日">祝日</option>
-                            <option value="会社休">会社休</option>
-                            <option value="現場休">現場休</option>
-                            <option value="対象外">対象外</option>
-                        </select>
-                    </td>
-                    <td class="free-note-cell">
-                        <button class="btn btn-sm btn-outline-info free-note-btn" title="自由備考" type="button">
-                            <i class="bi bi-chat-left-text"></i>
-                        </button>
-                        <span class="free-note-text ms-1" style="font-size: 0.85rem; color: #666;"></span>
-                    </td>
-                    <td class="irregular-cell">
-                        <button class="btn btn-sm btn-outline-secondary irregular-btn" type="button">表示</button>
-                        <span class="irregular-type-label ms-1"></span>
-                    </td>
-                    <td class="time-cell" data-type="start"></td>
-                    <td class="time-cell" data-type="end"></td>
-                    <td class="break-cell" contenteditable="true"></td>
-                    <td class="duration-cell"></td>
-                    <td class="working-cell"></td>
-                    <td class="lateearly-cell">
-                        <button class="btn btn-sm btn-outline-warning late-btn" type="button">遅刻</button>
-                        <button class="btn btn-sm btn-outline-info early-btn" type="button">早退</button>
-                    </td>
-                    <td class="clear-cell">
-                        <button class="btn btn-outline-secondary btn-sm reset-row-btn" type="button">リセット</button>
-                    </td>
-                </tr>
                 </tbody>
             </table>
         </div>
@@ -441,20 +394,34 @@
             const fullscreenContainer = document.getElementById('fullscreenTableContainer');
             const monthInput = document.getElementById('monthInput');
             const monthDisplay = document.getElementById('fullscreenMonthDisplay');
+            const totalCard = document.querySelector('.timesheet-total-card');
 
             if (!originalContainer || !fullscreenContainer) return;
 
             // フルスクリーン状態を追跡
             window.isFullscreenMode = false;
 
+            // テーブルコンテナの元の親と位置を保存
+            let originalParent = originalContainer.parentNode;
+            let nextSibling = originalContainer.nextSibling;
+
             // モーダルが開く時: テーブルをフルスクリーンコンテナに移動
             fullscreenModal.addEventListener('show.bs.modal', function () {
                 window.isFullscreenMode = true;
+
+                // 元の位置を再取得（DOMが変わった場合に対応）
+                originalParent = originalContainer.parentNode;
+                nextSibling = originalContainer.nextSibling;
 
                 // 月表示を更新
                 if (monthInput && monthDisplay) {
                     const [year, month] = monthInput.value.split('-');
                     monthDisplay.textContent = year + '年' + parseInt(month) + '月';
+                }
+
+                // 実働合計表示を非表示
+                if (totalCard) {
+                    totalCard.style.display = 'none';
                 }
 
                 // テーブルコンテナをフルスクリーンモーダルに移動
@@ -466,28 +433,20 @@
                 originalContainer.style.pointerEvents = 'auto';
             });
 
-            // モーダルが表示された後にフォーカストラップを解除
-            fullscreenModal.addEventListener('shown.bs.modal', function () {
-                // モーダル内の要素へのフォーカスを許可
-                const modalBody = fullscreenModal.querySelector('.modal-body');
-                if (modalBody) {
-                    modalBody.style.pointerEvents = 'auto';
-                }
-                // テーブル内のすべてのインタラクティブ要素を有効化
-                fullscreenModal.querySelectorAll('button, select, input, [contenteditable]').forEach(el => {
-                    el.style.pointerEvents = 'auto';
-                });
-            });
+            // ...existing code...
 
             // モーダルが閉じる時: テーブルを元の位置に戻す
             fullscreenModal.addEventListener('hidden.bs.modal', function () {
                 window.isFullscreenMode = false;
 
-                // 元の位置を取得
-                const reportMessage = document.getElementById('reportMessage');
-                if (reportMessage && reportMessage.parentNode) {
-                    // reportMessageの後に挿入
-                    reportMessage.parentNode.insertBefore(originalContainer, reportMessage.nextSibling);
+                // 実働合計表示を再表示
+                if (totalCard) {
+                    totalCard.style.display = '';
+                }
+
+                // 元の親と位置に復帰
+                if (originalParent) {
+                    originalParent.insertBefore(originalContainer, nextSibling);
                 }
 
                 // スタイルを元に戻す

@@ -1,13 +1,35 @@
 /* Timesheet Month Styles */
 
+/* ============================================
+   ユーティリティクラス
+   ============================================ */
+
+.w-50 {
+    width: 50px;
+}
+
+.w-90 {
+    width: 90px;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+.w-150 {
+    width: 150px;
+}
+
 /* テーブルコンテナ - スクロール領域 */
 .timesheet-table-container {
     max-height: calc(100vh - 300px);
     overflow-y: auto;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     position: relative;
     border: 1px solid #dee2e6;
     border-radius: 4px;
+    width: 100%;
 }
 
 /* テーブル基本スタイル */
@@ -15,6 +37,19 @@
 #fullscreenWorkTable {
     margin-bottom: 0;
     white-space: nowrap;
+    border-collapse: collapse;
+    table-layout: auto;
+    width: auto;
+}
+
+#workTable th,
+#workTable td,
+#fullscreenWorkTable th,
+#fullscreenWorkTable td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 4px 2px;
 }
 
 /* ヘッダー固定 */
@@ -89,6 +124,11 @@
 
 .col-note {
     min-width: 90px;
+}
+
+.col-freeNote {
+    width: 120px;
+    min-width: 100px;
 }
 
 .col-start, .col-end {
@@ -324,6 +364,9 @@
     /* テーブルのフォントサイズ縮小 */
     #workTable {
         font-size: 13px;
+        white-space: nowrap;
+        min-width: max-content;
+        min-width: 850px;
     }
 
     #workTable th,
@@ -368,6 +411,27 @@
         font-size: 12px;
         padding: 4px 6px;
         min-width: 80px;
+        white-space: nowrap;
+    }
+
+    /* 自由備考ボタンと入力後のテキスト表示 */
+    .free-note-cell {
+        min-width: 100px;
+        white-space: normal;
+    }
+
+    .free-note-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+    .free-note-text {
+        display: none;
+        font-size: 0.75rem;
+        word-break: break-word;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* 稼働・実働列の幅調整 */
@@ -456,7 +520,7 @@
     /* 全列を維持し、横スクロールで対応 */
     #workTable {
         font-size: 12px;
-        min-width: 750px;
+        min-width: 950px;
     }
 
     #workTable th,
@@ -475,6 +539,16 @@
     /* 稼働・実働を省略表示 */
     .duration-cell,
     .working-cell {
+        font-size: 11px;
+    }
+
+    /* 自由備考ボタンの調整 */
+    .free-note-cell {
+        min-width: 90px;
+    }
+
+    .free-note-btn {
+        padding: 3px 6px;
         font-size: 11px;
     }
 

@@ -59,36 +59,26 @@ class ReportService(
             }
 
             val sheet = wb.createSheet(username)
-
-            val titleFont = wb.createFont().apply { bold = true; fontHeightInPoints = 14 }
-            val titleStyle = wb.createCellStyle().apply {
-                setFont(titleFont); alignment = HorizontalAlignment.CENTER; verticalAlignment = VerticalAlignment.CENTER
-            }
             var rowIdx = 0
-            val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月度　勤務表".replace('　', ' ')
-            val cols = headers.size
-            val titleRow = sheet.createRow(rowIdx++)
-            titleRow.createCell(0).apply { setCellValue(ymTitle); cellStyle = titleStyle }
-            if (cols > 1) sheet.addMergedRegion(CellRangeAddress(0, 0, 0, cols - 1))
 
-            sheet.createRow(rowIdx++) // blank row
-
-            val infoFont = wb.createFont().apply { underline = org.apache.poi.ss.usermodel.Font.U_SINGLE }
+            // スタイル事前定義
+            val titleStyle = wb.createCellStyle().apply {
+                setFont(wb.createFont().apply { bold = true; fontHeightInPoints = 14 })
+                alignment = HorizontalAlignment.CENTER
+                verticalAlignment = VerticalAlignment.CENTER
+            }
             val leftStyle = wb.createCellStyle().apply {
-                alignment = HorizontalAlignment.LEFT; verticalAlignment = VerticalAlignment.CENTER; setFont(infoFont)
+                alignment = HorizontalAlignment.LEFT
+                verticalAlignment = VerticalAlignment.CENTER
+                setFont(wb.createFont().apply { underline = org.apache.poi.ss.usermodel.Font.U_SINGLE })
             }
             val rightStyle = wb.createCellStyle().apply {
-                alignment = HorizontalAlignment.RIGHT; verticalAlignment = VerticalAlignment.CENTER; setFont(infoFont)
+                alignment = HorizontalAlignment.RIGHT
+                verticalAlignment = VerticalAlignment.CENTER
+                setFont(wb.createFont().apply { underline = org.apache.poi.ss.usermodel.Font.U_SINGLE })
             }
-            val infoRow = sheet.createRow(rowIdx++)
-            infoRow.createCell(0).apply { setCellValue("会社名：ユーニスイースト株式会社"); cellStyle = leftStyle }
-            infoRow.createCell(maxOf(0, cols - 1)).apply { setCellValue("氏名：${username}"); cellStyle = rightStyle }
-            sheet.createRow(rowIdx++) // empty row
-
-            val headerRow = sheet.createRow(rowIdx++)
-            val headerFont = wb.createFont().apply { bold = true }
             val headerStyle = wb.createCellStyle().apply {
-                setFont(headerFont)
+                setFont(wb.createFont().apply { bold = true })
                 alignment = HorizontalAlignment.CENTER
                 verticalAlignment = VerticalAlignment.CENTER
                 fillForegroundColor = org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.index
@@ -98,6 +88,25 @@ class ReportService(
                 borderLeft = org.apache.poi.ss.usermodel.BorderStyle.THIN
                 borderRight = org.apache.poi.ss.usermodel.BorderStyle.THIN
             }
+
+            val ymTitle = "${from.year}年${String.format("%02d", from.monthValue)}月度　勤務表".replace('　', ' ')
+            val cols = headers.size
+
+            sheet.createRow(rowIdx++).createCell(0).apply {
+                setCellValue(ymTitle)
+                cellStyle = titleStyle
+            }
+            if (cols > 1) sheet.addMergedRegion(CellRangeAddress(0, 0, 0, cols - 1))
+
+            sheet.createRow(rowIdx++) // blank row
+
+            sheet.createRow(rowIdx++).apply {
+                createCell(0).apply { setCellValue("会社名：ユーニスイースト株式会社"); cellStyle = leftStyle }
+                createCell(maxOf(0, cols - 1)).apply { setCellValue("氏名：${username}"); cellStyle = rightStyle }
+            }
+            sheet.createRow(rowIdx++) // empty row
+
+            val headerRow = sheet.createRow(rowIdx++)
             for (i in headers.indices) headerRow.createCell(i)
                 .apply { setCellValue(headers[i]); cellStyle = headerStyle }
 
