@@ -138,7 +138,6 @@ class ReportService(
             while (!d.isAfter(to)) {
                 val row = sheet.createRow(r++)
                 val e = entryMap[d]
-
                 val dateIdx = headers.indexOf("日付")
                 val wdIdx = headers.indexOf("曜日")
                 val remarkIdx = headers.indexOf("備考")
@@ -674,7 +673,19 @@ class ReportService(
                         }
                     }
 
-                    if (descriptions.isNotEmpty()) {
+                    // 自由備考を追加（「・」プレフィックスなし）
+                    if (!entry?.freeNote.isNullOrBlank()) {
+                        if (descriptions.isNotEmpty()) {
+                            // 既に他の説明がある場合は、改行で区切る（「・」なし）
+                            descCell.setCellValue(descriptions.joinToString("\n") { "・$it" } + "\n" + entry?.freeNote)
+                        } else {
+                            // 自由備考のみの場合は、そのまま出力
+                            descCell.setCellValue(entry?.freeNote)
+                        }
+                        val style = wb.createCellStyle()
+                        style.wrapText = true
+                        descCell.cellStyle = style
+                    } else if (descriptions.isNotEmpty()) {
                         // セル内改行（ALT+Enter相当）は \n を使用、各項目の前に「・」をつける
                         descCell.setCellValue(descriptions.joinToString("\n") { "・$it" })
                         // 折り返し設定

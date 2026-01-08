@@ -33,6 +33,8 @@ data class TimesheetEntry(
     // 早退
     val earlyTime: String? = null,           // 早退時間 (例: "1:00")
     val earlyDesc: String? = null,           // 早退の説明
+    // 自由備考
+    val freeNote: String? = null,            // 自由入力の備考
     // 有給消化
     val paidLeave: String? = null            // "有給" or null
 ) {

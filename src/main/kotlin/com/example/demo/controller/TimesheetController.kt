@@ -208,6 +208,7 @@ class TimesheetController(
             val lateDesc = body["lateDesc"]?.takeIf { it.isNotBlank() }
             val earlyTime = body["earlyTime"]?.takeIf { it.isNotBlank() }
             val earlyDesc = body["earlyDesc"]?.takeIf { it.isNotBlank() }
+            val freeNote = body["freeNote"]?.takeIf { it.isNotBlank() }
             val paidLeave = body["paidLeave"]?.takeIf { it.isNotBlank() }
 
             // クリアフラグ: キーが存在し、値が空またはnullの場合はクリア
@@ -240,6 +241,7 @@ class TimesheetController(
                 lateDesc,
                 earlyTime,
                 earlyDesc,
+                freeNote,
                 paidLeave,
                 clearIrregular,
                 clearLate,

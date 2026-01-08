@@ -251,105 +251,6 @@ class TimesheetService(
      * When a provided flag is true, the corresponding value (which may be null) will be used
      * (allowing callers to explicitly clear a field by providing null). When the provided flag
      * is false, the existing DB value is preserved.
-     */
-    @Transactional
-    fun saveOrUpdateWithFlags(
-        userName: String,
-        workDate: LocalDate,
-        startProvided: Boolean,
-        startTime: LocalTime?,
-        endProvided: Boolean,
-        endTime: LocalTime?,
-        breakProvided: Boolean,
-        breakMinutes: Int?,
-        force: Boolean = false,
-        holidayWork: Boolean = false,
-        workLocation: String? = null
-    ): TimesheetEntry {
-        val existing = dbCall("selectByUserAndDate", userName, workDate) {
-            timesheetEntryMapper.selectByUserAndDate(
-                userName,
-                workDate
-            )
-        }
-        return if (existing != null) {
-            val newStart = if (startProvided) startTime else existing.startTime
-            val newEnd = if (endProvided) endTime else existing.endTime
-            val newBreak = if (breakProvided) breakMinutes else existing.breakMinutes
-            val newHoliday = holidayWork
-            val newWorkLocation = workLocation ?: existing.workLocation
-
-            // If nothing changed, avoid DB write and just return evaluated existing
-            val nothingChanged =
-                (existing.startTime == newStart) && (existing.endTime == newEnd) && (existing.breakMinutes == newBreak) && (existing.holidayWork == newHoliday) && (existing.workLocation == newWorkLocation)
-            if (nothingChanged && !force) {
-                return applyCalc(existing)
-            }
-
-            val merged = existing.copy(
-                startTime = newStart,
-                endTime = newEnd,
-                breakMinutes = newBreak,
-                holidayWork = newHoliday,
-                workLocation = newWorkLocation
-            )
-            val recalced = applyCalc(merged)
-            val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {
-                if (force) timesheetEntryMapper.updateTimesForce(recalced) else timesheetEntryMapper.updateTimes(
-                    recalced
-                )
-            }
-            if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
-            eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
-            recalced
-        } else {
-            val createdBase = TimesheetEntry(
-                workDate = workDate,
-                userName = userName,
-                startTime = if (startProvided) startTime else null,
-                endTime = if (endProvided) endTime else null,
-                breakMinutes = if (breakProvided) breakMinutes else null,
-                holidayWork = holidayWork,
-                workLocation = workLocation
-            )
-            val created = applyCalc(createdBase)
-            try {
-                dbCall("insert", userName, workDate) { timesheetEntryMapper.insert(created) }
-            } catch (ex: Exception) {
-                val nowExisting = dbCall(
-                    "selectByUserAndDate (insert-catch)",
-                    userName,
-                    workDate
-                ) { timesheetEntryMapper.selectByUserAndDate(userName, workDate) }
-                    ?: throw ex
-                val merged = nowExisting.copy(
-                    startTime = if (startProvided) startTime else nowExisting.startTime,
-                    endTime = if (endProvided) endTime else nowExisting.endTime,
-                    breakMinutes = if (breakProvided) breakMinutes else nowExisting.breakMinutes,
-                    holidayWork = holidayWork,
-                    workLocation = workLocation ?: nowExisting.workLocation
-                )
-                val recalced = applyCalc(merged)
-                val updatedCount =
-                    dbCall("updateTimes/updateTimesForce (insert-catch)", recalced.id, userName, workDate) {
-                        if (force) timesheetEntryMapper.updateTimesForce(recalced) else timesheetEntryMapper.updateTimes(
-                            recalced
-                        )
-                    }
-                if (updatedCount == 0) throw TimesheetConflictException("同時更新により保存できませんでした")
-                eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
-                return recalced
-            }
-            eventPublisher.publishEvent(TimesheetUpdatedEvent(userName, workDate))
-            created
-        }
-    }
-
-    /**
-     * Variant of saveOrUpdate that accepts explicit "provided" flags for start/end/break.
-     * When a provided flag is true, the corresponding value (which may be null) will be used
-     * (allowing callers to explicitly clear a field by providing null). When the provided flag
-     * is false, the existing DB value is preserved.
      *
      * For extended fields (irregularWorkType, lateTime, etc.):
      * - Pass the actual value to update
@@ -368,8 +269,8 @@ class TimesheetService(
         breakMinutes: Int?,
         force: Boolean = false,
         holidayWork: Boolean = false,
-        noteProvided: Boolean,
-        note: String?,
+        noteProvided: Boolean = false,
+        note: String? = null,
         workLocation: String? = null,
         irregularWorkType: String? = null,
         irregularWorkDesc: String? = null,
@@ -378,6 +279,7 @@ class TimesheetService(
         lateDesc: String? = null,
         earlyTime: String? = null,
         earlyDesc: String? = null,
+        freeNote: String? = null,
         paidLeave: String? = null,
         // フラグ: 明示的にクリアするかどうか
         clearIrregular: Boolean = false,
@@ -403,6 +305,7 @@ class TimesheetService(
                 lateDesc = if (clearLate) null else (lateDesc ?: existing.lateDesc),
                 earlyTime = if (clearEarly) null else (earlyTime ?: existing.earlyTime),
                 earlyDesc = if (clearEarly) null else (earlyDesc ?: existing.earlyDesc),
+                freeNote = freeNote ?: existing.freeNote,
                 paidLeave = paidLeave ?: existing.paidLeave
             )
             val recalced = applyCalc(merged)
@@ -431,6 +334,7 @@ class TimesheetService(
                 lateDesc = lateDesc,
                 earlyTime = earlyTime,
                 earlyDesc = earlyDesc,
+                freeNote = freeNote,
                 paidLeave = paidLeave
             )
             val created = applyCalc(createdBase)

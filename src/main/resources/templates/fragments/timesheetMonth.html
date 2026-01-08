@@ -91,6 +91,7 @@
                     <th class="col-weekday">曜日</th>
                     <th class="col-location">出社区分</th>
                     <th class="col-note">備考</th>
+                    <th class="col-freeNote">自由備考</th>
                     <th class="col-irregular">変則勤務</th>
                     <th class="col-start">出勤</th>
                     <th class="col-end">退勤</th>
@@ -126,8 +127,15 @@
                             <option value="対象外">対象外</option>
                         </select>
                     </td>
+                    <td class="free-note-cell">
+                        <button class="btn btn-sm btn-outline-info free-note-btn" title="自由備考" type="button">
+                            <i class="bi bi-chat-left-text"></i>
+                        </button>
+                        <span class="free-note-text ms-1" style="font-size: 0.85rem; color: #666;"></span>
+                    </td>
                     <td class="irregular-cell">
                         <button class="btn btn-sm btn-outline-secondary irregular-btn" type="button">表示</button>
+                        <span class="irregular-type-label ms-1"></span>
                     </td>
                     <td class="time-cell" data-type="start"></td>
                     <td class="time-cell" data-type="end"></td>
@@ -370,6 +378,30 @@
                     <button class="btn btn-outline-danger" id="clearEarly" type="button">クリア</button>
                     <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
                     <button class="btn btn-primary" id="saveEarly" type="button">完了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自由備考モーダル -->
+    <div aria-hidden="true" class="modal fade" id="freeNoteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">自由備考 - <span id="freeNoteDateLabel"></span></h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="freeNoteInput">備考</label>
+                        <textarea class="form-control" id="freeNoteInput" placeholder="自由に備考を入力してください..."
+                                  rows="5"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-danger" id="clearFreeNote" type="button">クリア</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
+                    <button class="btn btn-primary" id="saveFreeNote" type="button">完了</button>
                 </div>
             </div>
         </div>

@@ -1226,6 +1226,7 @@
                         <option value="対象外">対象外</option>
                     </select>
                 </td>` +
+                `<td class="free-note-cell"><button class="btn btn-sm btn-outline-info free-note-btn" type="button" title="自由備考"><i class="bi bi-chat-left-text"></i></button><span class="free-note-text ms-1" style="font-size: 0.85rem; color: #666;"></span></td>` +
                 `<td class="irregular-cell"><button class="btn btn-sm btn-outline-secondary irregular-btn" type="button">表示</button><span class="irregular-type-label ms-1"></span></td>` +
                 `<td class="time-cell" data-type="start"></td>` +
                 `<td class="time-cell" data-type="end"></td>` +
@@ -1416,8 +1417,10 @@
                     row.dataset.lateDesc = data.lateDesc || '';
                     row.dataset.earlyTime = data.earlyTime || '';
                     row.dataset.earlyDesc = data.earlyDesc || '';
+                    row.dataset.freeNote = data.freeNote || '';
                     const lateBtn = row.querySelector('.late-btn');
                     const earlyBtn = row.querySelector('.early-btn');
+                    const freeNoteBtn = row.querySelector('.free-note-btn');
                     if (lateBtn) {
                         if (data.lateTime) {
                             lateBtn.classList.add('has-data');
@@ -1430,6 +1433,25 @@
                             earlyBtn.classList.add('has-data');
                         } else {
                             earlyBtn.classList.remove('has-data');
+                        }
+                    }
+                    if (freeNoteBtn) {
+                        if (data.freeNote) {
+                            freeNoteBtn.classList.add('has-data');
+                            // テキスト表示を更新
+                            const freeNoteText = row.querySelector('.free-note-text');
+                            if (freeNoteText) {
+                                const displayText = data.freeNote.length > 50 ? data.freeNote.substring(0, 50) + '...' : data.freeNote;
+                                freeNoteText.textContent = displayText;
+                                freeNoteText.style.display = 'inline';
+                            }
+                        } else {
+                            freeNoteBtn.classList.remove('has-data');
+                            const freeNoteText = row.querySelector('.free-note-text');
+                            if (freeNoteText) {
+                                freeNoteText.textContent = '';
+                                freeNoteText.style.display = 'none';
+                            }
                         }
                     }
 
@@ -1591,6 +1613,7 @@
         delete row.dataset.lateDesc;
         delete row.dataset.earlyTime;
         delete row.dataset.earlyDesc;
+        delete row.dataset.freeNote;
 
         // 変則勤務ボタンと種類名ラベルを更新
         const irregularBtn = row.querySelector('.irregular-btn');
@@ -1692,6 +1715,7 @@
                 delete row.dataset.lateDesc;
                 delete row.dataset.earlyTime;
                 delete row.dataset.earlyDesc;
+                delete row.dataset.freeNote;
 
                 // ボタンの表示を更新
                 const irregularBtn = row.querySelector('.irregular-btn');
@@ -1706,6 +1730,15 @@
                 const earlyBtn = row.querySelector('.early-btn');
                 if (earlyBtn) {
                     earlyBtn.classList.remove('has-data');
+                }
+                const freeNoteBtn = row.querySelector('.free-note-btn');
+                if (freeNoteBtn) {
+                    freeNoteBtn.classList.remove('has-data');
+                    const freeNoteText = row.querySelector('.free-note-text');
+                    if (freeNoteText) {
+                        freeNoteText.textContent = '';
+                        freeNoteText.style.display = 'none';
+                    }
                 }
 
                 // 土日祝の場合は入力を無効化
@@ -2520,6 +2553,95 @@
         });
     }
 
+    // 自由備考モーダル
+    let currentFreeNoteRow = null;
+    const freeNoteModal = document.getElementById('freeNoteModal');
+    const freeNoteDateLabel = document.getElementById('freeNoteDateLabel');
+    const freeNoteInput = document.getElementById('freeNoteInput');
+    const saveFreeNoteBtn = document.getElementById('saveFreeNote');
+    const clearFreeNoteBtn = document.getElementById('clearFreeNote');
+
+    // z-index調整を適用
+    adjustSubModalZIndex(freeNoteModal);
+
+    // 自由備考ボタンのクリック (documentレベルでイベント委譲)
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('#workTable .free-note-btn');
+        if (btn && freeNoteModal) {
+            currentFreeNoteRow = btn.closest('tr');
+            const iso = currentFreeNoteRow.querySelector('.date-cell')?.dataset?.iso || '';
+            freeNoteDateLabel.textContent = iso;
+
+            // 既存のデータを反映
+            freeNoteInput.value = currentFreeNoteRow.dataset.freeNote || '';
+
+            const bsModal = new bootstrap.Modal(freeNoteModal);
+            bsModal.show();
+        }
+    });
+
+    if (saveFreeNoteBtn) {
+        saveFreeNoteBtn.addEventListener('click', () => {
+            if (currentFreeNoteRow) {
+                const noteValue = freeNoteInput.value;
+
+                currentFreeNoteRow.dataset.freeNote = noteValue;
+
+                // ボタンの表示を更新
+                const btn = currentFreeNoteRow.querySelector('.free-note-btn');
+                const noteText = currentFreeNoteRow.querySelector('.free-note-text');
+                if (btn) {
+                    if (noteValue) {
+                        btn.classList.add('has-data');
+                        // テキスト表示を更新（最初の50文字までを表示）
+                        if (noteText) {
+                            const displayText = noteValue.length > 50 ? noteValue.substring(0, 50) + '...' : noteValue;
+                            noteText.textContent = displayText;
+                            noteText.style.display = 'inline';
+                        }
+                    } else {
+                        btn.classList.remove('has-data');
+                        if (noteText) {
+                            noteText.textContent = '';
+                            noteText.style.display = 'none';
+                        }
+                    }
+                }
+
+                // 保存
+                saveRowWithExtras(currentFreeNoteRow, {
+                    freeNote: noteValue || null
+                });
+
+                bootstrap.Modal.getInstance(freeNoteModal).hide();
+            }
+        });
+    }
+
+    if (clearFreeNoteBtn) {
+        clearFreeNoteBtn.addEventListener('click', () => {
+            freeNoteInput.value = '';
+            if (saveFreeNoteBtn) {
+                saveFreeNoteBtn.classList.remove('btn-danger');
+                saveFreeNoteBtn.classList.add('btn-primary');
+                saveFreeNoteBtn.textContent = '完了';
+                saveFreeNoteBtn.disabled = false;
+            }
+        });
+    }
+
+    // モーダルが閉じられるときにボタンをリセット
+    if (freeNoteModal) {
+        freeNoteModal.addEventListener('hidden.bs.modal', () => {
+            if (saveFreeNoteBtn) {
+                saveFreeNoteBtn.classList.remove('btn-danger');
+                saveFreeNoteBtn.classList.add('btn-primary');
+                saveFreeNoteBtn.textContent = '完了';
+                saveFreeNoteBtn.disabled = false;
+            }
+        });
+    }
+
     // 拡張データを含めて保存する関数
     async function saveRowWithExtras(row, extras) {
         const dateCell = row.querySelector('.date-cell');
@@ -2549,6 +2671,7 @@
             lateDesc: row.dataset.lateDesc ?? null,
             earlyTime: row.dataset.earlyTime ?? null,
             earlyDesc: row.dataset.earlyDesc ?? null,
+            freeNote: row.dataset.freeNote ?? null,
             ...extras
         };
 

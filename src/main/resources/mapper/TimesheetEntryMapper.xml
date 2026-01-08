@@ -24,6 +24,7 @@
         <result property="lateDesc" column="late_desc"/>
         <result property="earlyTime" column="early_time"/>
         <result property="earlyDesc" column="early_desc"/>
+        <result property="freeNote" column="free_note"/>
         <result property="paidLeave" column="paid_leave"/>
     </resultMap>
 
@@ -60,6 +61,7 @@
             , late_desc
             , early_time
             , early_desc
+            , free_note
             , paid_leave
         FROM
             timesheet_entries
@@ -75,11 +77,11 @@
             timesheet_entries( work_date, user_name, start_time, end_time, note, break_minutes, duration_minutes
                              , working_minutes, version, holiday_work, work_location, irregular_work_type
                              , irregular_work_desc, irregular_work_data, late_time, late_desc, early_time, early_desc
-                             , paid_leave)
+                             , free_note, paid_leave)
         VALUES
             ( #{workDate}, #{userName}, #{startTime}, #{endTime}, #{note}, #{breakMinutes}, #{durationMinutes}
             , #{workingMinutes}, #{version}, #{holidayWork}, #{workLocation}, #{irregularWorkType}, #{irregularWorkDesc}
-            , #{irregularWorkData}, #{lateTime}, #{lateDesc}, #{earlyTime}, #{earlyDesc}, #{paidLeave})
+            , #{irregularWorkData}, #{lateTime}, #{lateDesc}, #{earlyTime}, #{earlyDesc}, #{freeNote}, #{paidLeave})
     </insert>
 
     <update id="updateTimes" parameterType="com.example.demo.model.TimesheetEntry">
@@ -102,6 +104,7 @@
             , late_desc           = #{lateDesc}
             , early_time          = #{earlyTime}
             , early_desc          = #{earlyDesc}
+            , free_note = #{freeNote}
             , paid_leave          = #{paidLeave}
         WHERE
             id = #{id}
@@ -128,6 +131,7 @@
             , late_desc           = #{lateDesc}
             , early_time          = #{earlyTime}
             , early_desc          = #{earlyDesc}
+            , free_note = #{freeNote}
             , paid_leave          = #{paidLeave}
         WHERE
             id = #{id}
