@@ -55,15 +55,23 @@ spring:
         same-site: strict
       timeout: 30m
 
+# ========== 本番環境サーバー設定 ==========
+# 注意: 外部Apache Tomcatにwarをデプロイするため、
+# server.port, server.ssl などの設定は無視されます。
+# server.servlet.session の設定のみ有効です。
 server:
+  # 以下の設定は外部Tomcatでは無視される（参考値）
   port: 8080
   ssl:
     enabled: false
+  # セッション設定（外部Tomcatでも有効）
   servlet:
     session:
       cookie:
-        secure: false
-      timeout: 5m
+        secure: true    # HTTPS環境では true
+        http-only: true
+        same-site: strict
+      timeout: 30m
 
 logging:
   level:

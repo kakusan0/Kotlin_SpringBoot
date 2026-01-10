@@ -77,6 +77,26 @@ server:
     min-response-size: 1024
   http2:
     enabled: true
+  # ========== 開発環境用 Undertow 最適化設定 ==========
+  # spring-boot:run で使用するため、リソース節約と高速起動を優先
+  undertow:
+    # スレッド設定: 開発環境は少なめで OK
+    threads:
+      io: 2              # I/O スレッド数（デフォルト: CPU コア数）
+      worker: 10         # ワーカースレッド数（デフォルト: I/O * 8）
+    # バッファ設定
+    buffer-size: 1024    # バッファサイズ（バイト）
+    direct-buffers: true # ダイレクトバッファ使用（パフォーマンス向上）
+    # アクセスログ（開発時は無効でパフォーマンス向上）
+    accesslog:
+      enabled: false
+      dir: logs
+      prefix: access_log
+      suffix: .log
+    # その他の設定
+    eager-filter-init: true          # フィルタの即時初期化
+    max-http-post-size: 10485760     # POST データ最大サイズ（10MB）
+    no-request-timeout: 60000        # リクエストタイムアウト（ms）
 
 logging:
   level:

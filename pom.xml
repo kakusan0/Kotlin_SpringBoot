@@ -296,15 +296,24 @@
                 <spring.profiles.active>dev</spring.profiles.active>
                 <spring-boot.run.profiles>dev</spring-boot.run.profiles>
             </properties>
-            <!-- Flyway依存関係は dependencies セクションでグローバル定義済み -->
+            <dependencies>
+                <!-- dev環境では Undertow を使用（軽量・高速） -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-undertow</artifactId>
+                </dependency>
+            </dependencies>
         </profile>
+        <!-- ========== 本番環境プロファイル ========== -->
+        <!-- 外部Apache Tomcatにwarをデプロイするため、 -->
+        <!-- 組み込みサーバー（Tomcat/Undertow）は不要 -->
         <profile>
             <id>prod</id>
             <properties>
                 <!-- Spring 実行プロファイル -->
                 <spring.profiles.active>prod</spring.profiles.active>
 
-                <!-- ★★ WAR でビルドするための設定 ★★ -->
+                <!-- WAR でビルド（外部Tomcatデプロイ用） -->
                 <packaging>war</packaging>
             </properties>
         </profile>
