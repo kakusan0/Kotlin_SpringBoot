@@ -215,6 +215,9 @@ class TimesheetController(
             val clearIrregular = body.containsKey("irregularWorkType") && body["irregularWorkType"].isNullOrBlank()
             val clearLate = body.containsKey("lateTime") && body["lateTime"].isNullOrBlank()
             val clearEarly = body.containsKey("earlyTime") && body["earlyTime"].isNullOrBlank()
+            val clearFreeNote = body.containsKey("freeNote") && body["freeNote"].isNullOrBlank()
+            val clearPaidLeave = body.containsKey("paidLeave") && body["paidLeave"].isNullOrBlank()
+            val clearWorkLocation = body.containsKey("workLocation") && body["workLocation"].isNullOrBlank()
 
             // detect presence of keys to allow explicit null -> clear behavior
             val startProvided = body.containsKey("startTime")
@@ -245,7 +248,10 @@ class TimesheetController(
                 paidLeave,
                 clearIrregular,
                 clearLate,
-                clearEarly
+                clearEarly,
+                clearFreeNote,
+                clearPaidLeave,
+                clearWorkLocation
             )
             // ブロードキャストして（同一ユーザの）他クライアントへ反映
             broadcast("timesheet-updated", saved, auth.name)

@@ -296,18 +296,7 @@
                 <spring.profiles.active>dev</spring.profiles.active>
                 <spring-boot.run.profiles>dev</spring-boot.run.profiles>
             </properties>
-            <dependencies>
-                <dependency>
-                    <groupId>org.flywaydb</groupId>
-                    <artifactId>flyway-core</artifactId>
-                    <version>${flyway.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.flywaydb</groupId>
-                    <artifactId>flyway-database-postgresql</artifactId>
-                    <version>${flyway.version}</version>
-                </dependency>
-            </dependencies>
+            <!-- Flyway依存関係は dependencies セクションでグローバル定義済み -->
         </profile>
         <profile>
             <id>prod</id>

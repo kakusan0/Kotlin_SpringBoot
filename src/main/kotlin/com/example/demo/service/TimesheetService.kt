@@ -105,11 +105,12 @@ class TimesheetService(
     }
 
     fun getToday(userName: String): TimesheetEntry? {
+        val today = LocalDate.now()
         val entry = dbCall(
             "selectByUserAndDate",
             userName,
-            LocalDate.now()
-        ) { timesheetEntryMapper.selectByUserAndDate(userName, LocalDate.now()) }
+            today
+        ) { timesheetEntryMapper.selectByUserAndDate(userName, today) }
         return entry?.let { applyCalc(it) }
     }
 
@@ -284,7 +285,10 @@ class TimesheetService(
         // フラグ: 明示的にクリアするかどうか
         clearIrregular: Boolean = false,
         clearLate: Boolean = false,
-        clearEarly: Boolean = false
+        clearEarly: Boolean = false,
+        clearFreeNote: Boolean = false,
+        clearPaidLeave: Boolean = false,
+        clearWorkLocation: Boolean = false
     ): TimesheetEntry {
         val existing = dbCall("selectByUserAndDate", userName, workDate) {
             timesheetEntryMapper.selectByUserAndDate(userName, workDate)
@@ -296,7 +300,7 @@ class TimesheetService(
                 breakMinutes = if (breakProvided) breakMinutes else existing.breakMinutes,
                 holidayWork = holidayWork,
                 note = if (noteProvided) note else existing.note,
-                workLocation = workLocation ?: existing.workLocation,
+                workLocation = if (clearWorkLocation) null else (workLocation ?: existing.workLocation),
                 // 拡張フィールド: clearフラグがtrueならnull、そうでなければ値があれば更新、なければ既存値
                 irregularWorkType = if (clearIrregular) null else (irregularWorkType ?: existing.irregularWorkType),
                 irregularWorkDesc = if (clearIrregular) null else (irregularWorkDesc ?: existing.irregularWorkDesc),
@@ -305,8 +309,8 @@ class TimesheetService(
                 lateDesc = if (clearLate) null else (lateDesc ?: existing.lateDesc),
                 earlyTime = if (clearEarly) null else (earlyTime ?: existing.earlyTime),
                 earlyDesc = if (clearEarly) null else (earlyDesc ?: existing.earlyDesc),
-                freeNote = freeNote ?: existing.freeNote,
-                paidLeave = paidLeave ?: existing.paidLeave
+                freeNote = if (clearFreeNote) null else (freeNote ?: existing.freeNote),
+                paidLeave = if (clearPaidLeave) null else (paidLeave ?: existing.paidLeave)
             )
             val recalced = applyCalc(merged)
             val updatedCount = dbCall("updateTimes/updateTimesForce", recalced.id, userName, workDate) {

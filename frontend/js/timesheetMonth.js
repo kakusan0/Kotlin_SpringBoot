@@ -1758,8 +1758,6 @@
                     autoSaveRow(row);
                 }, 0);
             });
-
-            console.log('[TS] 全体リセット完了');
         });
     }
 
@@ -1774,9 +1772,7 @@
             const last = new Date(y, m, 0).getDate();
             const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
             const username = (window.currentUserName || 'user1');
-            console.log('Username:', username);
             const url = `/timesheet/report/${format}?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
-            console.log('URL:', url);
             const resp = await fetch(url, {credentials: 'same-origin'});
             if (!resp.ok) {
                 const text = await resp.text().catch(() => '');
@@ -1817,10 +1813,7 @@
             const last = new Date(y, m, 0).getDate();
             const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
             const username = (window.currentUserName || 'user1');
-
-            console.log('UNISS Download - Username:', username);
             const url = `/timesheet/report/uniss-xlsx?username=${encodeURIComponent(username)}&from=${from}&to=${to}`;
-            console.log('UNISS Download - URL:', url);
 
             const resp = await fetch(url, {credentials: 'same-origin'});
             if (!resp.ok) {
@@ -2316,11 +2309,11 @@
                     }
                 }
 
-                // 保存（複数アイテムをJSON形式で保存）
+                // 保存（複数アイテムをJSON形式で保存、空文字列も送信してクリアを明示）
                 saveRowWithExtras(currentIrregularRow, {
-                    irregularWorkType: firstItem.type || null,
-                    irregularWorkDesc: firstItem.desc || null,
-                    irregularWorkData: irregularItems.length > 0 ? JSON.stringify(irregularItems) : null
+                    irregularWorkType: firstItem.type || '',
+                    irregularWorkDesc: firstItem.desc || '',
+                    irregularWorkData: irregularItems.length > 0 ? JSON.stringify(irregularItems) : ''
                 });
 
                 bootstrap.Modal.getInstance(irregularModal).hide();
@@ -2402,10 +2395,10 @@
                     }
                 }
 
-                // 保存
+                // 保存（空文字列も送信してクリアを明示）
                 saveRowWithExtras(currentLateRow, {
-                    lateTime: timeValue || null,
-                    lateDesc: descValue || null
+                    lateTime: timeValue,
+                    lateDesc: descValue
                 });
 
                 // 完了ボタンを元に戻す
@@ -2509,10 +2502,10 @@
                     }
                 }
 
-                // 保存
+                // 保存（空文字列も送信してクリアを明示）
                 saveRowWithExtras(currentEarlyRow, {
-                    earlyTime: timeValue || null,
-                    earlyDesc: descValue || null
+                    earlyTime: timeValue,
+                    earlyDesc: descValue
                 });
 
                 // 完了ボタンを元に戻す
@@ -2608,9 +2601,9 @@
                     }
                 }
 
-                // 保存
+                // 保存（空文字列も送信してクリアを明示）
                 saveRowWithExtras(currentFreeNoteRow, {
-                    freeNote: noteValue || null
+                    freeNote: noteValue
                 });
 
                 bootstrap.Modal.getInstance(freeNoteModal).hide();

@@ -2,6 +2,28 @@
 (function () {
     'use strict';
 
+    // ログイン状態の確認（ログアウトボタンまたはログアウトフォームが存在するかで判定）
+    function isLoggedIn() {
+        // ログアウトフォームが存在するかチェック
+        const logoutForm = document.querySelector('form[action="/logout"]');
+        if (logoutForm) return true;
+
+        // ログアウトボタンが存在するかチェック
+        const logoutBtn = document.querySelector('button[type="submit"][class*="logout"], a[href="/logout"]');
+        if (logoutBtn) return true;
+
+        // sec:authorize="isAuthenticated()" で表示される要素があるかチェック
+        const authenticatedElements = document.querySelectorAll('[sec\\:authorize="isAuthenticated()"]');
+        if (authenticatedElements.length > 0) return true;
+
+        return false;
+    }
+
+    // ログインしていない場合は何もしない
+    if (!isLoggedIn()) {
+        return;
+    }
+
     // 定数定義
     const CONFIG = {
         SESSION_TIMEOUT_MS: 5 * 60 * 1000,  // 5分
@@ -96,7 +118,5 @@
 
     // 初期タイマー開始
     resetTimers();
-
-    console.log(`Session timeout initialized: ${CONFIG.SESSION_TIMEOUT_MS / 1000} seconds`);
 })();
 

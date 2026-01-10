@@ -34,10 +34,26 @@ spring:
       host: ${redis.host:redis-host}
       port: ${redis.port:6379}
       password: ${redis.password:}
+      timeout: 2000
+      jedis:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: -1ms
   session:
     store-type: redis
     redis:
       namespace: app:sessions
+      flush-mode: on_save
+      save-mode: on_set_attribute
+  servlet:
+    session:
+      cookie:
+        secure: true
+        http-only: true
+        same-site: strict
+      timeout: 30m
 
 server:
   port: 8080
