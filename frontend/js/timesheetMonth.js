@@ -62,6 +62,46 @@
 
     const holidayCache = {};
 
+    // グローバルローディングスピナー制御（timesheet専用の簡易インライン表示）
+    let loadingCounter = 0;
+
+    function showLoading(key = 'timesheet', message = '読み込み中...') {
+        if (key !== 'timesheet') return; // 現状は勤務表の読み込みのみ個別表示
+        loadingCounter++;
+        const container = document.getElementById('headerTotalWorkingContainer');
+        if (!container) return;
+        const spinnerId = 'timesheetInlineSpinner';
+        let spinner = document.getElementById(spinnerId);
+        if (!spinner) {
+            spinner = document.createElement('span');
+            spinner.id = spinnerId;
+            spinner.className = 'spinner-border spinner-border-sm text-primary';
+            spinner.role = 'status';
+            spinner.style.marginLeft = '4px';
+            const sr = document.createElement('span');
+            sr.className = 'visually-hidden';
+            sr.textContent = message;
+            spinner.appendChild(sr);
+            container.appendChild(spinner);
+        }
+        const msgEl = document.getElementById('globalLoadingMessage'); // 未使用でもメッセージ更新
+        if (msgEl) msgEl.textContent = message;
+        spinner.style.display = 'inline-block';
+        const totalDisplay = document.getElementById('headerTotalWorkingDisplay');
+        if (totalDisplay) totalDisplay.style.visibility = 'hidden';
+        container.style.display = '';
+    }
+
+    function hideLoading(key = 'timesheet') {
+        if (key !== 'timesheet') return;
+        loadingCounter = Math.max(0, loadingCounter - 1);
+        if (loadingCounter !== 0) return;
+        const spinner = document.getElementById('timesheetInlineSpinner');
+        if (spinner) spinner.style.display = 'none';
+        const totalDisplay = document.getElementById('headerTotalWorkingDisplay');
+        if (totalDisplay) totalDisplay.style.visibility = '';
+    }
+
     // 正規表現パターンを定数化（再利用のため）
     const TIME_PATTERNS = {
         HH_MM: /^\d\d:\d\d$/,
@@ -1287,6 +1327,7 @@
     }
 
     async function loadTimesheetData() {
+        showLoading('timesheet', '勤務表を読み込み中...');
         const [year, month] = monthInput.value.split('-').map(Number);
         const lastDay = calcLastDay(year, month);
         const from = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -1475,7 +1516,7 @@
                     const workingNotes = ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'];
                     // 変則勤務で勤務扱いになるもの
                     const workingIrregulars = ['振替出勤', '休日出勤'];
-                    const hasWorkingIrregular = workingIrregulars.includes(irregularTypeValue);
+                    const hasWorkingIrregular = irregularItems.some(item => workingIrregulars.includes(item.type));
 
                     if (clearNotes.includes(noteValue) && !hasWorkingIrregular) {
                         // 完全休みの備考（変則勤務で勤務扱いでない場合）
@@ -1511,8 +1552,15 @@
 
             });
 
+            // 実働合計を更新
+            if (typeof window.refreshTotalWorking === 'function') {
+                window.refreshTotalWorking();
+            }
+
         } catch (e) {
             console.error('[TS] ネットワーク/パース失敗', e);
+        } finally {
+            hideLoading('timesheet');
         }
     }
 
@@ -1791,6 +1839,7 @@
             a.remove();
             if (msgEl) msgEl.textContent = 'ダウンロード完了';
         } finally {
+            // download系は各ボタンのスピナーだけで十分なのでグローバルスピナーは使用しない
         }
     }
 
@@ -2686,10 +2735,21 @@
         }
     }
 
+    // 実働合計をヘッダーに表示する機能
     (function () {
         const tableBody = document.getElementById('tableBody');
-        const totalDisplay = document.getElementById('totalWorkingDisplay');
-        if (!tableBody || !totalDisplay) return;
+        const headerTotalDisplay = document.getElementById('headerTotalWorkingDisplay');
+        const headerTotalContainer = document.getElementById('headerTotalWorkingContainer');
+        if (!tableBody) return;
+
+        // 表示モード: false=時間(通常), true=ラベル(hover中)
+        let headerTotalLabelMode = false;
+        let lastTotalText = '--';
+
+        function applyHeaderTotalDisplay() {
+            if (!headerTotalDisplay) return;
+            headerTotalDisplay.textContent = headerTotalLabelMode ? '実働合計' : lastTotalText;
+        }
 
         function parseWorkingCell(text) {
             if (!text) return 0;
@@ -2712,8 +2772,26 @@
             tableBody.querySelectorAll('.working-cell').forEach(cell => {
                 totalMinutes += parseWorkingCell(cell.textContent.trim());
             });
-            totalDisplay.textContent = formatMinutes(totalMinutes);
+            lastTotalText = formatMinutes(totalMinutes);
+            applyHeaderTotalDisplay();
+            if (headerTotalContainer) {
+                headerTotalContainer.style.display = '';
+            }
         }
+
+        if (headerTotalContainer) {
+            headerTotalContainer.addEventListener('mouseenter', () => {
+                headerTotalLabelMode = true;
+                applyHeaderTotalDisplay();
+            });
+            headerTotalContainer.addEventListener('mouseleave', () => {
+                headerTotalLabelMode = false;
+                applyHeaderTotalDisplay();
+            });
+        }
+
+        // グローバルに公開（loadTimesheetDataから呼び出せるように）
+        window.refreshTotalWorking = refreshTotalWorking;
 
         const observer = new MutationObserver(() => refreshTotalWorking());
         observer.observe(tableBody, {subtree: true, characterData: true, childList: true});
