@@ -1,0 +1,123 @@
+<div th:fragment="content">
+    <div class="container-fluid">
+        <h2 class="mb-4">パスキー (WebAuthn)</h2>
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">登録（パスキーを追加）</h5>
+                        <p class="text-muted small mb-3">現在ログイン中のユーザー名でパスキーを登録します。</p>
+                        <p class="small">現在のユーザー: <span id="passkeyCurrentUser" th:text="${currentUserName}">未ログイン</span></p>
+                        <button class="btn btn-primary w-100" id="btnPasskeyRegister" th:disabled="${currentUserName} == null">
+                            <i class="bi bi-shield-plus me-1"></i>パスキーを登録
+                        </button>
+                        <div class="mt-3 small text-muted" id="registerStatus"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">ログイン（パスキーで認証）</h5>
+                        <p class="text-muted small mb-3">登録済みのパスキーで認証します。</p>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">ユーザー名</span>
+                            <input class="form-control" id="passkeyLoginUsername" placeholder="ユーザー名" type="text">
+                        </div>
+                        <button class="btn btn-success w-100" id="btnPasskeyLogin">
+                            <i class="bi bi-fingerprint me-1"></i>パスキーでログイン
+                        </button>
+                        <div class="mt-3 small text-muted" id="loginStatus"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 登録済みパスキー一覧 -->
+        <div class="row g-3 mt-3" th:if="${currentUserName} != null">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">登録済みパスキー一覧</h5>
+                        <p class="text-muted small mb-3">このユーザーに登録されているパスキーです。無効なパスキーは削除してください。</p>
+                        <div id="credentialsList">
+                            <div class="text-muted">読み込み中...</div>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm mt-3" id="btnRefreshCredentials">
+                            <i class="bi bi-arrow-clockwise me-1"></i>一覧を更新
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+    (function() {
+        const currentUserName = /*[[${currentUserName}]]*/ null;
+        if (!currentUserName) return;
+
+        const listEl = document.getElementById('credentialsList');
+        const refreshBtn = document.getElementById('btnRefreshCredentials');
+
+        async function loadCredentials() {
+            if (!listEl) return;
+            listEl.innerHTML = '<div class="text-muted">読み込み中...</div>';
+            try {
+                const res = await fetch(`/api/webauthn/credentials?username=${encodeURIComponent(currentUserName)}`);
+                if (!res.ok) throw new Error('取得失敗');
+                const data = await res.json();
+                const creds = data.credentials || [];
+                if (creds.length === 0) {
+                    listEl.innerHTML = '<div class="text-muted">登録済みのパスキーはありません。</div>';
+                    return;
+                }
+                listEl.innerHTML = creds.map(c => `
+                    <div class="d-flex align-items-center justify-content-between border-bottom py-2" data-id="${c.id}">
+                        <div>
+                            <span class="badge ${c.isValid ? 'bg-success' : 'bg-danger'} me-2">${c.isValid ? '有効' : '無効'}</span>
+                            <small class="text-muted">${c.createdAt ? new Date(c.createdAt).toLocaleString() : '不明'}</small>
+                            <br><code class="small">${c.credentialId.substring(0, 20)}...</code>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm btn-delete-cred" data-id="${c.id}">
+                            <i class="bi bi-trash"></i> 削除
+                        </button>
+                    </div>
+                `).join('');
+
+                // 削除ボタンのイベント
+                listEl.querySelectorAll('.btn-delete-cred').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.currentTarget.dataset.id;
+                        if (!confirm('このパスキーを削除しますか？')) return;
+                        try {
+                            const delRes = await fetch(`/api/webauthn/credentials/${id}?username=${encodeURIComponent(currentUserName)}`, {
+                                method: 'DELETE'
+                            });
+                            if (!delRes.ok) {
+                                const err = await delRes.json().catch(() => ({}));
+                                throw new Error(err.message || '削除失敗');
+                            }
+                            loadCredentials();
+                        } catch (err) {
+                            alert('削除エラー: ' + err.message);
+                        }
+                    });
+                });
+            } catch (err) {
+                listEl.innerHTML = `<div class="text-danger">エラー: ${err.message}</div>`;
+            }
+        }
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', loadCredentials);
+        }
+
+        // 初期読み込み
+        loadCredentials();
+    })();
+    /*]]>*/
+    </script>
+</div>
+

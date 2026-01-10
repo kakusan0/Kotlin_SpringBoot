@@ -104,5 +104,12 @@ app:
   csp:
     connect-src: "'self'"
 
+# WebAuthn (パスキー) 設定
+webauthn:
+  rp:
+    id: ${WEBAUTHN_RP_ID:localhost}
+    name: ${WEBAUTHN_RP_NAME:Dev RP}
+    origin: ${WEBAUTHN_RP_ORIGIN:http://localhost:8080}
+
 report:
   holidayPosition: START

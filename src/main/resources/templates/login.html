@@ -37,6 +37,15 @@
                         </div>
                         <button class="btn btn-primary w-100" type="submit">ログイン</button>
                     </form>
+                    <!-- パスキーでログイン -->
+                    <div class="text-center mt-3">
+                        <hr class="my-3">
+                        <small class="text-muted">または</small>
+                    </div>
+                    <button class="btn btn-outline-success w-100 mt-2" id="btnPasskeyLogin" type="button">
+                        <i class="bi bi-fingerprint me-1"></i>パスキーでログイン
+                    </button>
+                    <div class="mt-2 small text-muted text-center" id="loginPasskeyStatus"></div>
                 </div>
             </div>
         </div>
@@ -45,5 +54,85 @@
 <script src="/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
         th:src="@{/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js}"></script>
 <script defer th:src="@{/js/login.js}"></script>
+<script>
+    // パスキーログイン処理
+    document.addEventListener('DOMContentLoaded', () => {
+        const usernameInput = document.getElementById('username');
+        const passkeyLoginBtn = document.getElementById('btnPasskeyLogin');
+        const passkeyStatus = document.getElementById('loginPasskeyStatus');
+
+        const b64uToArray = (b64) => Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+        const arrayToB64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+
+        if (passkeyLoginBtn && usernameInput) {
+            passkeyLoginBtn.addEventListener('click', async () => {
+                const username = usernameInput.value.trim();
+                if (!username) {
+                    if (passkeyStatus) {
+                        passkeyStatus.textContent = 'ユーザー名を入力してください';
+                        passkeyStatus.classList.add('text-danger');
+                    }
+                    return;
+                }
+                try {
+                    passkeyLoginBtn.disabled = true;
+                    if (passkeyStatus) {
+                        passkeyStatus.textContent = 'チャレンジ取得中...';
+                        passkeyStatus.classList.remove('text-danger');
+                    }
+
+                    const res = await fetch(`/api/webauthn/authentication/options?username=${encodeURIComponent(username)}`);
+                    if (!res.ok) {
+                        const msg = (await res.json().catch(() => ({}))).message || 'パスキーが登録されていません';
+                        throw new Error(msg);
+                    }
+                    const options = await res.json();
+
+                    options.challenge = b64uToArray(options.challenge).buffer;
+                    options.allowCredentials = options.allowCredentials.map(ac => ({
+                        ...ac,
+                        id: b64uToArray(ac.id).buffer
+                    }));
+
+                    if (passkeyStatus) passkeyStatus.textContent = '認証中...';
+
+                    const assertion = await navigator.credentials.get({publicKey: options});
+                    if (!assertion) throw new Error('認証がキャンセルされました');
+
+                    const finishRes = await fetch(`/api/webauthn/authentication/finish?username=${encodeURIComponent(username)}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            id: assertion.id,
+                            rawId: arrayToB64u(assertion.rawId),
+                            type: assertion.type,
+                            response: {
+                                authenticatorData: arrayToB64u(assertion.response.authenticatorData),
+                                clientDataJSON: arrayToB64u(assertion.response.clientDataJSON),
+                                signature: arrayToB64u(assertion.response.signature),
+                                userHandle: assertion.response.userHandle ? arrayToB64u(assertion.response.userHandle) : null
+                            }
+                        })
+                    });
+
+                    if (!finishRes.ok) {
+                        const msg = (await finishRes.json().catch(() => ({}))).message || '認証に失敗しました';
+                        throw new Error(msg);
+                    }
+                    if (passkeyStatus) passkeyStatus.textContent = 'ログイン成功！リダイレクト中...';
+                    setTimeout(() => window.location.href = '/tools', 300);
+                } catch (e) {
+                    console.error(e);
+                    if (passkeyStatus) {
+                        passkeyStatus.textContent = `エラー: ${e.message}`;
+                        passkeyStatus.classList.add('text-danger');
+                    }
+                } finally {
+                    passkeyLoginBtn.disabled = false;
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>

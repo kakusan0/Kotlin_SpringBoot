@@ -71,6 +71,7 @@ class SecurityConfig(
                 requestHandler.setCsrfRequestAttributeName(null) // リクエスト属性名をnullにしてdeferred token loadを有効化
                 csrf.csrfTokenRepository(csrfTokenRepository)
                 csrf.csrfTokenRequestHandler(requestHandler)
+                csrf.ignoringRequestMatchers("/api/webauthn/**") // WebAuthnはフロントJSから直接叩くのでCSRF除外
             }
 
             // CORS設定
@@ -108,7 +109,7 @@ class SecurityConfig(
                     .requestMatchers(
                         "/css/**", "/js/**", "/webjars/**",
                         "/favicon.ico", "/favicon.svg", "/.well-known/**",
-                        "/login"
+                        "/login", "/api/webauthn/**"
                     ).permitAll()
                     // メイン画面は認証不要（閲覧のみ）
                     .requestMatchers("/", "/home", "/home/**", "/tools", "/tools/**").permitAll()
@@ -131,7 +132,6 @@ class SecurityConfig(
                     // その他は認証必須（デフォルト拒否の原則）
                     .anyRequest().authenticated()
             }
-
             // ログイン前にログイン試行のレート制限フィルターを追加
             .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter::class.java)
 
@@ -141,11 +141,11 @@ class SecurityConfig(
                 it.defaultSuccessUrl("/tools")
                 it.failureHandler(customAuthenticationFailureHandler)
             }
-//            .webAuthn {
-//                it.rpName("Spring Security Relying Party")
-//                it.rpId("localhost")
-//                it.allowedOrigins(setOf("http://localhost:8080"))
-//            }
+            .webAuthn {
+                it.rpName("Dev RP")
+                it.rpId("localhost")
+                it.allowedOrigins(setOf("http://localhost:8080"))
+            }
             .httpBasic { it.disable() }
             .logout {
                 it.logoutUrl("/logout")

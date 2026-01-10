@@ -58,4 +58,14 @@ class MainController {
         model.addAttribute("currentScreenPath", "passwordGeneration")
         return "main"
     }
+
+    @GetMapping("/tools/passkey")
+    fun passkeyTool(model: Model, principal: Authentication?): String {
+        model.addAttribute("screens", emptyList<Any>())
+        model.addAttribute("currentScreen", "パスキー")
+        model.addAttribute("selectedScreenName", "パスキー")
+        model.addAttribute("currentScreenPath", "passkeyTools")
+        principal?.name?.let { model.addAttribute("currentUserName", it) }
+        return "main"
+    }
 }
