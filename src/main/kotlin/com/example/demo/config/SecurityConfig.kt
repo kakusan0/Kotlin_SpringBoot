@@ -167,7 +167,7 @@ class SecurityConfig(
             .httpBasic { it.disable() }
             .logout {
                 it.logoutUrl("/logout")
-                it.logoutSuccessUrl("/login?logout=true") // ログアウト後はログインモーダル表示
+                it.logoutSuccessUrl("/tools") // ログアウト後はツールページへ
                 it.invalidateHttpSession(true) // セッションを無効化
                 it.deleteCookies("JSESSIONID", "SESSION") // セッションCookieを削除
                 it.clearAuthentication(true) // 認証情報をクリア

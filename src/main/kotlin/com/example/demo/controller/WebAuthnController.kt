@@ -42,7 +42,8 @@ class WebAuthnController(
     data class PubKeyParam(val type: String, val alg: Int)
     data class AuthenticatorSelection(
         val authenticatorAttachment: String? = null,
-        val residentKey: String = "preferred",
+        val residentKey: String = "required",  // Discoverable Credential必須
+        val requireResidentKey: Boolean = true,
         val userVerification: String = "preferred"
     )
 
@@ -56,6 +57,14 @@ class WebAuthnController(
     data class RegistrationResponse(
         val attestationObject: String,
         val clientDataJSON: String
+    )
+
+    // ユーザー名なし認証用のレスポンス（allowCredentials空）
+    data class DiscoverableAuthenticationOptionsResponse(
+        val challenge: String,
+        val rpId: String,
+        val timeout: Long = 60000,
+        val userVerification: String = "preferred"
     )
 
     data class AuthenticationOptionsResponse(
@@ -141,13 +150,32 @@ class WebAuthnController(
     }
 
     @GetMapping("/authentication/options")
-    fun authenticationOptions(@RequestParam username: String): ResponseEntity<Any> {
+    fun authenticationOptions(@RequestParam(required = false) username: String?): ResponseEntity<Any> {
+        val challenge = webAuthnService.generateChallenge()
+
+        // ユーザー名が指定されていない場合はDiscoverable Credential認証
+        if (username.isNullOrBlank()) {
+            // ユーザー名なしの場合、チャレンジをセッションIDベースで保存
+            val challengeId = webAuthnService.saveDiscoverableChallenge(challenge)
+            val res = DiscoverableAuthenticationOptionsResponse(
+                challenge = Base64UrlUtil.encodeToString(challenge),
+                rpId = rpId
+            )
+            return ResponseEntity.ok(mapOf(
+                "challenge" to res.challenge,
+                "rpId" to res.rpId,
+                "timeout" to res.timeout,
+                "userVerification" to res.userVerification,
+                "challengeId" to challengeId
+            ))
+        }
+
+        // ユーザー名が指定されている場合は従来の認証
         val creds = webAuthnService.findCredentials(username)
         if (creds.isEmpty()) {
             return ResponseEntity.status(404).body(mapOf("message" to "No passkeys registered for this user"))
         }
 
-        val challenge = webAuthnService.generateChallenge()
         webAuthnService.saveAuthenticationChallenge(username, challenge)
 
         val allow = creds.map {
@@ -163,6 +191,63 @@ class WebAuthnController(
             allowCredentials = allow
         )
         return ResponseEntity.ok(res)
+    }
+
+    /**
+     * ユーザー名なしパスキー認証（Discoverable Credentials）
+     */
+    @PostMapping("/authentication/finish/discoverable")
+    fun finishDiscoverableAuthentication(
+        @RequestParam challengeId: String,
+        @RequestBody req: FinishAuthenticationRequest,
+        request: HttpServletRequest
+    ): ResponseEntity<Any> {
+        val challenge = webAuthnService.consumeDiscoverableChallenge(challengeId)
+            ?: return ResponseEntity.badRequest().body(mapOf("message" to "Challenge not found or expired"))
+
+        val credentialId = Base64UrlUtil.decode(req.rawId)
+        val credential = webAuthnService.findByCredentialId(credentialId)
+            ?: return ResponseEntity.status(404).body(mapOf("message" to "Credential not found"))
+
+        // userHandleからユーザー名を取得して検証
+        val userHandle = req.response.userHandle
+        if (userHandle.isNullOrBlank()) {
+            return ResponseEntity.badRequest().body(mapOf("message" to "userHandle is required for discoverable credentials"))
+        }
+
+        val usernameFromHandle = String(Base64UrlUtil.decode(userHandle), Charsets.UTF_8)
+        if (credential.username != usernameFromHandle) {
+            logger.warn("Credential ownership mismatch: credential belongs to ${credential.username}, but userHandle indicates $usernameFromHandle")
+            return ResponseEntity.status(403).body(mapOf("message" to "Credential does not match userHandle"))
+        }
+
+        return try {
+            val clientDataJSON = Base64UrlUtil.decode(req.response.clientDataJSON)
+            val authenticatorData = Base64UrlUtil.decode(req.response.authenticatorData)
+            val signature = Base64UrlUtil.decode(req.response.signature)
+            val userHandleBytes = Base64UrlUtil.decode(userHandle)
+
+            // WebAuthn署名検証
+            webAuthnService.verifyAssertion(
+                credential = credential,
+                challenge = challenge,
+                credentialId = credentialId,
+                clientDataJSON = clientDataJSON,
+                authenticatorData = authenticatorData,
+                signature = signature,
+                userHandle = userHandleBytes
+            )
+
+            // Spring Securityの認証セッションを確立
+            establishSecuritySession(credential.username, request)
+
+            logger.info("Discoverable passkey authentication successful for user: ${credential.username}")
+            ResponseEntity.ok(mapOf("message" to "authenticated", "username" to credential.username))
+        } catch (e: Exception) {
+            logger.error("Discoverable passkey authentication failed: ${e::class.simpleName} - ${e.message}", e)
+            val errorMessage = e.message ?: e::class.simpleName ?: "Unknown error"
+            ResponseEntity.status(401).body(mapOf("message" to "Authentication failed: $errorMessage"))
+        }
     }
 
     @PostMapping("/authentication/finish")

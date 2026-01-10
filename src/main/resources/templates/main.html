@@ -175,7 +175,7 @@
 
 <script th:inline="javascript">
     /*<![CDATA[*/
-    (function () {
+    document.addEventListener('DOMContentLoaded', function () {
         const loginModal = document.getElementById('loginModal');
         if (!loginModal) return;
 
@@ -273,8 +273,8 @@
                 });
 
                 if (response.ok || response.redirected) {
-                    // ログイン成功 - ページをリロード
-                    window.location.reload();
+                    // ログイン成功 - ツールページにリダイレクト
+                    window.location.href = '/tools';
                 } else {
                     const text = await response.text();
                     if (text.includes('error') || response.status === 401) {
@@ -301,82 +301,108 @@
             }
         });
 
-        // パスキーログイン処理
+        // パスキーログイン処理（ユーザー名なし対応）
         const passkeyLoginBtn = document.getElementById('modalPasskeyLoginBtn');
         const passkeyStatus = document.getElementById('modalPasskeyStatus');
 
         const b64uToArray = (b64) => Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
         const arrayToB64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 
-        if (passkeyLoginBtn) {
-            passkeyLoginBtn.addEventListener('click', async () => {
-                const username = usernameInput.value.trim();
-                if (!username) {
-                    if (passkeyStatus) {
-                        passkeyStatus.textContent = 'ユーザー名を入力してください';
-                        passkeyStatus.classList.add('text-danger');
-                    }
-                    return;
+        // パスキーログイン処理の関数
+        async function handlePasskeyLogin() {
+            const username = usernameInput.value.trim();
+            try {
+                if (passkeyLoginBtn) passkeyLoginBtn.disabled = true;
+                if (passkeyStatus) {
+                    passkeyStatus.textContent = 'チャレンジ取得中...';
+                    passkeyStatus.classList.remove('text-danger');
                 }
-                try {
-                    passkeyLoginBtn.disabled = true;
-                    if (passkeyStatus) {
-                        passkeyStatus.textContent = 'チャレンジ取得中...';
-                        passkeyStatus.classList.remove('text-danger');
-                    }
 
-                    const res = await fetch(`/api/webauthn/authentication/options?username=${encodeURIComponent(username)}`);
-                    if (!res.ok) {
-                        const msg = (await res.json().catch(() => ({}))).message || 'パスキーが登録されていません';
-                        throw new Error(msg);
-                    }
-                    const options = await res.json();
+                // ユーザー名があれば従来の認証、なければDiscoverable認証
+                const optionsUrl = username
+                    ? `/api/webauthn/authentication/options?username=${encodeURIComponent(username)}`
+                    : '/api/webauthn/authentication/options';
 
-                    options.challenge = b64uToArray(options.challenge).buffer;
-                    options.allowCredentials = options.allowCredentials.map(ac => ({
+                const res = await fetch(optionsUrl);
+                if (!res.ok) {
+                    const msg = (await res.json().catch(() => ({}))).message || 'パスキーが登録されていません';
+                    throw new Error(msg);
+                }
+                const options = await res.json();
+                const challengeId = options.challengeId; // Discoverable認証用
+
+                const publicKeyOptions = {
+                    challenge: b64uToArray(options.challenge).buffer,
+                    rpId: options.rpId,
+                    timeout: options.timeout,
+                    userVerification: options.userVerification
+                };
+
+                // allowCredentialsがある場合のみ設定
+                if (options.allowCredentials && options.allowCredentials.length > 0) {
+                    publicKeyOptions.allowCredentials = options.allowCredentials.map(ac => ({
                         ...ac,
                         id: b64uToArray(ac.id).buffer
                     }));
-
-                    if (passkeyStatus) passkeyStatus.textContent = '認証中...';
-
-                    const assertion = await navigator.credentials.get({ publicKey: options });
-                    if (!assertion) throw new Error('認証がキャンセルされました');
-
-                    const finishRes = await fetch(`/api/webauthn/authentication/finish?username=${encodeURIComponent(username)}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            id: assertion.id,
-                            rawId: arrayToB64u(assertion.rawId),
-                            type: assertion.type,
-                            response: {
-                                authenticatorData: arrayToB64u(assertion.response.authenticatorData),
-                                clientDataJSON: arrayToB64u(assertion.response.clientDataJSON),
-                                signature: arrayToB64u(assertion.response.signature),
-                                userHandle: assertion.response.userHandle ? arrayToB64u(assertion.response.userHandle) : null
-                            }
-                        })
-                    });
-
-                    if (!finishRes.ok) {
-                        const msg = (await finishRes.json().catch(() => ({}))).message || '認証に失敗しました';
-                        throw new Error(msg);
-                    }
-                    if (passkeyStatus) passkeyStatus.textContent = 'ログイン成功！リロードします...';
-                    setTimeout(() => window.location.reload(), 300);
-                } catch (e) {
-                    console.error(e);
-                    if (passkeyStatus) {
-                        passkeyStatus.textContent = `エラー: ${e.message}`;
-                        passkeyStatus.classList.add('text-danger');
-                    }
-                } finally {
-                    passkeyLoginBtn.disabled = false;
                 }
-            });
+
+                if (passkeyStatus) passkeyStatus.textContent = '認証中...';
+
+                const assertion = await navigator.credentials.get({ publicKey: publicKeyOptions });
+                if (!assertion) throw new Error('認証がキャンセルされました');
+
+                // 認証完了エンドポイント
+                const finishUrl = challengeId
+                    ? `/api/webauthn/authentication/finish/discoverable?challengeId=${encodeURIComponent(challengeId)}`
+                    : `/api/webauthn/authentication/finish?username=${encodeURIComponent(username)}`;
+
+                const finishRes = await fetch(finishUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: assertion.id,
+                        rawId: arrayToB64u(assertion.rawId),
+                        type: assertion.type,
+                        response: {
+                            authenticatorData: arrayToB64u(assertion.response.authenticatorData),
+                            clientDataJSON: arrayToB64u(assertion.response.clientDataJSON),
+                            signature: arrayToB64u(assertion.response.signature),
+                            userHandle: assertion.response.userHandle ? arrayToB64u(assertion.response.userHandle) : null
+                        }
+                    })
+                });
+
+                if (!finishRes.ok) {
+                    const msg = (await finishRes.json().catch(() => ({}))).message || '認証に失敗しました';
+                    throw new Error(msg);
+                }
+                const result = await finishRes.json();
+                if (passkeyStatus) passkeyStatus.textContent = `ログイン成功${result.username ? ` (${result.username})` : ''}！リダイレクトします...`;
+                setTimeout(() => window.location.href = '/tools', 300);
+            } catch (e) {
+                console.error(e);
+                if (passkeyStatus) {
+                    passkeyStatus.textContent = `エラー: ${e.message}`;
+                    passkeyStatus.classList.add('text-danger');
+                }
+            } finally {
+                if (passkeyLoginBtn) passkeyLoginBtn.disabled = false;
+            }
         }
-    })();
+
+        // 直接イベントリスナーを登録
+        if (passkeyLoginBtn) {
+            passkeyLoginBtn.addEventListener('click', handlePasskeyLogin);
+        }
+
+        // イベントデリゲーションでも登録（フォールバック）
+        loginModal.addEventListener('click', (e) => {
+            if (e.target.id === 'modalPasskeyLoginBtn' || e.target.closest('#modalPasskeyLoginBtn')) {
+                e.preventDefault();
+                handlePasskeyLogin();
+            }
+        });
+    });
     /*]]>*/
 </script>
 

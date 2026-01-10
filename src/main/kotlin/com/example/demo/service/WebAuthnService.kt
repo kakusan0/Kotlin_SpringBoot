@@ -37,6 +37,7 @@ class WebAuthnService(
     // チャレンジは有効期限付きで保存すべきだが、簡易実装としてConcurrentHashMapを使用
     private val registrationChallenges = ConcurrentHashMap<String, ChallengeData>()
     private val authenticationChallenges = ConcurrentHashMap<String, ChallengeData>()
+    private val discoverableChallenges = ConcurrentHashMap<String, ChallengeData>()
 
     data class ChallengeData(
         val challenge: ByteArray,
@@ -67,6 +68,21 @@ class WebAuthnService(
 
     fun consumeAuthenticationChallenge(username: String): ByteArray? {
         val data = authenticationChallenges.remove(username) ?: return null
+        return if (data.isExpired()) null else data.challenge
+    }
+
+    /**
+     * Discoverable Credential認証用のチャレンジを保存
+     * @return チャレンジID（UUID）
+     */
+    fun saveDiscoverableChallenge(challenge: ByteArray): String {
+        val challengeId = java.util.UUID.randomUUID().toString()
+        discoverableChallenges[challengeId] = ChallengeData(challenge)
+        return challengeId
+    }
+
+    fun consumeDiscoverableChallenge(challengeId: String): ByteArray? {
+        val data = discoverableChallenges.remove(challengeId) ?: return null
         return if (data.isExpired()) null else data.challenge
     }
 
