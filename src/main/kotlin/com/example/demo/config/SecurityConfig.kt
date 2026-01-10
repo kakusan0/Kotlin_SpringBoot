@@ -185,12 +185,13 @@ class SecurityConfig(
     }
 
     @Bean
-    fun sessionRegistry(repoProvider: ObjectProvider<FindByIndexNameSessionRepository<out Session>>? = null): SessionRegistry {
-        val repo = repoProvider?.ifAvailable
-        if (repo != null) {
-            return SpringSessionBackedSessionRegistry(repo)
+    fun sessionRegistry(repoProvider: ObjectProvider<FindByIndexNameSessionRepository<Session>>): SessionRegistry {
+        val repo = repoProvider.ifAvailable
+        return if (repo != null) {
+            SpringSessionBackedSessionRegistry(repo)
+        } else {
+            SessionRegistryImpl()
         }
-        return SessionRegistryImpl()
     }
 
     @Bean
