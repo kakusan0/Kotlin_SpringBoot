@@ -10,11 +10,17 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
+/**
+ * IP管理API（ホワイトリスト/ブラックリスト）
+ * ADMINロールのみアクセス可能
+ */
 @RestController
 @RequestMapping("/api/ip")
+@PreAuthorize("hasRole('ADMIN')")
 class ApiIpController(
     private val whitelistIpMapper: WhitelistIpMapper,
     private val blacklistIpMapper: BlacklistIpMapper,

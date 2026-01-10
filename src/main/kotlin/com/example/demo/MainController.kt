@@ -15,15 +15,7 @@ import java.time.YearMonth
 class MainController {
     @GetMapping(ApplicationConstants.ROOT)
     @Suppress("SpringMVCViewInspection")
-    fun index(): String = "${ApplicationConstants.REDIRECT}${ApplicationConstants.HOME}"
-
-    @GetMapping(ApplicationConstants.HOME)
-    fun root(model: Model): String {
-        model.addAttribute("currentScreen", "")
-        model.addAttribute("selectedScreenName", "ホーム")
-        model.addAttribute("currentScreenPath", "")
-        return "main"
-    }
+    fun index(): String = "${ApplicationConstants.REDIRECT}/tools"
 
     @GetMapping("/tools")
     fun tools(model: Model): String {

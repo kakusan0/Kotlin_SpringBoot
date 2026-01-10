@@ -43,6 +43,7 @@
             </form>
             <!-- 未ログインの場合：ログインボタン -->
             <button class="btn btn-primary btn-sm" data-bs-target="#loginModal" data-bs-toggle="modal"
+                    id="loginOpenBtn"
                     sec:authorize="!isAuthenticated()" type="button">
                 <i class="bi bi-box-arrow-in-right"></i>
                 <span class="d-none d-md-inline ms-1">ログイン</span>
@@ -99,7 +100,7 @@
         <div th:if="${(errorMessage == null or errorMessage == '') and (currentScreenPath == null or currentScreenPath == '')}">
             <div class="text-center mt-5">
                 <h2>ようこそ</h2>
-                <p class="text-muted">サイドバーから「ツール」または「管理」を選択してください。</p>
+                <p class="text-muted">ツールを利用するにはサイドバーの「ツール」を選択してください。</p>
             </div>
         </div>
     </div>
@@ -174,6 +175,37 @@
         const toggleIcon = document.getElementById('modalToggleIcon');
         const errorAlert = document.getElementById('loginErrorAlert');
         const submitBtn = document.getElementById('loginSubmitBtn');
+        const openBtn = document.getElementById('loginOpenBtn');
+        const message = /*[[${loginMessage}]]*/ null;
+        const errorMsg = /*[[${loginError}]]*/ null;
+        const presetUsername = /*[[${loginUsername}]]*/ null;
+        const shouldShowModal = /*[[${showLoginModal}]]*/ false;
+
+        if (presetUsername) {
+            usernameInput.value = presetUsername;
+        }
+        if (errorMsg) {
+            errorAlert.textContent = errorMsg;
+            errorAlert.classList.remove('d-none');
+        }
+        if (shouldShowModal) {
+            const modal = bootstrap.Modal.getOrCreateInstance(loginModal);
+            modal.show();
+            if (message) {
+                // 成功メッセージはアラート枠を流用
+                errorAlert.classList.remove('d-none', 'alert-danger');
+                errorAlert.classList.add('alert-success');
+                errorAlert.textContent = message;
+            }
+        }
+
+        // 明示的クリックでも確実にモーダルを開く（data属性のフォールバック）
+        if (openBtn) {
+            openBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                bootstrap.Modal.getOrCreateInstance(loginModal).show();
+            });
+        }
 
         // モーダル表示時にユーザー名にフォーカス
         loginModal.addEventListener('shown.bs.modal', () => {
@@ -258,6 +290,14 @@
     })();
     /*]]>*/
 </script>
+
+
+
+
+
+
+
+
 
 
 

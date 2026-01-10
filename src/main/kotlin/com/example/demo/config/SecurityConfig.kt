@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.core.session.SessionRegistry
@@ -18,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
 import org.springframework.security.web.header.writers.StaticHeadersWriter
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter
@@ -31,6 +33,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 class SecurityConfig(
     private val customAuthenticationFailureHandler: AuthenticationFailureHandler,
     private val loginRateLimitFilter: LoginRateLimitFilter
@@ -61,8 +64,14 @@ class SecurityConfig(
         }
 
         http
-            // CSRF保護を有効化（CookieベースのCSRFトークン）
-            .csrf { it.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) }
+            // CSRF保護を有効化（CookieベースのCSRFトークン + BREACH攻撃対策）
+            .csrf { csrf ->
+                val csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse()
+                val requestHandler = XorCsrfTokenRequestAttributeHandler()
+                requestHandler.setCsrfRequestAttributeName(null) // リクエスト属性名をnullにしてdeferred token loadを有効化
+                csrf.csrfTokenRepository(csrfTokenRepository)
+                csrf.csrfTokenRequestHandler(requestHandler)
+            }
 
             // CORS設定
             .cors { it.configurationSource(corsConfigurationSource()) }
@@ -88,6 +97,8 @@ class SecurityConfig(
                             "geolocation=(), microphone=(), camera=(), usb=(), payment=(), fullscreen()"
                         )
                     )
+                    // キャッシュ制御: ブラウザの戻るボタンでキャッシュページを表示させない
+                    .cacheControl { }
             }
 
             // 認可設定
@@ -115,8 +126,10 @@ class SecurityConfig(
                     // Actuatorエンドポイントは制限
                     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .requestMatchers("/actuator/**").denyAll()
-                    // その他は全て許可
-                    .anyRequest().permitAll()
+                    // エラーページは許可
+                    .requestMatchers("/error").permitAll()
+                    // その他は認証必須（デフォルト拒否の原則）
+                    .anyRequest().authenticated()
             }
 
             // ログイン前にログイン試行のレート制限フィルターを追加
@@ -125,7 +138,7 @@ class SecurityConfig(
             // フォームログインを有効化
             .formLogin {
                 it.loginPage("/login").permitAll()
-                it.defaultSuccessUrl("/home")
+                it.defaultSuccessUrl("/tools")
                 it.failureHandler(customAuthenticationFailureHandler)
             }
 //            .webAuthn {
@@ -136,17 +149,21 @@ class SecurityConfig(
             .httpBasic { it.disable() }
             .logout {
                 it.logoutUrl("/logout")
-                it.logoutSuccessUrl("/home") // ログアウト後はホームへ
+                it.logoutSuccessUrl("/login?logout=true") // ログアウト後はログインモーダル表示
+                it.invalidateHttpSession(true) // セッションを無効化
+                it.deleteCookies("JSESSIONID", "SESSION") // セッションCookieを削除
+                it.clearAuthentication(true) // 認証情報をクリア
                 it.permitAll()
             }
 
             // セッション管理: セッション無効（タイムアウトや強制ログアウト）時のリダイレクト先
             // および同一ユーザ最大セッション数を 1 にして古いセッションを切断（新ログインを許可）
             .sessionManagement { sess ->
-                sess.invalidSessionUrl("/home") // セッション無効時もホームへ
+                sess.sessionFixation { it.migrateSession() } // セッション固定攻撃対策
+                sess.invalidSessionUrl("/tools") // セッション無効時もツールへ
                 sess.maximumSessions(1)
                     .maxSessionsPreventsLogin(false)
-                    .expiredUrl("/home") // セッション期限切れもホームへ
+                    .expiredUrl("/tools") // セッション期限切れもツールへ
                     .sessionRegistry(sessionRegistry)
             }
 
@@ -174,6 +191,14 @@ class SecurityConfig(
     @Bean
     fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 
+    /**
+     * ユーザー認証設定
+     *
+     * 【本番環境での注意事項】
+     * - InMemoryUserDetailsManagerは開発用。本番ではDBまたはLDAP/OIDC等を使用すること
+     * - パスワードは最低12文字以上、大文字・小文字・数字・記号を含むこと
+     * - ユーザー名とパスワードを同一にしないこと
+     */
     @Bean
     fun userDetailsService(passwordEncoder: PasswordEncoder): UserDetailsService {
         val user1 = User.builder()
@@ -181,7 +206,15 @@ class SecurityConfig(
             .password(passwordEncoder.encode("角谷亮洋"))
             .roles("USER", "UNISS") // UNISSロールを追加（勤務表アクセス用）
             .build()
-        return InMemoryUserDetailsManager(user1)
+
+        // 管理者ユーザー（ADMINロール）
+        val admin = User.builder()
+            .username("admin")
+            .password(passwordEncoder.encode("Admin@2026!Secure"))
+            .roles("ADMIN")
+            .build()
+
+        return InMemoryUserDetailsManager(user1, admin)
     }
 
     @Bean

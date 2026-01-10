@@ -6,7 +6,7 @@ package com.example.demo.constants
 object ApplicationConstants {
     // ルート（トップページ）パス
     const val ROOT = "/"
-    const val HOME = "/home"
+    // /home は廃止し、トップからツールへ誘導する
     const val REDIRECT = "redirect:"
     const val USERNAME_CHECK = "/userNameCheck"
     const val USER_CHECK = "/userCheck"
@@ -27,4 +27,3 @@ object ApplicationConstants {
         const val PASSWORD_LENGTH = 15
     }
 }
-

@@ -7,11 +7,17 @@ import com.example.demo.util.BlacklistEventFactory
 import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
+/**
+ * User-Agentブラックリスト管理API
+ * ADMINロールのみアクセス可能
+ */
 @RestController
 @RequestMapping("/api/ua-blacklist")
+@PreAuthorize("hasRole('ADMIN')")
 class ApiUaBlacklistController(
     private val ruleMapper: UaBlacklistRuleMapper,
     private val accessLogMapper: AccessLogMapper,
