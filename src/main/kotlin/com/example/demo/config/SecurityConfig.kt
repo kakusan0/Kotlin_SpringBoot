@@ -109,7 +109,7 @@ class SecurityConfig(
                     .requestMatchers("/api/calendar/holidays/range").permitAll()
                     .requestMatchers("/api/calendar/holidays/**").authenticated() // 追加・削除は認証必須
                     // 管理画面は認証必須
-                    .requestMatchers("/manage/**").authenticated()
+                    .requestMatchers("/manage/**").hasRole("ADMIN")
                     // その他のAPIは認証必須
                     .requestMatchers("/api/**").authenticated()
                     // Actuatorエンドポイントは制限

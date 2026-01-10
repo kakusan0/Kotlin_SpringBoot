@@ -57,4 +57,13 @@ class MainController {
         }
         return "main"
     }
+
+    @GetMapping("/tools/password")
+    fun passwordTool(model: Model): String {
+        model.addAttribute("screens", emptyList<Any>())
+        model.addAttribute("currentScreen", "パスワード生成")
+        model.addAttribute("selectedScreenName", "パスワード生成")
+        model.addAttribute("currentScreenPath", "passwordGeneration")
+        return "main"
+    }
 }

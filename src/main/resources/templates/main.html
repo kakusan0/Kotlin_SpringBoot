@@ -73,8 +73,8 @@
                     <span>勤務表</span>
                 </a>
             </li>
-            <!-- 管理: ログイン必須 -->
-            <li class="nav-item" sec:authorize="isAuthenticated()">
+            <!-- 管理: ADMINロールのみ表示 -->
+            <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                 <a class="nav-link text-dark"
                    th:classappend="${#httpServletRequest != null and #strings.startsWith(#httpServletRequest.requestURI, '/manage')} ? ' active'"
                    th:href="@{/manage}">
@@ -258,6 +258,8 @@
     })();
     /*]]>*/
 </script>
+
+
 
 
 

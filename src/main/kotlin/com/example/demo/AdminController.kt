@@ -4,6 +4,7 @@ import com.example.demo.mapper.AccessLogMapper
 import com.example.demo.mapper.BlacklistIpMapper
 import com.example.demo.mapper.UaBlacklistRuleMapper
 import com.example.demo.mapper.WhitelistIpMapper
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
@@ -15,11 +16,13 @@ class AdminController(
     private val uaBlacklistRuleMapper: UaBlacklistRuleMapper,
     private val accessLogMapper: AccessLogMapper,
 ) {
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/manage")
     fun manage(): String {
         return "manage"
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/manage/ip")
     fun manageIp(model: Model): String {
         val whitelist = whitelistIpMapper.getActive()
@@ -46,6 +49,7 @@ class AdminController(
         return "manage_ip"
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/manage/ua")
     fun manageUa(model: Model): String {
         // サーバーサイド描画のフォールバック用に一覧を渡す（JSが失敗しても最低限表示）
