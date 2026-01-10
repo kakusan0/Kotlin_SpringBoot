@@ -1,9 +1,12 @@
-### Kotlin template
-# Compiled class file
+### ===========================================
+### Kotlin / Java
+### ===========================================
+# Compiled class files
 *.class
 
-# Log file
+# Log files
 *.log
+logs/
 
 # BlueJ files
 *.ctxt
@@ -11,7 +14,13 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files #
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+### ===========================================
+### Package Files
+### ===========================================
 *.jar
 *.war
 *.nar
@@ -20,35 +29,92 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
-
-### Maven/Gradle Build Files
+### ===========================================
+### Maven / Gradle Build
+### ===========================================
 target/
 build/
 out/
+!.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
 
-### Security - 機密情報
+### ===========================================
+### Security - 機密情報（絶対にコミットしない）
+### ===========================================
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 *.key
 *.pem
 *.crt
+*.p12
+*.jks
 secrets/
 credentials/
 src/main/resources/keystore/
-*.p12
 
+### ===========================================
 ### IDE
+### ===========================================
+# IntelliJ IDEA
 .idea/
 *.iml
+*.ipr
+*.iws
+
+# VS Code
 .vscode/
 
-### Node.js
-frontend/node
-frontend/node_modules
+# Eclipse
+.project
+.classpath
+.settings/
+
+# NetBeans
+nbproject/
+nbbuild/
+nbdist/
+
+### ===========================================
+### Node.js / Frontend
+### ===========================================
+frontend/node/
+frontend/node_modules/
 frontend/package-lock.json
+frontend/obfuscate/*.js
+
+# Minified/Obfuscated JS (ビルド生成物)
 src/main/resources/static/js/*.js
-/frontend/obfuscate/*.js
+
+### ===========================================
+### OS Generated Files
+### ===========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+### ===========================================
+### Miscellaneous
+### ===========================================
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Dependency reports
+dependency-updates-report.txt
+
+# GeoIP database (大きいファイル)
+*.mmdb
+

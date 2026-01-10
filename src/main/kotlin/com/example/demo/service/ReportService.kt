@@ -659,11 +659,11 @@ class ReportService(
                     // 説明 (AB列) - 遅刻・早退・変則勤務の説明を結合
                     val descCell = row.getCell(colDescription) ?: row.createCell(colDescription)
                     val descriptions = mutableListOf<String>()
-                    if (!entry?.lateDesc.isNullOrBlank()) {
-                        descriptions.add("遅刻: ${entry?.lateDesc}")
+                    entry?.lateDesc?.takeIf { it.isNotBlank() }?.let {
+                        descriptions.add("遅刻: $it")
                     }
-                    if (!entry?.earlyDesc.isNullOrBlank()) {
-                        descriptions.add("早退: ${entry?.earlyDesc}")
+                    entry?.earlyDesc?.takeIf { it.isNotBlank() }?.let {
+                        descriptions.add("早退: $it")
                     }
 
                     // 変則勤務データを取得（複数対応）
@@ -683,26 +683,33 @@ class ReportService(
                     }
 
                     // 自由備考を追加（「・」プレフィックスなし）
-                    if (!entry?.freeNote.isNullOrBlank()) {
-                        if (descriptions.isNotEmpty()) {
-                            // 既に他の説明がある場合は、改行で区切る（「・」なし）
-                            descCell.setCellValue(descriptions.joinToString("\n") { "・$it" } + "\n" + entry?.freeNote)
-                        } else {
-                            // 自由備考のみの場合は、そのまま出力
-                            descCell.setCellValue(entry?.freeNote)
+                    val freeNoteValue = entry?.freeNote?.takeIf { it.isNotBlank() }
+                    when {
+                        freeNoteValue != null -> {
+                            if (descriptions.isNotEmpty()) {
+                                // 既に他の説明がある場合は、改行で区切る（「・」なし）
+                                descCell.setCellValue(descriptions.joinToString("\n") { "・$it" } + "\n" + freeNoteValue)
+                            } else {
+                                // 自由備考のみの場合は、そのまま出力
+                                descCell.setCellValue(freeNoteValue)
+                            }
+                            val style = wb.createCellStyle()
+                            style.wrapText = true
+                            descCell.cellStyle = style
                         }
-                        val style = wb.createCellStyle()
-                        style.wrapText = true
-                        descCell.cellStyle = style
-                    } else if (descriptions.isNotEmpty()) {
-                        // セル内改行（ALT+Enter相当）は \n を使用、各項目の前に「・」をつける
-                        descCell.setCellValue(descriptions.joinToString("\n") { "・$it" })
-                        // 折り返し設定
-                        val style = wb.createCellStyle()
-                        style.wrapText = true
-                        descCell.cellStyle = style
-                    } else {
-                        descCell.setBlank()
+
+                        descriptions.isNotEmpty() -> {
+                            // セル内改行（ALT+Enter相当）は \n を使用、各項目の前に「・」をつける
+                            descCell.setCellValue(descriptions.joinToString("\n") { "・$it" })
+                            // 折り返し設定
+                            val style = wb.createCellStyle()
+                            style.wrapText = true
+                            descCell.cellStyle = style
+                        }
+
+                        else -> {
+                            descCell.setBlank()
+                        }
                     }
 
                     // 備考による各列への〇入力

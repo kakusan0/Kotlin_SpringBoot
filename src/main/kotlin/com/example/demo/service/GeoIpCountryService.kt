@@ -9,9 +9,9 @@ import java.util.concurrent.atomic.AtomicReference
 
 @Service
 class GeoIpCountryService(
-    @Value("\${geoip.mmdb-path:}")
+    @param:Value("\${geoip.mmdb-path:}")
     private val dbPath: String,
-    @Value("\${geoip.allowed-country-codes:JP}")
+    @param:Value("\${geoip.allowed-country-codes:JP}")
     private val allowedCodesCsv: String
 ) {
     private val log = LoggerFactory.getLogger(GeoIpCountryService::class.java)

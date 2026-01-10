@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter
 class ReportJobService(
     private val reportJobMapper: ReportJobMapper,
     private val reportService: ReportService,
-    @Value("\${app.report.dir:reports}")
+    @param:Value("\${app.report.dir:reports}")
     private val reportDir: String = "reports"
 ) {
     private val logger = LoggerFactory.getLogger(ReportJobService::class.java)
