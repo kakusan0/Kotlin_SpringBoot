@@ -42,6 +42,18 @@ class SecurityConfig(
     @Value("\${app.csp.connect-src:'self'}")
     private lateinit var cspConnectSrc: String
 
+    @Value("\${webauthn.rp.id:localhost}")
+    private lateinit var webAuthnRpId: String
+
+    @Value("\${webauthn.rp.name:Dev RP}")
+    private lateinit var webAuthnRpName: String
+
+    @Value("\${webauthn.rp.origin:http://localhost:8080}")
+    private lateinit var webAuthnRpOrigin: String
+
+    @Value("\${webauthn.rp.allowed-origins:}")
+    private var webAuthnAllowedOrigins: String = ""
+
     companion object {
         private const val HSTS_MAX_AGE = 31536000L // 1年
         private const val CORS_MAX_AGE = 3600L // 1時間
@@ -142,9 +154,15 @@ class SecurityConfig(
                 it.failureHandler(customAuthenticationFailureHandler)
             }
             .webAuthn {
-                it.rpName("Dev RP")
-                it.rpId("localhost")
-                it.allowedOrigins(setOf("http://localhost:8080"))
+                it.rpName(webAuthnRpName)
+                it.rpId(webAuthnRpId)
+                // 複数オリジンをサポート（カンマ区切り）
+                val origins = if (webAuthnAllowedOrigins.isNotBlank()) {
+                    webAuthnAllowedOrigins.split(",").map { o -> o.trim() }.toSet()
+                } else {
+                    setOf(webAuthnRpOrigin)
+                }
+                it.allowedOrigins(origins)
             }
             .httpBasic { it.disable() }
             .logout {

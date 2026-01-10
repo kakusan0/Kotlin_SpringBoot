@@ -110,6 +110,8 @@ webauthn:
     id: ${WEBAUTHN_RP_ID:localhost}
     name: ${WEBAUTHN_RP_NAME:Dev RP}
     origin: ${WEBAUTHN_RP_ORIGIN:http://localhost:8080}
+    # 複数オリジンを許可する場合はカンマ区切りで指定
+    allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:http://localhost:8080}
 
 report:
   holidayPosition: START
