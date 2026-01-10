@@ -141,15 +141,12 @@ class SecurityConfig(
             }
 
             // セッション管理: セッション無効（タイムアウトや強制ログアウト）時のリダイレクト先
-            .sessionManagement { sm ->
-                sm.invalidSessionUrl("/home") // セッション無効時もホームへ
-            }
-
-            // セッション管理: 同一ユーザ最大セッション数を 1 にして古いセッションを切断（新ログインを許可）
+            // および同一ユーザ最大セッション数を 1 にして古いセッションを切断（新ログインを許可）
             .sessionManagement { sess ->
+                sess.invalidSessionUrl("/home") // セッション無効時もホームへ
                 sess.maximumSessions(1)
                     .maxSessionsPreventsLogin(false)
-                    .expiredUrl("/login")
+                    .expiredUrl("/home") // セッション期限切れもホームへ
                     .sessionRegistry(sessionRegistry)
             }
 
