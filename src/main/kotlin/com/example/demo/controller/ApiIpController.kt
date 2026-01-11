@@ -1,4 +1,4 @@
-package com.example.demo
+package com.example.demo.controller
 
 import com.example.demo.mapper.AccessLogMapper
 import com.example.demo.mapper.BlacklistEventMapper

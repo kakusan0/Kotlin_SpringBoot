@@ -88,8 +88,8 @@
 </div>
 
 <!-- メインコンテンツ（currentScreen に応じて切替） -->
-<main class="main-content p-4">
-    <div class="container-fluid">
+<main class="main-content p-4" th:classappend="${currentScreenPath == 'timesheetMonth'} ? 'p-0' : 'p-4'">
+    <div class="container-fluid" th:classappend="${currentScreenPath == 'timesheetMonth'} ? 'p-0' : ''">
         <div class="mb-3" th:if="${errorMessage != null and errorMessage != ''}">
             <div class="alert alert-danger" th:text="${errorMessage}"></div>
         </div>

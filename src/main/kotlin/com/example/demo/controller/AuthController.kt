@@ -1,4 +1,4 @@
-package com.example.demo
+package com.example.demo.controller
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.core.Authentication

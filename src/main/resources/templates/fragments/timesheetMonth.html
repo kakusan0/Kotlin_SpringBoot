@@ -3,102 +3,104 @@
 </head>
 <div th:fragment="content">
     <div class="container-fluid">
-        <!-- 上部コントロール: 月選択 + デフォルト設定 + 祝日 -->
-        <div class="row align-items-start mb-3 g-2">
-            <!-- 左側: デフォルト設定 -->
-            <div class="col-12 col-lg-4 order-2 order-lg-1">
-                <div class="card h-100">
-                    <div class="card-header py-1 px-2">
-                        <i class="bi bi-gear me-1"></i><small>デフォルト設定</small>
+        <!-- 月選択ボタン（固定ヘッダー） -->
+        <div class="timesheet-month-selector-fixed">
+            <div class="d-flex gap-2 align-items-center justify-content-center py-2">
+                <button class="btn btn-sm btn-outline-secondary" id="prevMonth" title="前の月" type="button">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <input class="form-control form-control-sm" id="monthInput" style="width:160px;"
+                       th:value="${yearMonthValue}" title="表示する月" type="month">
+                <button class="btn btn-sm btn-outline-secondary" id="nextMonth" title="次の月" type="button">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-primary" data-bs-target="#fullscreenModal"
+                        data-bs-toggle="modal"
+                        id="fullscreenBtn" title="フルスクリーン表示" type="button">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" id="resetAllBtn" title="全体リセット" type="button">
+                    <i class="bi bi-arrow-counterclockwise"></i> 全リセット
+                </button>
+            </div>
+        </div>
+
+        <!-- スクロール可能エリア -->
+        <div class="timesheet-scroll-area">
+            <!-- 上部コントロール: デフォルト設定 + 祝日 -->
+            <div class="row align-items-start mb-3 g-2">
+                <!-- 左側: デフォルト設定 -->
+                <div class="col-12 col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header py-1 px-2">
+                            <i class="bi bi-gear me-1"></i><small>デフォルト設定</small>
+                        </div>
+                        <div class="card-body py-2 px-2">
+                            <div class="d-flex gap-2 align-items-end flex-wrap">
+                                <div class="w-90">
+                                    <label class="form-label small mb-0" for="defaultStart">出勤</label>
+                                    <input class="form-control form-control-sm" id="defaultStart" type="time" value="09:00">
+                                </div>
+                                <div class="w-90">
+                                    <label class="form-label small mb-0" for="defaultEnd">退勤</label>
+                                    <input class="form-control form-control-sm" id="defaultEnd" type="time" value="18:00">
+                                </div>
+                                <div class="w-50">
+                                    <label class="form-label small mb-0" for="defaultBreak">休憩</label>
+                                    <input class="form-control form-control-sm" id="defaultBreak" min="0" type="number"
+                                           value="60">
+                                </div>
+                                <button class="btn btn-sm btn-primary" id="applyDefaults" title="空セルに適用">
+                                    <i class="bi bi-check2"></i>
+                                </button>
+                                <button class="btn btn-sm btn-success ms-2" id="downloadUnissXlsx"
+                                        title="UNISS勤務表をダウンロード">
+                                    <i class="bi bi-file-earmark-excel"></i> UNISS
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body py-2 px-2">
-                        <div class="d-flex gap-2 align-items-end flex-wrap">
-                            <div class="w-90">
-                                <label class="form-label small mb-0" for="defaultStart">出勤</label>
-                                <input class="form-control form-control-sm" id="defaultStart" type="time" value="09:00">
-                            </div>
-                            <div class="w-90">
-                                <label class="form-label small mb-0" for="defaultEnd">退勤</label>
-                                <input class="form-control form-control-sm" id="defaultEnd" type="time" value="18:00">
-                            </div>
-                            <div class="w-50">
-                                <label class="form-label small mb-0" for="defaultBreak">休憩</label>
-                                <input class="form-control form-control-sm" id="defaultBreak" min="0" type="number"
-                                       value="60">
-                            </div>
-                            <button class="btn btn-sm btn-primary" id="applyDefaults" title="空セルに適用">
-                                <i class="bi bi-check2"></i>
-                            </button>
-                            <button class="btn btn-sm btn-success ms-2" id="downloadUnissXlsx"
-                                    title="UNISS勤務表をダウンロード">
-                                <i class="bi bi-file-earmark-excel"></i> UNISS
-                            </button>
+                </div>
+
+                <!-- 右側: 当月の祝日 -->
+                <div class="col-12 col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header py-1 px-2">
+                            <i class="bi bi-calendar-event me-1"></i><small>当月の祝日</small>
+                        </div>
+                        <div class="card-body py-1 px-2" id="holidayInfo" style="max-height: 80px; overflow-y: auto;">
+                            <p class="text-muted small mb-0">読み込み中...</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 中央: 月選択 + フルスクリーンボタン -->
-            <div class="col-12 col-lg-4 order-1 order-lg-2">
-                <div class="d-flex gap-2 align-items-center justify-content-center">
-                    <button class="btn btn-sm btn-outline-secondary" id="prevMonth" title="前の月" type="button">
-                        <i class="bi bi-chevron-left"></i>
-                    </button>
-                    <input class="form-control form-control-sm" id="monthInput" style="width:160px;"
-                           th:value="${yearMonthValue}" title="表示する月" type="month">
-                    <button class="btn btn-sm btn-outline-secondary" id="nextMonth" title="次の月" type="button">
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-primary" data-bs-target="#fullscreenModal"
-                            data-bs-toggle="modal"
-                            id="fullscreenBtn" title="フルスクリーン表示" type="button">
-                        <i class="bi bi-arrows-fullscreen"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" id="resetAllBtn" title="全体リセット" type="button">
-                        <i class="bi bi-arrow-counterclockwise"></i> 全リセット
-                    </button>
-                </div>
-            </div>
+            <div aria-live="polite" class="text-muted small mb-2" id="reportMessage"></div>
 
-            <!-- 右側: 当月の祝日 -->
-            <div class="col-12 col-lg-4 order-3">
-                <div class="card h-100">
-                    <div class="card-header py-1 px-2">
-                        <i class="bi bi-calendar-event me-1"></i><small>当月の祝日</small>
-                    </div>
-                    <div class="card-body py-1 px-2" id="holidayInfo" style="max-height: 80px; overflow-y: auto;">
-                        <p class="text-muted small mb-0">読み込み中...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div aria-live="polite" class="text-muted small mb-2" id="reportMessage"></div>
-
-
-        <!-- テーブル -->
-        <div class="timesheet-table-container">
-            <table class="table table-sm table-bordered table-hover" id="workTable">
-                <thead class="table-light sticky-header">
-                <tr>
-                    <th class="col-date">日付</th>
-                    <th class="col-weekday">曜日</th>
-                    <th class="col-location">出社区分</th>
-                    <th class="col-note">備考</th>
-                    <th class="col-freeNote">自由備考</th>
-                    <th class="col-irregular">変則勤務</th>
-                    <th class="col-start">出勤</th>
-                    <th class="col-end">退勤</th>
-                    <th class="col-break">休憩</th>
-                    <th class="col-duration">稼働</th>
-                    <th class="col-working">実働</th>
-                    <th class="col-lateearly"></th>
-                    <th class="col-action">操作</th>
-                </tr>
+            <!-- テーブル -->
+            <div class="timesheet-table-container">
+                <table class="table table-sm table-bordered table-hover" id="workTable">
+                    <thead class="table-light sticky-header">
+                    <tr>
+                        <th class="col-date">日付</th>
+                        <th class="col-weekday">曜日</th>
+                        <th class="col-location">出社区分</th>
+                        <th class="col-note">備考</th>
+                        <th class="col-freeNote">自由備考</th>
+                        <th class="col-irregular">変則勤務</th>
+                        <th class="col-start">出勤</th>
+                        <th class="col-end">退勤</th>
+                        <th class="col-break">休憩</th>
+                        <th class="col-duration">稼働</th>
+                        <th class="col-working">実働</th>
+                        <th class="col-lateearly"></th>
+                        <th class="col-action">操作</th>
+                    </tr>
                 </thead>
                 <tbody id="tableBody">
                 </tbody>
-            </table>
+                </table>
+            </div>
         </div>
 
         <!-- モバイル用余白 -->
@@ -427,8 +429,6 @@
                 originalContainer.style.pointerEvents = 'auto';
             });
 
-            // ...existing code...
-
             // モーダルが閉じる時: テーブルを元の位置に戻す
             fullscreenModal.addEventListener('hidden.bs.modal', function () {
                 window.isFullscreenMode = false;
@@ -571,4 +571,152 @@
             })();
         });
     </script>
+
+    <!-- テーブルヘッダー固定スクリプト -->
+    <script>
+        (function() {
+            const table = document.getElementById('workTable');
+            const thead = document.querySelector('#workTable thead.sticky-header');
+            const tbody = document.querySelector('#workTable tbody');
+            const tableContainer = document.querySelector('.timesheet-table-container');
+            if (!table || !thead || !tbody || !tableContainer) return;
+
+            // スペーサー用行を作成（レイアウト崩れ防止）
+            const dummyThead = document.createElement('thead');
+            dummyThead.className = 'thead-spacer';
+            dummyThead.style.visibility = 'hidden';
+            dummyThead.style.display = 'none';
+            dummyThead.innerHTML = thead.innerHTML;
+            table.insertBefore(dummyThead, tbody);
+
+            // CSS変数から値を取得
+            const style = getComputedStyle(document.documentElement);
+            const headerHeight = parseInt(style.getPropertyValue('--header-height')) || 60;
+            const monthSelectorHeight = parseInt(style.getPropertyValue('--month-selector-height')) || 50;
+            const fixedTop = headerHeight + monthSelectorHeight;
+
+            // モバイル判定
+            const isMobile = window.innerWidth < 768;
+            const mobileFixedTop = monthSelectorHeight;
+
+            let isHeaderFixed = false;
+            let ticking = false;
+            let winTicking = false;
+
+            // 幅同期関数
+            function syncWidths() {
+                const ths = thead.querySelectorAll('th');
+                const firstRowTds = tbody.querySelector('tr')?.children;
+
+                if (!firstRowTds || ths.length !== firstRowTds.length) return;
+
+                // テーブル全体の幅を同期
+                const tableRect = table.getBoundingClientRect();
+                thead.style.width = tableRect.width + 'px';
+
+                // 各カラムの幅を同期
+                Array.from(firstRowTds).forEach((td, index) => {
+                    const rect = td.getBoundingClientRect();
+                    const w = rect.width + 'px';
+                    ths[index].style.width = w;
+                    ths[index].style.minWidth = w;
+                    ths[index].style.maxWidth = w;
+                    ths[index].style.boxSizing = 'border-box';
+                });
+            }
+
+            // スタイルリセット関数
+            function resetStyles() {
+                thead.style.width = '';
+                thead.style.left = '';
+                thead.style.transform = '';
+                thead.style.clipPath = '';
+                const ths = thead.querySelectorAll('th');
+                ths.forEach(th => {
+                    th.style.width = '';
+                    th.style.minWidth = '';
+                    th.style.maxWidth = '';
+                });
+            }
+
+            // 横スクロール位置の同期
+            function updateHeaderPosition() {
+                if (isHeaderFixed) {
+                    // コンテナの左端位置に合わせてオフセットを設定
+                    const containerRect = tableContainer.getBoundingClientRect();
+                    thead.style.left = containerRect.left + 'px';
+                    thead.style.transform = `translateX(-${tableContainer.scrollLeft}px)`;
+
+                    // コンテナ範囲外をクリッピングして、外側のマージン部分にはみ出さないようにする
+                    const tableWidth = table.getBoundingClientRect().width;
+                    const scrollLeft = tableContainer.scrollLeft;
+                    const containerWidth = containerRect.width;
+
+                    const clipRight = Math.max(0, tableWidth - (scrollLeft + containerWidth));
+                    const clipLeft = scrollLeft;
+
+                    // inset(top right bottom left)
+                    // 上下はクリップせず、左右をスクロール量に合わせてクリップする
+                    thead.style.clipPath = `inset(-10px ${clipRight}px -10px ${clipLeft}px)`;
+                }
+                ticking = false;
+            }
+
+            // スクロールイベントハンドラ（requestAnimationFrame使用）
+            function onContainerScroll() {
+                if (!ticking && isHeaderFixed) {
+                    window.requestAnimationFrame(updateHeaderPosition);
+                    ticking = true;
+                }
+            }
+
+            // 固定状態のチェックと更新
+            function checkStickyState() {
+                const containerRect = tableContainer.getBoundingClientRect();
+                const threshold = isMobile ? mobileFixedTop : fixedTop;
+
+                // 閾値判定
+                if (containerRect.top <= threshold) {
+                    if (!isHeaderFixed) {
+                        isHeaderFixed = true;
+                        thead.classList.add('is-fixed');
+                        dummyThead.style.display = 'table-header-group';
+                        syncWidths();
+                        updateHeaderPosition();
+                    }
+                } else {
+                    if (isHeaderFixed) {
+                        isHeaderFixed = false;
+                        thead.classList.remove('is-fixed');
+                        dummyThead.style.display = 'none';
+                        resetStyles();
+                    }
+                }
+                winTicking = false;
+            }
+
+            function handleWindowScroll() {
+                if (!winTicking) {
+                    window.requestAnimationFrame(checkStickyState);
+                    winTicking = true;
+                }
+            }
+
+            window.addEventListener('scroll', handleWindowScroll, { passive: true });
+
+            // 横スクロール対応
+            tableContainer.addEventListener('scroll', onContainerScroll, { passive: true });
+
+            window.addEventListener('resize', () => {
+                if (isHeaderFixed) {
+                    syncWidths();
+                    updateHeaderPosition();
+                }
+            });
+
+            // 初期化
+            checkStickyState();
+        })();
+    </script>
 </div>
+

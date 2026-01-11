@@ -20,16 +20,72 @@
     width: 150px;
 }
 
-/* テーブルコンテナ - スクロール領域 */
+/* ============================================
+   勤務表レイアウト - 固定ヘッダー + スクロール
+   ============================================ */
+
+/* 高さの定義 */
+:root {
+    --month-selector-height: 50px;
+    --table-header-height: 38px;
+}
+
+/* 月選択ボタン - サイトヘッダーの直下に固定 */
+.timesheet-month-selector-fixed {
+    position: fixed;
+    top: var(--header-height, 60px);
+    left: 0;
+    right: 0;
+    height: var(--month-selector-height);
+    background: #fff;
+    z-index: 1040;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 月選択ボタン分の余白を確保 */
+.timesheet-scroll-area {
+    padding-top: var(--month-selector-height);
+}
+
+/* テーブルヘッダー - 通常時 */
+#workTable thead.sticky-header th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* テーブルヘッダー - 固定時（JSで.is-fixedクラスを付与） */
+#workTable thead.sticky-header.is-fixed {
+    position: fixed;
+    top: calc(var(--header-height, 60px) + var(--month-selector-height));
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    display: table;
+    width: 100%;
+    table-layout: auto;
+}
+
+/* テーブルヘッダー固定時のスペーサー */
+.thead-spacer {
+    height: var(--table-header-height);
+    display: none;
+}
+
+.thead-spacer.is-active {
+    display: table-row;
+}
+
+/* テーブルコンテナ */
 .timesheet-table-container {
-    max-height: calc(100vh - 300px);
-    overflow-y: auto;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    position: relative;
     border: 1px solid #dee2e6;
     border-radius: 4px;
-    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* テーブル基本スタイル */
@@ -52,15 +108,20 @@
     padding: 4px 2px;
 }
 
-/* ヘッダー固定 */
-#workTable thead.sticky-header th,
+/* ヘッダー固定 - Sticky配置 (Fullscreenのみ) */
 #fullscreenWorkTable thead.sticky-header th {
+    position: -webkit-sticky;
     position: sticky;
     top: 0;
     background: #f8f9fa;
-    z-index: 10;
+    z-index: 120;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border-bottom: 2px solid #dee2e6;
+}
+
+/* Fullscreen Modal Override */
+#fullscreenModal #workTable thead.sticky-header th {
+    top: 0;
 }
 
 /* フルスクリーンモーダル */
@@ -351,21 +412,54 @@
    モバイル対応 - レスポンシブスタイル
    ============================================ */
 
-/* タブレット以下 (768px以下) */
-@media (max-width: 768px) {
-    /* テーブルコンテナの調整 */
+/* タブレット以下 (767.98px以下) */
+@media (max-width: 767.98px) {
+    :root {
+        --month-selector-height: 45px;
+        --table-header-height: 35px;
+    }
+
+    /* 月選択ボタン - 画面上部に固定 */
+    .timesheet-month-selector-fixed {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--month-selector-height);
+        background: #fff;
+        z-index: 1040;
+        padding: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* 月選択ボタン分の余白 */
+    .timesheet-scroll-area {
+        padding-top: var(--month-selector-height);
+    }
+
+    /* テーブルヘッダー - 固定時 */
+    #workTable thead.sticky-header.is-fixed {
+        position: fixed;
+        top: var(--month-selector-height);
+        left: 0;
+        right: 0;
+        z-index: 1030;
+    }
+
+    /* テーブルコンテナ */
     .timesheet-table-container {
-        max-height: calc(100vh - 200px);
         border-radius: 0;
         border-left: none;
         border-right: none;
+        overflow-x: auto;
     }
 
     /* テーブルのフォントサイズ縮小 */
     #workTable {
         font-size: 13px;
         white-space: nowrap;
-        min-width: max-content;
         min-width: 850px;
     }
 
@@ -517,87 +611,36 @@
 
 /* スマートフォン (480px以下) */
 @media (max-width: 480px) {
-    /* 全列を維持し、横スクロールで対応 */
+    :root {
+        --month-selector-height: 40px;
+        --table-header-height: 32px;
+    }
+
+    /* 月選択ボタン - コンパクト */
+    .timesheet-month-selector-fixed {
+        padding: 0.25rem 0.5rem;
+        height: var(--month-selector-height);
+    }
+
+    .timesheet-month-selector-fixed .btn-sm {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.7rem;
+    }
+
+    /* 月選択ボタン分の余白 */
+    .timesheet-scroll-area {
+        padding-top: var(--month-selector-height);
+    }
+
+    /* テーブルヘッダー - 固定時 */
+    #workTable thead.sticky-header.is-fixed {
+        top: var(--month-selector-height);
+    }
+
+    /* テーブル */
     #workTable {
         font-size: 12px;
-        min-width: 950px;
-    }
-
-    #workTable th,
-    #workTable td {
-        padding: 5px 3px;
-    }
-
-
-    /* 時刻セルをより大きく（タップしやすく） */
-    .time-cell {
-        min-height: 48px;
-        font-size: 14px;
-        font-weight: 500;
-    }
-
-    /* 稼働・実働を省略表示 */
-    .duration-cell,
-    .working-cell {
-        font-size: 11px;
-    }
-
-    /* 自由備考ボタンの調整 */
-    .free-note-cell {
-        min-width: 90px;
-    }
-
-    .free-note-btn {
-        padding: 3px 6px;
-        font-size: 11px;
-    }
-
-    /* 月選択をさらにコンパクトに */
-    #monthInput {
-        width: 120px !important;
-        font-size: 14px;
-    }
-
-    /* ナビゲーションボタン */
-    #prevMonth,
-    #nextMonth {
-        padding: 6px 10px;
-    }
-
-    /* クリア/リセットボタンを小さく */
-    .clear-row-btn,
-    .reset-row-btn {
-        padding: 2px 6px;
-        font-size: 11px;
-    }
-
-    /* Time Picker の時計を小さく */
-    .clock {
-        width: 160px;
-        height: 160px;
-    }
-
-    .hand {
-        height: 65px;
-        left: 78.5px;
-    }
-
-    .center-dot {
-        top: 73px;
-        left: 73px;
-    }
-
-    .drag-area {
-        width: 160px;
-        height: 160px;
-    }
-
-    .display {
-        font-size: 24px;
-    }
-
-    .mode {
-        font-size: 12px;
+        min-width: 900px;
     }
 }
 
@@ -804,3 +847,10 @@ tr.row-incomplete .break-cell {
 .timesheet-total-card .small {
     letter-spacing: 0.02em;
 }
+
+#workTable thead.sticky-header.is-fixed {
+    right: auto !important;
+    width: max-content !important;
+    will-change: transform;
+}
+

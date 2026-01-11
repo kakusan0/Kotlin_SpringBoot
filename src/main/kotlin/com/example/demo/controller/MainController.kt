@@ -1,4 +1,4 @@
-package com.example.demo
+package com.example.demo.controller
 
 import com.example.demo.constants.ApplicationConstants
 import com.example.demo.util.TimesheetGenerator
