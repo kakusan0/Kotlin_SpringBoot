@@ -485,10 +485,23 @@
             setHand();
 
             const r = cell.getBoundingClientRect();
-            picker.style.left = Math.max(8, r.left) + 'px';
-            picker.style.top = (r.bottom + 6) + 'px';
+
+            // まず表示して高さを取得可能にする
             picker.style.display = 'block';
             picker.setAttribute('aria-hidden', 'false');
+
+            const pickerHeight = picker.offsetHeight;
+            const viewportHeight = window.innerHeight;
+
+            // 画面下端からはみ出る場合は上に表示
+            if (r.bottom + 6 + pickerHeight > viewportHeight) {
+                picker.style.top = (r.top - pickerHeight - 6) + 'px';
+            } else {
+                picker.style.top = (r.bottom + 6) + 'px';
+            }
+
+            // 左端は画面外に出ないように調整
+            picker.style.left = Math.max(8, r.left) + 'px';
 
             if (overlay) overlay.style.display = 'block';
         }
@@ -1912,7 +1925,7 @@
 
         const menu = document.createElement('div');
         menu.id = 'contextMenu';
-        menu.style.position = 'absolute';
+        menu.style.position = 'fixed';
         menu.style.top = `${e.clientY}px`;
         menu.style.left = `${e.clientX}px`;
         menu.style.backgroundColor = '#fff';

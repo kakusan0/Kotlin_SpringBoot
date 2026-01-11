@@ -512,8 +512,8 @@
                 contextMenu.appendChild(excelBtn);
                 contextMenu.appendChild(pdfBtn);
 
-                // モーダル内に追加（z-indexが効くように）
-                fullscreenModal.appendChild(contextMenu);
+                // モーダル内ではなくbodyに追加して座標ズレを防ぐ
+                document.body.appendChild(contextMenu);
 
                 // クリックで閉じる
                 const closeMenu = function (ev) {
