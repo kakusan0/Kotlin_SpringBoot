@@ -180,6 +180,7 @@ class AipoLoginService(
      * @param username ユーザー名（セッション管理用）
      * @param aipoUsername Aipoのユーザー名
      * @param aipoPassword Aipoのパスワード
+     * @param yearMonth アップロードする勤務表の年月（"YYYY-MM"形式、省略時は前月）
      * @param timesheetFilePath アップロードする勤務表ファイルのパス（省略可）
      * @param autoSubmit ファイルアップロード後に自動で申請を送信するか（デフォルト: false）
      */
@@ -187,6 +188,7 @@ class AipoLoginService(
         username: String,
         aipoUsername: String,
         aipoPassword: String,
+        yearMonth: String? = null,
         timesheetFilePath: String? = null,
         autoSubmit: Boolean = false
     ): AipoLoginResult {
@@ -463,23 +465,81 @@ class AipoLoginService(
                                 logger.warn("Failed to enter text in textarea: ${e.message}")
                             }
 
+//                            // ===== 3. 申請経路を設定 =====
+//                            try {
+//                                // is_saved_route を FALSE に設定（ユーザー一覧から選択するモード）
+//                                val isSavedRouteElements = driver.findElements(By.id("is_saved_route"))
+//                                if (isSavedRouteElements.isNotEmpty()) {
+//                                    (driver as org.openqa.selenium.JavascriptExecutor).executeScript(
+//                                        "arguments[0].value = 'FALSE';", isSavedRouteElements.first()
+//                                    )
+//                                    logger.info("Set is_saved_route to FALSE")
+//                                }
+//
+//                                // ユーザー一覧モードになっていることを確認
+//                                val routeSelectButton = driver.findElements(By.id("is_saved_route_button"))
+//                                if (routeSelectButton.isNotEmpty() && routeSelectButton.first().isDisplayed) {
+//                                    val buttonValue = routeSelectButton.first().getDomProperty("value") ?: ""
+//                                    logger.info("Route select button value: '$buttonValue'")
+//                                    if (!buttonValue.contains("申請経路一覧から選択する")) {
+//                                        // 「ユーザー一覧から選択する」になっている場合はクリックして切り替え
+//                                        routeSelectButton.first().click()
+//                                        Thread.sleep(1500)
+//                                        logger.info("Clicked to switch to user list mode")
+//                                    }
+//                                }
+//
+//                                // 右側のメンバーリストが読み込まれるまで待機
+//                                Thread.sleep(1000)
+//
+//                                // 右側のメンバーリストから「角谷 亮洋」を選択
+//                                val memberFromElements = driver.findElements(By.id("tmp_member_from"))
+//                                if (memberFromElements.isNotEmpty()) {
+//                                    val memberFromSelect = memberFromElements.first()
+//                                    val memberFromDropdown = org.openqa.selenium.support.ui.Select(memberFromSelect)
+//
+//                                    // 「角谷 亮洋」を選択（a_kakutani）
+//                                    try {
+//                                        memberFromDropdown.selectByValue("a_kakutani")
+//                                        logger.info("Selected 'a_kakutani' from member list")
+//                                        Thread.sleep(500)
+//
+//                                        // 「追加」ボタンをクリック
+//                                        val addButtonElements = driver.findElements(By.id("button_member_add"))
+//                                        if (addButtonElements.isNotEmpty()) {
+//                                            addButtonElements.first().click()
+//                                            logger.info("Clicked add button to add member to route")
+//                                            Thread.sleep(1000)
+//                                        } else {
+//                                            logger.warn("Add button (button_member_add) not found")
+//                                        }
+//                                    } catch (e: Exception) {
+//                                        logger.warn("Failed to select member: ${e.message}")
+//                                    }
+//                                } else {
+//                                    logger.warn("Member from list (tmp_member_from) not found in modal")
+//                                }
+//                            } catch (e: Exception) {
+//                                logger.warn("Failed to set route: ${e.message}")
+//                            }
+
                             // ===== 3. 申請経路を設定 =====
                             try {
                                 // is_saved_route を FALSE に設定（ユーザー一覧から選択するモード）
                                 val isSavedRouteElements = driver.findElements(By.id("is_saved_route"))
                                 if (isSavedRouteElements.isNotEmpty()) {
                                     (driver as org.openqa.selenium.JavascriptExecutor).executeScript(
-                                        "arguments[0].value = 'FALSE';", isSavedRouteElements.first()
+                                        "arguments[0].value = 'TRUE';", isSavedRouteElements.first()
                                     )
-                                    logger.info("Set is_saved_route to FALSE")
+                                    logger.info("Set is_saved_route to TRUE")
                                 }
 
-                                // ユーザー一覧モードになっていることを確認
+                                //申請経路一覧モードになっていることを確認
                                 val routeSelectButton = driver.findElements(By.id("is_saved_route_button"))
                                 if (routeSelectButton.isNotEmpty() && routeSelectButton.first().isDisplayed) {
                                     val buttonValue = routeSelectButton.first().getDomProperty("value") ?: ""
                                     logger.info("Route select button value: '$buttonValue'")
-                                    if (!buttonValue.contains("申請経路一覧から選択する")) {
+                                    if (!buttonValue.contains("ユーザー一覧から選択する")) {
                                         // 「ユーザー一覧から選択する」になっている場合はクリックして切り替え
                                         routeSelectButton.first().click()
                                         Thread.sleep(1500)
@@ -491,26 +551,26 @@ class AipoLoginService(
                                 Thread.sleep(1000)
 
                                 // 右側のメンバーリストから「角谷 亮洋」を選択
-                                val memberFromElements = driver.findElements(By.id("tmp_member_from"))
+                                val memberFromElements = driver.findElements(By.id("route_id"))
                                 if (memberFromElements.isNotEmpty()) {
-                                    val memberFromSelect = memberFromElements.first()
-                                    val memberFromDropdown = org.openqa.selenium.support.ui.Select(memberFromSelect)
-
-                                    // 「角谷 亮洋」を選択（a_kakutani）
                                     try {
-                                        memberFromDropdown.selectByValue("a_kakutani")
-                                        logger.info("Selected 'a_kakutani' from member list")
-                                        Thread.sleep(500)
+                                        val memberFromSelect = memberFromElements.first()
+                                        val memberFromDropdown = org.openqa.selenium.support.ui.Select(memberFromSelect)
+                                        val jsExecutor = driver as org.openqa.selenium.JavascriptExecutor
 
-                                        // 「追加」ボタンをクリック
-                                        val addButtonElements = driver.findElements(By.id("button_member_add"))
-                                        if (addButtonElements.isNotEmpty()) {
-                                            addButtonElements.first().click()
-                                            logger.info("Clicked add button to add member to route")
-                                            Thread.sleep(1000)
-                                        } else {
-                                            logger.warn("Add button (button_member_add) not found")
-                                        }
+                                        // JavaScriptで値を設定してchangeイベントを発火
+                                        jsExecutor.executeScript(
+                                            """
+                                            var select = arguments[0];
+                                            select.value = '921';
+                                            var event = new Event('change', { bubbles: true });
+                                            select.dispatchEvent(event);
+                                            """.trimIndent(), memberFromSelect
+                                        )
+                                        memberFromDropdown.selectByValue("921")
+                                        logger.info("Selected '921' via JavaScript and triggered change event")
+                                        Thread.sleep(2000) // Ajax完了を待機
+
                                     } catch (e: Exception) {
                                         logger.warn("Failed to select member: ${e.message}")
                                     }
@@ -529,11 +589,18 @@ class AipoLoginService(
                             // ファイルパスが指定されていない場合はUNISS勤務表を自動生成
                             if (uploadFilePath == null) {
                                 try {
-                                    // 前月の勤務表を生成
-                                    val now = LocalDate.now()
-                                    val targetMonth = now.minusMonths(1)
-                                    val from = targetMonth.withDayOfMonth(1)
-                                    val to = targetMonth.withDayOfMonth(targetMonth.lengthOfMonth())
+                                    // 年月が指定されている場合はそれを使用、なければ前月
+                                    val (year, month) = if (yearMonth != null) {
+                                        val parts = yearMonth.split("-")
+                                        Pair(parts[0].toInt(), parts[1].toInt())
+                                    } else {
+                                        val now = LocalDate.now()
+                                        val targetMonth = now.minusMonths(1)
+                                        Pair(targetMonth.year, targetMonth.monthValue)
+                                    }
+
+                                    val from = LocalDate.of(year, month, 1)
+                                    val to = from.withDayOfMonth(from.lengthOfMonth())
 
                                     logger.info("Generating UNISS timesheet for $username: $from to $to")
 
@@ -760,7 +827,7 @@ class AipoLoginService(
                                     }
                                 } else {
                                     collectedFormPreview
-                            }
+                                }
 
                             logger.info("Form preview collected: $formPreview")
 

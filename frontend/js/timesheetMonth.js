@@ -4,6 +4,15 @@
         defaultStart: document.getElementById('defaultStart'),
         defaultEnd: document.getElementById('defaultEnd'),
         defaultBreak: document.getElementById('defaultBreak'),
+        companyAffiliation: document.getElementById('companyAffiliation'),
+        branchOffice: document.getElementById('branchOffice'),
+        section: document.getElementById('section'),
+        workGroup: document.getElementById('workGroup'),
+        employeeNumber: document.getElementById('employeeNumber'),
+        siteRegularHours: document.getElementById('siteRegularHours'),
+        displayName: document.getElementById('displayName'),
+        saveUserSettingsBtn: document.getElementById('saveUserSettings'),
+        userSettingsStatus: document.getElementById('userSettingsStatus'),
         applyDefaultsBtn: document.getElementById('applyDefaults'),
         picker: document.getElementById('timePicker'),
         display: document.getElementById('timeDisplay'),
@@ -34,7 +43,8 @@
     const {
         defaultStart, defaultEnd, defaultBreak, applyDefaultsBtn, picker, display, hand,
         modeLabel, dragArea, clock, selectedDateLabel, cellTypeLabel, holidayLabel,
-        monthInput, prevBtn, nextBtn
+        monthInput, prevBtn, nextBtn, companyAffiliation, branchOffice, section, workGroup,
+        employeeNumber, siteRegularHours, displayName, saveUserSettingsBtn, userSettingsStatus
     } = elements;
 
     // 動的にオーバーレイを用意
@@ -2056,6 +2066,89 @@
         }
     })();
 
+    function normalizeTimeInput(value) {
+        if (!value) return '';
+        if (TIME_PATTERNS.HH_MM_SS.test(value)) return value.substring(0, 5);
+        return TIME_PATTERNS.HH_MM.test(value) ? value : '';
+    }
+
+    function setUserSettingsStatus(text, isError = false) {
+        if (!userSettingsStatus) return;
+        userSettingsStatus.textContent = text;
+        userSettingsStatus.classList.toggle('text-danger', isError);
+        userSettingsStatus.classList.toggle('text-muted', !isError);
+        if (text) {
+            setTimeout(() => {
+                if (userSettingsStatus.textContent === text) userSettingsStatus.textContent = '';
+            }, 3000);
+        }
+    }
+
+    async function loadUserSettings() {
+        if (!companyAffiliation && !branchOffice && !section && !workGroup &&
+            !employeeNumber && !siteRegularHours && !displayName) return;
+        try {
+            const resp = await fetch('/api/user-settings', {credentials: 'same-origin'});
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (companyAffiliation && data.companyAffiliation) companyAffiliation.value = data.companyAffiliation;
+            if (branchOffice && data.branchOffice) branchOffice.value = data.branchOffice;
+            if (section && data.section != null) section.value = String(data.section);
+            if (workGroup && data.workGroup != null) workGroup.value = String(data.workGroup);
+            if (employeeNumber && data.employeeNumber) employeeNumber.value = data.employeeNumber;
+            if (siteRegularHours && data.siteRegularHours) {
+                siteRegularHours.value = normalizeTimeInput(data.siteRegularHours);
+            }
+            if (displayName && data.displayName) displayName.value = data.displayName;
+        } catch (err) {
+            console.warn('Failed to load user settings:', err);
+        }
+    }
+
+    async function saveUserSettings() {
+        const payload = {
+            companyAffiliation: companyAffiliation?.value || '',
+            branchOffice: branchOffice?.value || '',
+            section: section?.value || '',
+            workGroup: workGroup?.value || '',
+            employeeNumber: employeeNumber?.value || '',
+            siteRegularHours: siteRegularHours?.value || '',
+            displayName: displayName?.value || ''
+        };
+        const csrf = getCsrf();
+        const headers = {'Content-Type': 'application/json'};
+        if (csrf) headers[csrf.header] = csrf.token;
+        try {
+            const resp = await fetch('/api/user-settings', {
+                method: 'POST',
+                headers,
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            });
+            if (!resp.ok) {
+                setUserSettingsStatus('保存に失敗しました', true);
+                return;
+            }
+            setUserSettingsStatus('保存しました');
+        } catch (err) {
+            console.error('Failed to save user settings:', err);
+            setUserSettingsStatus('保存に失敗しました', true);
+        }
+    }
+
+    if (employeeNumber) {
+        employeeNumber.addEventListener('input', () => {
+            const sanitized = employeeNumber.value.replace(/\D/g, '');
+            if (employeeNumber.value !== sanitized) employeeNumber.value = sanitized;
+        });
+    }
+
+    if (saveUserSettingsBtn) {
+        saveUserSettingsBtn.addEventListener('click', () => saveUserSettings());
+    }
+
+    loadUserSettings();
+
     // サブモーダルのz-indexを調整する関数（フルスクリーンモーダル内で表示される場合）
     function adjustSubModalZIndex(modalEl) {
         if (!modalEl) return;
@@ -2885,12 +2978,17 @@
                     headers[csrfHeaderMeta.content] = csrfMeta.content;
                 }
 
+                // 現在表示している年月を取得
+                const monthInput = document.getElementById('monthInput');
+                const yearMonth = monthInput ? monthInput.value : null; // "YYYY-MM"形式
+
                 const response = await fetch('/api/aipo/login', {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({
                         username: username,
-                        password: password
+                        password: password,
+                        yearMonth: yearMonth
                     })
                 });
 
@@ -3422,4 +3520,3 @@
         checkAipoLoginStatus();
     })();
 })();
-

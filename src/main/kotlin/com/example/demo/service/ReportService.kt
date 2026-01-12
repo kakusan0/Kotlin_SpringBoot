@@ -22,11 +22,13 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class ReportService(
     private val timesheetService: TimesheetService,
+    private val userSettingsService: UserSettingsService,
     @param:Value("\${report.holidayPosition:MIDDLE}")
     private val holidayPositionStr: String
 ) {
@@ -530,6 +532,38 @@ class ReportService(
                 val monthCell = monthRow.getCell(14) ?: monthRow.createCell(14)
                 monthCell.setCellValue(from.monthValue.toDouble())
 
+                // M2セルに年を入力 (M列 = インデックス12, 行2 = インデックス1)
+                val yearCell = monthRow.getCell(12) ?: monthRow.createCell(12)
+                yearCell.setCellValue(from.year.toDouble())
+
+                val settings = userSettingsService.getSettings(username)
+
+                fun getCell(rowIdx: Int, colIdx: Int) =
+                    (sheet.getRow(rowIdx) ?: sheet.createRow(rowIdx)).let { row ->
+                        row.getCell(colIdx) ?: row.createCell(colIdx)
+                    }
+
+                fun setText(rowIdx: Int, colIdx: Int, value: String) {
+                    getCell(rowIdx, colIdx).setCellValue(value)
+                }
+
+                fun setNumber(rowIdx: Int, colIdx: Int, value: Double) {
+                    getCell(rowIdx, colIdx).setCellValue(value)
+                }
+
+                fun setTime(rowIdx: Int, colIdx: Int, value: LocalTime) {
+                    val fraction = value.toSecondOfDay().toDouble() / 86400.0
+                    getCell(rowIdx, colIdx).setCellValue(fraction)
+                }
+
+                settings?.companyAffiliation?.let { setText(1, 3, it) } // D2
+                settings?.branchOffice?.let { setText(1, 8, it) } // I2
+                settings?.section?.let { setNumber(2, 6, it.toDouble()) } // D3
+                settings?.workGroup?.let { setNumber(2, 10, it.toDouble()) } // K3
+                settings?.employeeNumber?.let { setText(3, 3, it) } // D4
+                settings?.siteRegularHours?.let { setTime(3, 9, it) } // J4
+                setText(4, 3, settings?.displayName ?: username) // D5
+
                 // 固定の列インデックス（0-indexed）
                 val colStartHour = 4   // E列: 出勤時
                 val colStartMin = 5    // F列: 出勤分
@@ -751,6 +785,44 @@ class ReportService(
                     if (isHolidayOrWeekend && (noteValue == "午前休" || noteValue == "午後休")) {
                         holidayWorkCell.setCellValue("〇")
                     }
+                }
+
+                // ===== AR列に年度の祝日を出力 =====
+                // AR列 = 43 (A=0, B=1, ..., AR=43)
+                val colHoliday = 43
+                val holidayStartRow = 9 // 10行目（インデックス9）から開始
+
+                // 年度を計算（日本の年度は4月始まり）
+                val fiscalYear = if (from.monthValue >= 4) from.year else from.year - 1
+                logger.info("[UNISS] Fiscal year calculated: $fiscalYear (from month: ${from.monthValue})")
+
+                // 年度の祝日を取得（年度年と年度年+1の両方を取得）
+                val fiscalYearHolidayMap = fetchHolidayDates(fiscalYear, fiscalYear + 1)
+                logger.info("[UNISS] Fetched holidays for fiscal year $fiscalYear: ${fiscalYearHolidayMap.size} holidays")
+
+                // 勤務表の西暦範囲でフィルタリング（1月1日～12月31日）
+                val displayYearStart = LocalDate.of(from.year, 1, 1)
+                val displayYearEnd = LocalDate.of(from.year, 12, 31)
+                val displayYearHolidays = fiscalYearHolidayMap.keys
+                    .filter { it in displayYearStart..displayYearEnd }
+                    .sorted()
+
+                logger.info("[UNISS] Filtered holidays in display year range: ${displayYearHolidays.size} holidays")
+
+                // AR列の10行目から順に祝日をyyyy/MM/dd形式で出力
+                displayYearHolidays.forEachIndexed { index, holidayDate ->
+                    val rowIdx = holidayStartRow + index
+                    val row = sheet.getRow(rowIdx) ?: sheet.createRow(rowIdx)
+                    val holidayCell = row.getCell(colHoliday) ?: row.createCell(colHoliday)
+
+                    // yyyy/MM/dd形式にフォーマット
+                    val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd")
+                    val formattedDate = holidayDate.format(formatter)
+
+
+                    // 既存のセルの値を強制的に上書き
+                    holidayCell.setCellValue(formattedDate)
+                    logger.debug("[UNISS] Set holiday at AR${rowIdx + 1}: $formattedDate (${fiscalYearHolidayMap[holidayDate]})")
                 }
 
                 // 数式を再計算

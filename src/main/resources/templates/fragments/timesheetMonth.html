@@ -39,11 +39,13 @@
                             <div class="d-flex gap-2 align-items-end flex-wrap">
                                 <div class="w-90">
                                     <label class="form-label small mb-0" for="defaultStart">出勤</label>
-                                    <input class="form-control form-control-sm" id="defaultStart" type="time" value="09:00">
+                                    <input class="form-control form-control-sm" id="defaultStart" type="time"
+                                           value="09:00">
                                 </div>
                                 <div class="w-90">
                                     <label class="form-label small mb-0" for="defaultEnd">退勤</label>
-                                    <input class="form-control form-control-sm" id="defaultEnd" type="time" value="18:00">
+                                    <input class="form-control form-control-sm" id="defaultEnd" type="time"
+                                           value="18:00">
                                 </div>
                                 <div class="w-50">
                                     <label class="form-label small mb-0" for="defaultBreak">休憩</label>
@@ -65,6 +67,71 @@
                                         title="Aipoからログアウト">
                                     <i class="bi bi-box-arrow-right"></i>
                                 </button>
+                            </div>
+                            <div class="border-top mt-2 pt-2">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-0" for="companyAffiliation">所属選択</label>
+                                        <select class="form-select form-select-sm" id="companyAffiliation">
+                                            <option value="">選択してください</option>
+                                            <option value="ユーニスイースト">ユーニスイースト</option>
+                                            <option value="ユーニスウエスト">ユーニスウエスト</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-0" for="branchOffice">支社</label>
+                                        <select class="form-select form-select-sm" id="branchOffice">
+                                            <option value="">選択してください</option>
+                                            <option value="東京支社">東京支社</option>
+                                            <option value="名古屋支社">名古屋支社</option>
+                                            <option value="大阪支社">大阪支社</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small mb-0" for="section">セクション</label>
+                                        <select class="form-select form-select-sm" id="section">
+                                            <option value="">選択してください</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                            <option value="5">5</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small mb-0" for="workGroup">グループ</label>
+                                        <select class="form-select form-select-sm" id="workGroup">
+                                            <option value="">選択してください</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                            <option value="5">5</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-0" for="employeeNumber">社員番号</label>
+                                        <input class="form-control form-control-sm" id="employeeNumber"
+                                               inputmode="numeric"
+                                               pattern="\\d*" placeholder="数字のみ" type="text">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-0" for="siteRegularHours">現場定時時間</label>
+                                        <input class="form-control form-control-sm" id="siteRegularHours" type="time">
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small mb-0" for="displayName">氏名</label>
+                                        <input class="form-control form-control-sm" id="displayName"
+                                               placeholder="氏名を入力"
+                                               type="text">
+                                    </div>
+                                    <div class="col-12 d-flex justify-content-end align-items-center">
+                                        <span class="text-muted small me-2" id="userSettingsStatus"></span>
+                                        <button class="btn btn-sm btn-outline-primary" id="saveUserSettings"
+                                                type="button">UNISS設定保存
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -104,9 +171,9 @@
                         <th class="col-lateearly"></th>
                         <th class="col-action">操作</th>
                     </tr>
-                </thead>
-                <tbody id="tableBody">
-                </tbody>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -379,12 +446,14 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="aipoUsername">ユーザー名</label>
-                        <input autocomplete="username" class="form-control" id="aipoUsername" placeholder="Aipoユーザー名を入力"
+                        <input autocomplete="username" class="form-control" id="aipoUsername"
+                               placeholder="Aipoユーザー名を入力"
                                type="text">
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="aipoPassword">パスワード</label>
-                        <input autocomplete="current-password" class="form-control" id="aipoPassword" placeholder="パスワードを入力"
+                        <input autocomplete="current-password" class="form-control" id="aipoPassword"
+                               placeholder="パスワードを入力"
                                type="password">
                     </div>
                     <div class="alert alert-danger small d-none" id="aipoLoginError">
@@ -638,7 +707,7 @@
 
     <!-- テーブルヘッダー固定スクリプト -->
     <script>
-        (function() {
+        (function () {
             const table = document.getElementById('workTable');
             const thead = document.querySelector('#workTable thead.sticky-header');
             const tbody = document.querySelector('#workTable tbody');
@@ -821,51 +890,51 @@
             }
 
             // イベントリスナー
-            window.addEventListener('scroll', handleWindowScroll, { passive: true });
+            window.addEventListener('scroll', handleWindowScroll, {passive: true});
 
             // 横スクロール対応
-            tableContainer.addEventListener('scroll', onContainerScroll, { passive: true });
+            tableContainer.addEventListener('scroll', onContainerScroll, {passive: true});
 
             // フルスクリーンモーダルのスクロール監視
             const fullscreenModalBody = document.querySelector('#fullscreenModal .modal-body');
             if (fullscreenModalBody) {
-                fullscreenModalBody.addEventListener('scroll', handleWindowScroll, { passive: true });
+                fullscreenModalBody.addEventListener('scroll', handleWindowScroll, {passive: true});
             }
 
             // モーダル表示切り替え時の再計算
             const fullscreenModal = document.getElementById('fullscreenModal');
             if (fullscreenModal) {
                 fullscreenModal.addEventListener('shown.bs.modal', () => {
-                   // 強制的に状態リセットして再計算
-                   isHeaderFixed = false;
-                   thead.classList.remove('is-fixed');
-                   dummyThead.style.display = 'none';
-                   resetStyles();
-                   // DOM更新を待ってから再計算
-                   setTimeout(() => {
-                       checkStickyState();
-                       // フルスクリーンモードで、まだ固定されていなければ強制的に固定
-                       if (window.isFullscreenMode && !isHeaderFixed) {
-                           const modalHeader = document.querySelector('#fullscreenModal .modal-header');
-                           const modalHeaderHeight = modalHeader ? modalHeader.getBoundingClientRect().height : 0;
-                           isHeaderFixed = true;
-                           thead.classList.add('is-fixed');
-                           thead.style.top = modalHeaderHeight + 'px';
-                           thead.style.zIndex = '1060';
-                           dummyThead.style.display = 'table-header-group';
-                           syncWidths();
-                           updateHeaderPosition();
-                       }
-                   }, 50);
+                    // 強制的に状態リセットして再計算
+                    isHeaderFixed = false;
+                    thead.classList.remove('is-fixed');
+                    dummyThead.style.display = 'none';
+                    resetStyles();
+                    // DOM更新を待ってから再計算
+                    setTimeout(() => {
+                        checkStickyState();
+                        // フルスクリーンモードで、まだ固定されていなければ強制的に固定
+                        if (window.isFullscreenMode && !isHeaderFixed) {
+                            const modalHeader = document.querySelector('#fullscreenModal .modal-header');
+                            const modalHeaderHeight = modalHeader ? modalHeader.getBoundingClientRect().height : 0;
+                            isHeaderFixed = true;
+                            thead.classList.add('is-fixed');
+                            thead.style.top = modalHeaderHeight + 'px';
+                            thead.style.zIndex = '1060';
+                            dummyThead.style.display = 'table-header-group';
+                            syncWidths();
+                            updateHeaderPosition();
+                        }
+                    }, 50);
                 });
                 fullscreenModal.addEventListener('hidden.bs.modal', () => {
-                   // 強制的に状態リセットして再計算
-                   isHeaderFixed = false;
-                   thead.classList.remove('is-fixed');
-                   dummyThead.style.display = 'none';
-                   resetStyles();
-                   // 元の場所に戻った後に少し待ってから再計算（DOM更新待ち）
-                   setTimeout(checkStickyState, 50);
+                    // 強制的に状態リセットして再計算
+                    isHeaderFixed = false;
+                    thead.classList.remove('is-fixed');
+                    dummyThead.style.display = 'none';
+                    resetStyles();
+                    // 元の場所に戻った後に少し待ってから再計算（DOM更新待ち）
+                    setTimeout(checkStickyState, 50);
                 });
             }
 
@@ -881,4 +950,3 @@
         })();
     </script>
 </div>
-

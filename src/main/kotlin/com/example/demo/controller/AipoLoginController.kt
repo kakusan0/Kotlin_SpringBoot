@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*
 data class AipoLoginRequest(
     val username: String,
     val password: String,
+    val yearMonth: String? = null,  // "YYYY-MM"形式 (例: "2024-01")
     val autoSubmit: Boolean = false
 )
 
@@ -34,6 +35,7 @@ class AipoLoginController(
             username = auth.name,
             aipoUsername = request.username,
             aipoPassword = request.password,
+            yearMonth = request.yearMonth,
             autoSubmit = request.autoSubmit
         )
 
