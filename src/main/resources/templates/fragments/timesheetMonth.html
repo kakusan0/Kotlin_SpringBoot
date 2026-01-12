@@ -57,6 +57,14 @@
                                         title="UNISS勤務表をダウンロード">
                                     <i class="bi bi-file-earmark-excel"></i> UNISS
                                 </button>
+                                <button class="btn btn-sm btn-info ms-2" data-bs-target="#aipoLoginModal"
+                                        data-bs-toggle="modal" id="aipoLoginBtn" title="Aipoにログイン">
+                                    <i class="bi bi-box-arrow-in-right"></i> Aipo
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary ms-1 d-none" id="aipoLogoutBtn"
+                                        title="Aipoからログアウト">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -352,6 +360,61 @@
                     <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
                     <button class="btn btn-primary" id="saveFreeNote" type="button">完了</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aipo ログインモーダル -->
+    <div aria-hidden="true" class="modal fade" id="aipoLoginModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-box-arrow-in-right me-2"></i>Aipo ログイン</h5>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Aipoにログインして勤務表を連携します。
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="aipoUsername">ユーザー名</label>
+                        <input autocomplete="username" class="form-control" id="aipoUsername" placeholder="Aipoユーザー名を入力"
+                               type="text">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="aipoPassword">パスワード</label>
+                        <input autocomplete="current-password" class="form-control" id="aipoPassword" placeholder="パスワードを入力"
+                               type="password">
+                    </div>
+                    <div class="alert alert-danger small d-none" id="aipoLoginError">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <span id="aipoLoginErrorMessage"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">キャンセル</button>
+                    <button class="btn btn-primary" id="aipoLoginSubmit" type="button">
+                        <span class="spinner-border spinner-border-sm d-none" id="aipoLoginSpinner"
+                              role="status"></span>
+                        <span id="aipoLoginButtonText">ログイン</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aipo ログイン成功通知トースト -->
+    <div aria-atomic="true" aria-live="assertive" class="toast-container position-fixed top-0 end-0 p-3"
+         style="z-index: 1100;">
+        <div class="toast align-items-center text-bg-success border-0" id="aipoLoginSuccessToast" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <span id="aipoLoginSuccessMessage">Aipoへのログインに成功しました</span>
+                </div>
+                <button aria-label="Close" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                        type="button"></button>
             </div>
         </div>
     </div>

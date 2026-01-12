@@ -2812,5 +2812,614 @@
         window.addEventListener('load', refreshTotalWorking);
         refreshTotalWorking();
     })();
+
+    // ========================================
+    // Aipo ログイン機能
+    // ========================================
+    (function initAipoLogin() {
+        const aipoLoginBtn = document.getElementById('aipoLoginBtn');
+        const aipoLogoutBtn = document.getElementById('aipoLogoutBtn');
+        const aipoLoginModal = document.getElementById('aipoLoginModal');
+        const aipoLoginSubmit = document.getElementById('aipoLoginSubmit');
+        const aipoUsername = document.getElementById('aipoUsername');
+        const aipoPassword = document.getElementById('aipoPassword');
+        const aipoLoginError = document.getElementById('aipoLoginError');
+        const aipoLoginErrorMessage = document.getElementById('aipoLoginErrorMessage');
+        const aipoLoginSpinner = document.getElementById('aipoLoginSpinner');
+        const aipoLoginButtonText = document.getElementById('aipoLoginButtonText');
+        const aipoLoginSuccessToast = document.getElementById('aipoLoginSuccessToast');
+        const aipoLoginSuccessMessage = document.getElementById('aipoLoginSuccessMessage');
+
+        if (!aipoLoginBtn || !aipoLoginModal) return;
+
+        let bsModal = null;
+        let bsToast = null;
+
+        // Bootstrap Modalインスタンス取得
+        aipoLoginModal.addEventListener('shown.bs.modal', function () {
+            aipoUsername.focus();
+            // エラーメッセージをリセット
+            aipoLoginError.classList.add('d-none');
+            aipoLoginErrorMessage.textContent = '';
+        });
+
+        // Enterキーでログイン
+        [aipoUsername, aipoPassword].forEach(input => {
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    aipoLoginSubmit.click();
+                }
+            });
+        });
+
+        // ログインボタンクリック
+        aipoLoginSubmit.addEventListener('click', async function () {
+            const username = aipoUsername.value.trim();
+            const password = aipoPassword.value;
+
+            // バリデーション
+            if (!username) {
+                showAipoError('ユーザー名を入力してください');
+                aipoUsername.focus();
+                return;
+            }
+            if (!password) {
+                showAipoError('パスワードを入力してください');
+                aipoPassword.focus();
+                return;
+            }
+
+            // ローディング状態
+            setLoading(true);
+            hideAipoError();
+
+            try {
+                // CSRFトークン取得
+                const csrfMeta = document.querySelector('meta[name="_csrf"]');
+                const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                if (csrfMeta && csrfHeaderMeta) {
+                    headers[csrfHeaderMeta.content] = csrfMeta.content;
+                }
+
+                const response = await fetch('/api/aipo/login', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // 成功
+                    closeModal();
+                    // ワークフローURL/依頼作成URLがあれば表示
+                    let message = result.message || 'Aipoへのログインに成功しました';
+                    if (result.createRequestUrl || result.workflowUrl) {
+                        showWorkflowLink(result.workflowUrl, result.createRequestUrl, result.timesheetSelected, result.formPreview);
+                    }
+                    showSuccessToast(message);
+                    // フォームをリセット
+                    aipoUsername.value = '';
+                    aipoPassword.value = '';
+                    // ボタンの状態を更新
+                    updateAipoButtonState(true);
+                } else {
+                    // エラー
+                    showAipoError(result.message || 'ログインに失敗しました');
+                }
+            } catch (error) {
+                console.error('Aipo login error:', error);
+                showAipoError('通信エラーが発生しました。再度お試しください。');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function showAipoError(message) {
+            aipoLoginErrorMessage.textContent = message;
+            aipoLoginError.classList.remove('d-none');
+        }
+
+        function hideAipoError() {
+            aipoLoginError.classList.add('d-none');
+            aipoLoginErrorMessage.textContent = '';
+        }
+
+        function setLoading(loading) {
+            aipoLoginSubmit.disabled = loading;
+            if (loading) {
+                aipoLoginSpinner.classList.remove('d-none');
+                aipoLoginButtonText.textContent = 'ログイン中...';
+            } else {
+                aipoLoginSpinner.classList.add('d-none');
+                aipoLoginButtonText.textContent = 'ログイン';
+            }
+        }
+
+        function closeModal() {
+            if (!bsModal) {
+                bsModal = bootstrap.Modal.getInstance(aipoLoginModal);
+            }
+            if (bsModal) {
+                bsModal.hide();
+            }
+        }
+
+        function showSuccessToast(message) {
+            if (aipoLoginSuccessMessage) {
+                aipoLoginSuccessMessage.textContent = message;
+            }
+            if (!bsToast && aipoLoginSuccessToast) {
+                bsToast = new bootstrap.Toast(aipoLoginSuccessToast, {
+                    autohide: true,
+                    delay: 5000
+                });
+            }
+            if (bsToast) {
+                bsToast.show();
+            }
+        }
+
+        // ワークフローリンクを表示するモーダルを作成・表示
+        function showWorkflowLink(workflowUrl, createRequestUrl, timesheetSelected, formPreview) {
+            // formPreviewがある場合は直接プレビュー＆申請モーダルを表示
+            if (formPreview && formPreview.submitButtonId) {
+                showPreviewAndSubmitModal(formPreview);
+            } else if (workflowUrl) {
+                // ワークフローモーダルを表示
+                showWorkflowModal(workflowUrl, createRequestUrl, timesheetSelected, formPreview);
+            } else if (createRequestUrl) {
+                // 依頼作成モーダルを表示
+                showCreateRequestModal(createRequestUrl, timesheetSelected, formPreview);
+            }
+        }
+
+        // ワークフローモーダルを表示
+        function showWorkflowModal(workflowUrl, createRequestUrl, timesheetSelected, formPreview) {
+            // 既存のモーダルがあれば削除
+            let existingModal = document.getElementById('aipoWorkflowModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // モーダルHTMLを作成
+            const modalHtml = `
+                <div class="modal fade" id="aipoWorkflowModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title"><i class="bi bi-diagram-3 me-2"></i>ワークフロー検出</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="mb-3">ワークフローのリンクが見つかりました：</p>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold"><i class="bi bi-link-45deg me-1"></i>ワークフローURL</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control form-control-sm" id="workflowUrlInput" value="${workflowUrl}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" id="copyWorkflowUrl" title="コピー">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="d-grid">
+                                    <a href="${workflowUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>ワークフローを開く
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                ${createRequestUrl ? '<button type="button" class="btn btn-success" id="showCreateRequestBtn"><i class="bi bi-arrow-right me-1"></i>次へ（依頼作成）</button>' : ''}
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // DOMに追加
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // モーダルを表示
+            const workflowModal = document.getElementById('aipoWorkflowModal');
+            const bsWorkflowModal = new bootstrap.Modal(workflowModal);
+            let isNavigatingToNext = false; // 次へボタンクリックフラグ
+            bsWorkflowModal.show();
+
+            // コピーボタンのイベント
+            const copyWorkflowBtn = document.getElementById('copyWorkflowUrl');
+            if (copyWorkflowBtn) {
+                copyWorkflowBtn.addEventListener('click', function () {
+                    const urlInput = document.getElementById('workflowUrlInput');
+                    navigator.clipboard.writeText(urlInput.value).then(() => {
+                        this.innerHTML = '<i class="bi bi-check"></i>';
+                        setTimeout(() => {
+                            this.innerHTML = '<i class="bi bi-clipboard"></i>';
+                        }, 2000);
+                    });
+                });
+            }
+
+            // 次へボタンのイベント（依頼作成モーダルを表示）
+            const showCreateRequestBtn = document.getElementById('showCreateRequestBtn');
+            if (showCreateRequestBtn && createRequestUrl) {
+                showCreateRequestBtn.addEventListener('click', function () {
+                    isNavigatingToNext = true;
+                    bsWorkflowModal.hide();
+                });
+            }
+
+            // モーダルが閉じられたら処理
+            workflowModal.addEventListener('hidden.bs.modal', function () {
+                workflowModal.remove();
+                // 次へボタンで閉じた場合は依頼作成モーダルを表示
+                if (isNavigatingToNext && createRequestUrl) {
+                    showCreateRequestModal(createRequestUrl, timesheetSelected, formPreview);
+                }
+            });
+        }
+
+        // 依頼作成モーダルを表示
+        function showCreateRequestModal(createRequestUrl, timesheetSelected, formPreview) {
+            // 既存のモーダルがあれば削除
+            let existingModal = document.getElementById('aipoCreateRequestModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // 勤務表選択成功時のバッジ
+            const timesheetBadge = timesheetSelected
+                ? '<div class="alert alert-success py-2 mb-3"><i class="bi bi-check-circle me-1"></i>カテゴリ「勤務表」が自動選択されました</div>'
+                : '';
+
+            // モーダルHTMLを作成
+            const modalHtml = `
+                <div class="modal fade" id="aipoCreateRequestModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>依頼を作成する</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                ${timesheetBadge}
+                                <p class="mb-3">依頼作成のリンクが見つかりました：</p>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold"><i class="bi bi-link-45deg me-1"></i>依頼作成URL</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control form-control-sm" id="createRequestUrlInput" value="${createRequestUrl}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" id="copyCreateRequestUrl" title="コピー">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text text-muted small">
+                                        <i class="bi bi-info-circle me-1"></i>JavaScript関数内のURLを抽出しています
+                                    </div>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <a href="${createRequestUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>依頼作成画面を開く（手動）
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                                ${formPreview ? '<button type="button" class="btn btn-primary" id="showPreviewBtn"><i class="bi bi-arrow-right me-1"></i>次へ（プレビュー＆申請）</button>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // DOMに追加
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // モーダルを表示
+            const createRequestModal = document.getElementById('aipoCreateRequestModal');
+            const bsCreateRequestModal = new bootstrap.Modal(createRequestModal);
+            bsCreateRequestModal.show();
+
+            // コピーボタンのイベント
+            const copyCreateBtn = document.getElementById('copyCreateRequestUrl');
+            if (copyCreateBtn) {
+                copyCreateBtn.addEventListener('click', function () {
+                    const urlInput = document.getElementById('createRequestUrlInput');
+                    navigator.clipboard.writeText(urlInput.value).then(() => {
+                        this.innerHTML = '<i class="bi bi-check"></i>';
+                        setTimeout(() => {
+                            this.innerHTML = '<i class="bi bi-clipboard"></i>';
+                        }, 2000);
+                    });
+                });
+            }
+
+            // 次へ（プレビュー）ボタンのイベント
+            const showPreviewBtn = document.getElementById('showPreviewBtn');
+            if (showPreviewBtn && formPreview) {
+                showPreviewBtn.addEventListener('click', function () {
+                    bsCreateRequestModal.hide();
+                });
+
+                createRequestModal.addEventListener('hidden.bs.modal', function onHidden() {
+                    createRequestModal.removeEventListener('hidden.bs.modal', onHidden);
+                    createRequestModal.remove();
+                    // 次へボタンで閉じた場合はプレビュー&申請モーダルを表示
+                    if (showPreviewBtn.dataset.clicked === 'true') {
+                        showPreviewAndSubmitModal(formPreview);
+                    }
+                });
+
+                showPreviewBtn.addEventListener('click', function () {
+                    this.dataset.clicked = 'true';
+                });
+            }
+
+            // 閉じるボタンでモーダルを削除
+            createRequestModal.addEventListener('hidden.bs.modal', function () {
+                if (document.getElementById('aipoCreateRequestModal')) {
+                    this.remove();
+                }
+            });
+        }
+
+        // プレビュー＆申請モーダルを表示
+        function showPreviewAndSubmitModal(formPreview) {
+            // 既存のモーダルがあれば削除
+            let existingModal = document.getElementById('aipoPreviewSubmitModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            const readyBadge = formPreview.isReady
+                ? '<span class="badge bg-success ms-2"><i class="bi bi-check-circle me-1"></i>申請準備完了</span>'
+                : '<span class="badge bg-warning text-dark ms-2"><i class="bi bi-exclamation-triangle me-1"></i>入力不足</span>';
+
+            const submitDisabled = formPreview.isReady ? '' : 'disabled';
+            const submitButtonId = formPreview.submitButtonId || '';
+
+            // モーダルHTMLを作成
+            const modalHtml = `
+                <div class="modal fade" id="aipoPreviewSubmitModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title"><i class="bi bi-list-check me-2"></i>申請内容プレビュー</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="card mb-3">
+                                    <div class="card-header py-2 d-flex align-items-center">
+                                        <i class="bi bi-file-text me-2"></i>
+                                        <strong>入力内容確認</strong>
+                                        ${readyBadge}
+                                    </div>
+                                    <div class="card-body py-2">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <tbody>
+                                                <tr>
+                                                    <th class="table-light" style="width: 120px;">カテゴリ</th>
+                                                    <td>${formPreview.category || '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>未選択</span>'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th class="table-light">備考</th>
+                                                    <td>${formPreview.note || '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>未入力</span>'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th class="table-light">申請経路</th>
+                                                    <td>${formPreview.routeMembers && formPreview.routeMembers.length > 0
+                ? '<ol class="mb-0 ps-3">' + formPreview.routeMembers.map(m => '<li>' + m + '</li>').join('') + '</ol>'
+                : '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>未設定</span>'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th class="table-light">添付ファイル</th>
+                                                    <td>${formPreview.attachedFileName
+                ? '<i class="bi bi-paperclip me-1"></i>' + formPreview.attachedFileName
+                : '<span class="text-muted">なし</span>'}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="card border-info">
+                                    <div class="card-header py-2 bg-info text-white">
+                                        <i class="bi bi-info-circle me-2"></i>申請ボタン情報
+                                    </div>
+                                    <div class="card-body py-2">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">申請ボタンID:</small><br>
+                                                <code>${submitButtonId || '未検出'}</code>
+                                            </div>
+                                            <div class="col-md-6 text-end">
+                                                ${formPreview.isReady
+                ? '<span class="text-success"><i class="bi bi-check-circle me-1"></i>申請可能</span>'
+                : '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>入力項目を確認してください</span>'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                ${!formPreview.isReady ? `
+                                <div class="alert alert-warning mt-3 mb-0">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    <strong>注意:</strong> 必須項目が入力されていません。Aipo画面で入力を完了してから申請してください。
+                                </div>
+                                ` : ''}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                                <button type="button" class="btn btn-danger" id="submitAipoRequest" ${submitDisabled} data-submit-id="${submitButtonId}">
+                                    <i class="bi bi-send me-1"></i>申請する
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // DOMに追加
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // モーダルを表示
+            const previewModal = document.getElementById('aipoPreviewSubmitModal');
+            const bsPreviewModal = new bootstrap.Modal(previewModal);
+            bsPreviewModal.show();
+
+            // 申請ボタンのイベント
+            const submitBtn = document.getElementById('submitAipoRequest');
+            if (submitBtn) {
+                submitBtn.addEventListener('click', async function () {
+                    const submitId = this.dataset.submitId;
+                    if (!submitId) {
+                        alert('申請ボタンIDが見つかりません。Aipo画面から直接申請してください。');
+                        return;
+                    }
+
+                    if (!confirm('この内容で申請しますか？')) {
+                        return;
+                    }
+
+                    // ローディング状態にする
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>申請中...';
+
+                    try {
+                        // CSRFトークン取得
+                        const csrfMeta = document.querySelector('meta[name="_csrf"]');
+                        const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+                        const headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        if (csrfMeta && csrfHeaderMeta) {
+                            headers[csrfHeaderMeta.content] = csrfMeta.content;
+                        }
+
+                        const response = await fetch('/api/aipo/submit', {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({
+                                submitButtonId: submitId
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok && result.success) {
+                            bsPreviewModal.hide();
+                            showSuccessToast(result.message || '申請が完了しました');
+                        } else {
+                            alert(result.message || '申請に失敗しました');
+                            this.disabled = false;
+                            this.innerHTML = '<i class="bi bi-send me-1"></i>申請する';
+                        }
+                    } catch (error) {
+                        console.error('Submit error:', error);
+                        alert('通信エラーが発生しました');
+                        this.disabled = false;
+                        this.innerHTML = '<i class="bi bi-send me-1"></i>申請する';
+                    }
+                });
+            }
+
+            // モーダルが閉じられたら削除
+            previewModal.addEventListener('hidden.bs.modal', function () {
+                this.remove();
+            });
+        }
+
+        function updateAipoButtonState(loggedIn) {
+            if (loggedIn) {
+                aipoLoginBtn.classList.remove('btn-info');
+                aipoLoginBtn.classList.add('btn-success');
+                aipoLoginBtn.innerHTML = '<i class="bi bi-check-circle"></i> Aipo連携中';
+                aipoLoginBtn.title = 'Aipoにログイン済み';
+                aipoLoginBtn.removeAttribute('data-bs-toggle');
+                aipoLoginBtn.removeAttribute('data-bs-target');
+                // ログアウトボタンを表示
+                if (aipoLogoutBtn) {
+                    aipoLogoutBtn.classList.remove('d-none');
+                }
+            } else {
+                aipoLoginBtn.classList.remove('btn-success');
+                aipoLoginBtn.classList.add('btn-info');
+                aipoLoginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Aipo';
+                aipoLoginBtn.title = 'Aipoにログイン';
+                aipoLoginBtn.setAttribute('data-bs-toggle', 'modal');
+                aipoLoginBtn.setAttribute('data-bs-target', '#aipoLoginModal');
+                // ログアウトボタンを非表示
+                if (aipoLogoutBtn) {
+                    aipoLogoutBtn.classList.add('d-none');
+                }
+            }
+        }
+
+        // ログアウト処理
+        if (aipoLogoutBtn) {
+            aipoLogoutBtn.addEventListener('click', async function () {
+                if (!confirm('Aipoからログアウトしますか？')) {
+                    return;
+                }
+
+                aipoLogoutBtn.disabled = true;
+                aipoLogoutBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                try {
+                    // CSRFトークン取得
+                    const csrfMeta = document.querySelector('meta[name="_csrf"]');
+                    const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    if (csrfMeta && csrfHeaderMeta) {
+                        headers[csrfHeaderMeta.content] = csrfMeta.content;
+                    }
+
+                    const response = await fetch('/api/aipo/logout', {
+                        method: 'POST',
+                        headers: headers
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showSuccessToast('Aipoからログアウトしました');
+                        updateAipoButtonState(false);
+                    } else {
+                        alert(result.message || 'ログアウトに失敗しました');
+                    }
+                } catch (error) {
+                    console.error('Aipo logout error:', error);
+                    alert('通信エラーが発生しました');
+                } finally {
+                    aipoLogoutBtn.disabled = false;
+                    aipoLogoutBtn.innerHTML = '<i class="bi bi-box-arrow-right"></i>';
+                }
+            });
+        }
+
+        // 初期状態を確認
+        async function checkAipoLoginStatus() {
+            try {
+                const response = await fetch('/api/aipo/status');
+                if (response.ok) {
+                    const result = await response.json();
+                    updateAipoButtonState(result.loggedIn);
+                }
+            } catch (error) {
+                console.error('Failed to check Aipo status:', error);
+            }
+        }
+
+        // ページ読み込み時にログイン状態を確認
+        checkAipoLoginStatus();
+    })();
 })();
 
