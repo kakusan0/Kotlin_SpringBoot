@@ -71,6 +71,15 @@
     let dragStartTime = 0;
 
     const holidayCache = {};
+    let suppressAutoSaveAll = 0;
+
+    function suspendAutoSave() {
+        suppressAutoSaveAll++;
+    }
+
+    function resumeAutoSave() {
+        suppressAutoSaveAll = Math.max(0, suppressAutoSaveAll - 1);
+    }
 
     // グローバルローディングスピナー制御（timesheet専用の簡易インライン表示）
     let loadingCounter = 0;
@@ -1048,6 +1057,7 @@
                     // 平日、または土日祝で勤務系備考がある場合は有効化
                     disableRowInput(row, false, noteValue);
                 }
+                updateWorkingDayButton(row, noteValue);
                 // 警告チェック
                 checkRowWarnings(row);
                 autoSaveRow(row);
@@ -1184,6 +1194,7 @@
         const tbody = document.getElementById('tableBody');
         if (!tbody) return;
         const observer = new MutationObserver(mutations => {
+            if (suppressAutoSaveAll > 0) return;
             const rowsToSave = new Set();
             for (const m of mutations) {
                 // 変更元ノードから該当行を探す
@@ -1250,6 +1261,39 @@
         }
     }
 
+    function rowHasWorkingIrregular(row) {
+        const workingIrregulars = ['振替出勤', '休日出勤'];
+        const type = row.dataset.irregularType || '';
+        if (workingIrregulars.includes(type)) return true;
+        if (row.dataset.irregularData) {
+            try {
+                const items = JSON.parse(row.dataset.irregularData);
+                if (Array.isArray(items)) {
+                    return items.some(item => workingIrregulars.includes(item.type));
+                }
+            } catch (e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    function updateWorkingDayButton(row, noteValue = null) {
+        const btn = row.querySelector('.workday-btn');
+        if (!btn) return;
+        const iso = row.querySelector('.date-cell')?.dataset?.iso || '';
+        const isWeekday = iso ? !isWeekendIso(iso) : true;
+        const noteSelect = row.querySelector('.note-select');
+        const resolvedNote = noteValue !== null ? noteValue : (noteSelect ? noteSelect.value : '');
+        const hasWorkingIrregular = rowHasWorkingIrregular(row);
+        const isWorking = (isWeekday && !['祝日', '休日'].includes(resolvedNote)) || hasWorkingIrregular;
+
+        btn.textContent = isWorking ? '稼働' : '非稼働';
+        btn.classList.remove('btn-danger', 'btn-outline-secondary');
+        btn.classList.add(isWorking ? 'btn-danger' : 'btn-outline-secondary');
+        btn.dataset.working = isWorking ? '1' : '0';
+    }
+
     function applyRowShade(tr) {
         // remove previous shading
         tr.classList.remove('table-secondary');
@@ -1276,6 +1320,7 @@
             const isWeekend = isWeekendIso(iso);
             tr.innerHTML = `<td class="date-cell" data-iso="${iso}"><span>${dayLabel(date)}</span><span class="holiday" style="display:none;"></span></td>` +
                 `<td class="weekday-cell">${shortDay(date)}</td>` +
+                `<td class="workday-cell"><button class="btn btn-sm btn-outline-secondary workday-btn" type="button" disabled>非稼働</button></td>` +
                 `<td class="location-cell"><button class="btn btn-sm btn-primary work-location-btn" type="button" data-location="出社">出社</button></td>` +
                 `<td class="note-cell">
                     <select class="form-select form-select-sm note-select">
@@ -1316,9 +1361,11 @@
             }
 
             applyRowShade(tr);
+            updateWorkingDayButton(tr, noteSelect ? noteSelect.value : null);
         }
 
         (async () => {
+            suspendAutoSave();
             try {
                 const monthInput = document.getElementById('monthInput');
                 const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number);
@@ -1340,11 +1387,14 @@
                             }
 
                             applyRowShade(tr);
+                            updateWorkingDayButton(tr, noteSelect ? noteSelect.value : null);
                         }
                     }
                 });
             } catch (e) {
                 console.warn('祝日再表示失敗', e);
+            } finally {
+                resumeAutoSave();
             }
         })();
     }
@@ -1411,6 +1461,7 @@
                         if (wdEl) wdEl.textContent = wd;
                         // ensure shading according to weekend/holiday
                         applyRowShade(row);
+                        updateWorkingDayButton(row);
                         return;
                     }
 
@@ -1563,6 +1614,7 @@
                     if (wdEl) wdEl.textContent = wd;
                     // update shading
                     applyRowShade(row);
+                    updateWorkingDayButton(row, noteSelect ? noteSelect.value : null);
 
                     // 警告チェック
                     checkRowWarnings(row);
@@ -1598,8 +1650,9 @@
         }
         const ym = `${year}-${String(month).padStart(2, '0')}`;
         if (monthInput) monthInput.value = ym;
+        suspendAutoSave();
         rebuildRows(ym);
-        loadTimesheetData();
+        loadTimesheetData().finally(() => resumeAutoSave());
     }
 
     if (prevBtn) {
@@ -1623,8 +1676,9 @@
         });
     }
     if (monthInput) {
+        suspendAutoSave();
         rebuildRows(monthInput.value);
-        loadTimesheetData();
+        loadTimesheetData().finally(() => resumeAutoSave());
     }
 
 
@@ -1714,6 +1768,7 @@
         } else {
             setRowEditable(row, true);
         }
+        updateWorkingDayButton(row, noteValue);
 
         updateRowMetrics(row);
         checkRowWarnings(row);
@@ -1819,6 +1874,7 @@
                 } else {
                     setRowEditable(row, true);
                 }
+                updateWorkingDayButton(row, noteValue);
 
                 updateRowMetrics(row);
                 checkRowWarnings(row);
@@ -2463,6 +2519,7 @@
                         disableRowInput(currentIrregularRow, true, noteValue);
                     }
                 }
+                updateWorkingDayButton(currentIrregularRow);
 
                 // 保存（複数アイテムをJSON形式で保存、空文字列も送信してクリアを明示）
                 saveRowWithExtras(currentIrregularRow, {

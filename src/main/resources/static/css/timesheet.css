@@ -178,6 +178,12 @@
     text-align: center;
 }
 
+.col-workday {
+    width: 70px;
+    min-width: 60px;
+    text-align: center;
+}
+
 .col-holiday {
     width: 90px;
     min-width: 70px;
@@ -746,6 +752,16 @@ tr.row-incomplete .break-cell {
     min-width: 50px;
 }
 
+.workday-cell {
+    text-align: center;
+}
+
+.workday-btn {
+    font-size: 12px;
+    padding: 2px 8px;
+    min-width: 50px;
+}
+
 /* 変則勤務列 */
 .col-irregular {
     width: 130px;
@@ -853,4 +869,3 @@ tr.row-incomplete .break-cell {
     width: max-content !important;
     will-change: transform;
 }
-

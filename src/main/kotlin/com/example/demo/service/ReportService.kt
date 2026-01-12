@@ -9,6 +9,7 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.apache.pdfbox.pdmodel.font.PDType0Font
 import org.apache.pdfbox.pdmodel.font.PDType1Font
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts
+import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.HorizontalAlignment
 import org.apache.poi.ss.usermodel.VerticalAlignment
 import org.apache.poi.ss.util.CellRangeAddress
@@ -602,6 +603,25 @@ class ReportService(
                     // 備考値
                     val noteValue = entry?.note ?: ""
 
+                    // 変則勤務データを取得（複数対応）
+                    val irregularItems = parseIrregularWorkData(
+                        entry?.irregularWorkData,
+                        entry?.irregularWorkType,
+                        entry?.irregularWorkDesc
+                    )
+
+                    val hasWorkingIrregular = irregularItems.any {
+                        it.type == "振替出勤" || it.type == "休日出勤"
+                    }
+
+                    // 稼働日 (B列): 平日かつ備考が祝日/休日以外、または変則勤務で振替出勤/休日出勤
+                    val isWorkingDay = (!isWeekend && noteValue != "祝日" && noteValue != "休日") || hasWorkingIrregular
+                    val workingDayCell = row.getCell(1) ?: row.createCell(1)
+                    if (workingDayCell.cellType == CellType.FORMULA) {
+                        workingDayCell.cellFormula = null
+                    }
+                    workingDayCell.setCellValue(if (isWorkingDay) 1.0 else 0.0)
+
                     // 勤務時間を出力するべき備考（土日祝でも出力する）
                     val workingNotes = listOf("午前休", "午後休", "休日出勤", "振替出勤")
                     val isWorkingNote = workingNotes.contains(noteValue)
@@ -699,13 +719,6 @@ class ReportService(
                     entry?.earlyDesc?.takeIf { it.isNotBlank() }?.let {
                         descriptions.add("早退: $it")
                     }
-
-                    // 変則勤務データを取得（複数対応）
-                    val irregularItems = parseIrregularWorkData(
-                        entry?.irregularWorkData,
-                        entry?.irregularWorkType,
-                        entry?.irregularWorkDesc
-                    )
 
                     // 変則勤務の説明をAB列に追加
                     for (item in irregularItems) {
@@ -821,6 +834,9 @@ class ReportService(
 
 
                     // 既存のセルの値を強制的に上書き
+                    if (holidayCell.cellType == CellType.FORMULA) {
+                        holidayCell.cellFormula = null
+                    }
                     holidayCell.setCellValue(formattedDate)
                     logger.debug("[UNISS] Set holiday at AR${rowIdx + 1}: $formattedDate (${fiscalYearHolidayMap[holidayDate]})")
                 }
