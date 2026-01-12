@@ -281,7 +281,7 @@ class AipoLoginService(
                 for (link in workflowLinks) {
                     val linkText = link.text
                     if (linkText.contains("ワークフロー")) {
-                        workflowUrl = link.getAttribute("href")
+                        workflowUrl = link.getDomAttribute("href")
                         logger.info("Found workflow link: $workflowUrl")
                         break
                     }
@@ -291,7 +291,7 @@ class AipoLoginService(
                 if (workflowUrl == null) {
                     val altLinks = driver.findElements(By.xpath("//a[contains(text(), 'ワークフロー')]"))
                     if (altLinks.isNotEmpty()) {
-                        workflowUrl = altLinks.first().getAttribute("href")
+                        workflowUrl = altLinks.first().getDomAttribute("href")
                         logger.info("Found workflow link (alt): $workflowUrl")
                     }
                 }
@@ -352,9 +352,9 @@ class AipoLoginService(
                     val createButtons = driver.findElements(By.cssSelector(".auiWidget a.auiButtonAction"))
                     logger.info("Found ${createButtons.size} buttons with .auiWidget a.auiButtonAction")
                     for (btn in createButtons) {
-                        val title = btn.getAttribute("title") ?: ""
+                        val title = btn.getDomAttribute("title") ?: ""
                         val text = btn.text
-                        val href = btn.getAttribute("href") ?: ""
+                        val href = btn.getDomAttribute("href") ?: ""
                         logger.info("Button: title='$title', text='$text', href='${href.take(100)}...'")
                         if (title.contains("依頼を作成") || text.contains("依頼を作成")) {
                             createRequestUrl = extractUrlFromJavascript(href)
@@ -371,7 +371,7 @@ class AipoLoginService(
                         logger.info("Found ${altButtons.size} buttons with XPath")
                         if (altButtons.isNotEmpty()) {
                             val btn = altButtons.first()
-                            val href = btn.getAttribute("href") ?: ""
+                            val href = btn.getDomAttribute("href") ?: ""
                             createRequestUrl = extractUrlFromJavascript(href)
                             portletId = extractPortletId(createRequestUrl)
                             logger.info("Found create request button (method 2): portletId=$portletId")
@@ -477,7 +477,7 @@ class AipoLoginService(
                                 // ユーザー一覧モードになっていることを確認
                                 val routeSelectButton = driver.findElements(By.id("is_saved_route_button"))
                                 if (routeSelectButton.isNotEmpty() && routeSelectButton.first().isDisplayed) {
-                                    val buttonValue = routeSelectButton.first().getAttribute("value") ?: ""
+                                    val buttonValue = routeSelectButton.first().getDomProperty("value") ?: ""
                                     logger.info("Route select button value: '$buttonValue'")
                                     if (!buttonValue.contains("申請経路一覧から選択する")) {
                                         // 「ユーザー一覧から選択する」になっている場合はクリックして切り替え
@@ -589,7 +589,7 @@ class AipoLoginService(
                                                 driver.findElements(By.cssSelector("[id^='fileuploadButton']"))
                                                     .toMutableList()
                                             if (fileUploadButtons.isNotEmpty()) {
-                                                val buttonId = fileUploadButtons.first().getAttribute("id") ?: ""
+                                                val buttonId = fileUploadButtons.first().getDomAttribute("id") ?: ""
                                                 logger.info("Found file upload button in target iframe: $buttonId")
                                             }
                                         } else {
@@ -601,11 +601,11 @@ class AipoLoginService(
                                             logger.info("Found ${allIframes.size} file upload iframe(s)")
 
                                             for (iframe in allIframes) {
-                                                val iframeId = iframe.getAttribute("id") ?: ""
+                                                val iframeId = iframe.getDomAttribute("id") ?: ""
                                                 logger.info("Checking iframe: $iframeId")
 
                                                 // ワークフローのポートレットIDを含むiframeを優先
-                                                if (iframeId.contains(portletId ?: "")) {
+                                                if (iframeId.contains(portletId)) {
                                                     logger.info("Found matching iframe for workflow: $iframeId")
                                                     driver.switchTo().frame(iframe)
                                                     inIframe = true
@@ -615,7 +615,7 @@ class AipoLoginService(
                                                             .toMutableList()
                                                     if (fileUploadButtons.isNotEmpty()) {
                                                         val buttonId =
-                                                            fileUploadButtons.first().getAttribute("id") ?: ""
+                                                            fileUploadButtons.first().getDomAttribute("id") ?: ""
                                                         logger.info("Found file upload button: $buttonId")
                                                     }
                                                     break
@@ -625,7 +625,7 @@ class AipoLoginService(
                                             // マッチするiframeが見つからない場合は最初のiframeを使用（フォールバック）
                                             if (!inIframe && allIframes.isNotEmpty()) {
                                                 val iframe = allIframes.first()
-                                                val iframeId = iframe.getAttribute("id") ?: ""
+                                                val iframeId = iframe.getDomAttribute("id") ?: ""
                                                 logger.warn("No matching iframe found, using first iframe: $iframeId")
                                                 driver.switchTo().frame(iframe)
                                                 inIframe = true
@@ -634,7 +634,7 @@ class AipoLoginService(
                                                     driver.findElements(By.cssSelector("[id^='fileuploadButton']"))
                                                         .toMutableList()
                                                 if (fileUploadButtons.isNotEmpty()) {
-                                                    val buttonId = fileUploadButtons.first().getAttribute("id") ?: ""
+                                                    val buttonId = fileUploadButtons.first().getDomAttribute("id") ?: ""
                                                     uploadPortletId = buttonId.removePrefix("fileuploadButton")
                                                         .removePrefix("global-")
                                                     logger.info("Found file upload button in fallback iframe: $buttonId, portletId: $uploadPortletId")
@@ -642,7 +642,7 @@ class AipoLoginService(
                                             }
                                         }
 
-                                        if (fileUploadButtons.isNotEmpty() && uploadPortletId != null) {
+                                        if (fileUploadButtons.isNotEmpty()) {
                                             val fileUploadButton = fileUploadButtons.first()
                                             logger.info("Upload portlet ID: $uploadPortletId")
 
@@ -703,7 +703,7 @@ class AipoLoginService(
                                                     driver.findElements(By.cssSelector("[id^='attachments_'] li"))
                                                 if (attachmentList.isNotEmpty()) {
                                                     uploadedFileName =
-                                                        attachmentList.first().getAttribute("data-filename")
+                                                        attachmentList.first().getDomAttribute("data-filename")
                                                             ?: attachmentList.first().text.replace("削除", "")
                                                                 .replace("\u200B", "").trim()
                                                     fileUploaded = true
@@ -716,7 +716,7 @@ class AipoLoginService(
                                                         driver.findElements(By.cssSelector("[id^='folderName_']"))
                                                     if (folderNameInputs.isNotEmpty()) {
                                                         val folderValue =
-                                                            folderNameInputs.first().getAttribute("value") ?: ""
+                                                            folderNameInputs.first().getDomProperty("value") ?: ""
                                                         if (folderValue.isNotBlank()) {
                                                             fileUploaded = true
                                                             // ファイル名は生成時の名前を使用
@@ -750,22 +750,27 @@ class AipoLoginService(
                             }
 
                             // ===== 5. フォームプレビュー情報を収集 =====
-                            formPreview = collectFormPreview(driver)
+                            val collectedFormPreview = collectFormPreview(driver)
 
                             // アップロードで取得したファイル名がある場合は反映
-                            if (!uploadedFileName.isNullOrBlank() && formPreview?.attachedFileName.isNullOrBlank()) {
-                                formPreview = formPreview?.copy(attachedFileName = uploadedFileName)
-                                logger.info("Form preview - attached file updated from upload: $uploadedFileName")
+                            formPreview =
+                                if (!uploadedFileName.isNullOrBlank() && collectedFormPreview.attachedFileName.isNullOrBlank()) {
+                                    collectedFormPreview.copy(attachedFileName = uploadedFileName).also {
+                                        logger.info("Form preview - attached file updated from upload: $uploadedFileName")
+                                    }
+                                } else {
+                                    collectedFormPreview
                             }
 
                             logger.info("Form preview collected: $formPreview")
 
                             // ===== 6. 自動送信（autoSubmitがtrueかつフォームが準備完了の場合） =====
-                            if (autoSubmit && formPreview?.isReady == true && formPreview.submitButtonId != null) {
+                            val currentFormPreview = formPreview
+                            if (autoSubmit && currentFormPreview.isReady && currentFormPreview.submitButtonId != null) {
                                 try {
-                                    logger.info("Auto submit enabled. Clicking submit button: ${formPreview.submitButtonId}")
-                                    val submitButton = driver.findElement(By.id(formPreview.submitButtonId))
-                                    if (submitButton != null && submitButton.isDisplayed) {
+                                    logger.info("Auto submit enabled. Clicking submit button: ${currentFormPreview.submitButtonId}")
+                                    val submitButton = driver.findElement(By.id(currentFormPreview.submitButtonId))
+                                    if (submitButton.isDisplayed) {
                                         submitButton.click()
                                         logger.info("Auto submit: Clicked submit button")
                                         Thread.sleep(3000)
@@ -878,13 +883,14 @@ class AipoLoginService(
             logger.info("Submitting request for user: $username with button ID: $submitButtonId")
 
             // 申請ボタンを探してクリック
-            val submitButton = driver.findElement(By.id(submitButtonId))
-            if (submitButton == null || !submitButton.isDisplayed) {
+            val submitButtons = driver.findElements(By.id(submitButtonId))
+            if (submitButtons.isEmpty() || !submitButtons.first().isDisplayed) {
                 logger.warn("Submit button not found or not visible: $submitButtonId")
                 return Pair(false, "申請ボタンが見つかりません。Aipo画面を確認してください。")
             }
 
             // ボタンをクリック
+            val submitButton = submitButtons.first()
             submitButton.click()
             logger.info("Clicked submit button: $submitButtonId")
 
@@ -944,7 +950,7 @@ class AipoLoginService(
             // テキストエリアの内容を取得
             try {
                 val noteTextarea = driver.findElement(By.id("workflow_Note"))
-                note = noteTextarea.getAttribute("value")
+                note = noteTextarea.getDomProperty("value")
                 logger.info("Form preview - note: $note")
             } catch (e: Exception) {
                 logger.warn("Failed to get note: ${e.message}")
@@ -973,7 +979,7 @@ class AipoLoginService(
                 logger.info("Form preview - found ${attachmentLists.size} attachment list(s)")
 
                 for (list in attachmentLists) {
-                    val listId = list.getAttribute("id") ?: ""
+                    val listId = list.getDomAttribute("id") ?: ""
                     val listItems = list.findElements(By.tagName("li"))
                     logger.info("Form preview - attachment list '$listId' has ${listItems.size} item(s)")
                 }
@@ -983,8 +989,8 @@ class AipoLoginService(
 
                 if (attachmentList.isNotEmpty()) {
                     val firstAttachment = attachmentList.first()
-                    val dataFileId = firstAttachment.getAttribute("data-fileid") ?: ""
-                    val dataFilename = firstAttachment.getAttribute("data-filename") ?: ""
+                    val dataFileId = firstAttachment.getDomAttribute("data-fileid") ?: ""
+                    val dataFilename = firstAttachment.getDomAttribute("data-filename") ?: ""
                     val liText = firstAttachment.text
 
                     logger.info("Form preview - first attachment: data-fileid='$dataFileId', data-filename='$dataFilename', text='$liText'")
@@ -998,7 +1004,7 @@ class AipoLoginService(
                         if (spanElements.isNotEmpty()) {
                             // 最初のspanがファイル名、deletebutton classを持つspanは除外
                             val fileNameSpan = spanElements.find { span ->
-                                !span.getAttribute("class").orEmpty().contains("deletebutton")
+                                !span.getDomAttribute("class").orEmpty().contains("deletebutton")
                             }
                             attachedFileName = fileNameSpan?.text?.replace("\u200B", "")?.trim() // ゼロ幅スペース除去
                         }
@@ -1018,8 +1024,8 @@ class AipoLoginService(
                 logger.info("Form preview - found ${allFolderNameInputs.size} folderName input(s)")
 
                 for (input in allFolderNameInputs) {
-                    val folderId = input.getAttribute("id") ?: ""
-                    val folderValue = input.getAttribute("value") ?: ""
+                    val folderId = input.getDomAttribute("id") ?: ""
+                    val folderValue = input.getDomProperty("value") ?: ""
                     logger.info("Form preview - folderName: id='$folderId', value='$folderValue'")
                 }
             } catch (e: Exception) {
@@ -1031,7 +1037,7 @@ class AipoLoginService(
                 // al_submit_で始まるIDを持つボタンを探す
                 val submitButtons = driver.findElements(By.cssSelector("input[id^='al_submit_']"))
                 if (submitButtons.isNotEmpty()) {
-                    submitButtonId = submitButtons.first().getAttribute("id")
+                    submitButtonId = submitButtons.first().getDomAttribute("id")
                     logger.info("Form preview - submit button ID: $submitButtonId")
                 }
             } catch (e: Exception) {
@@ -1043,7 +1049,7 @@ class AipoLoginService(
                 val fileUploadButtons = driver.findElements(By.cssSelector("[id^='fileuploadButton']"))
                 if (fileUploadButtons.isNotEmpty()) {
                     val fileUploadButton = fileUploadButtons.first()
-                    fileUploadButtonId = fileUploadButton.getAttribute("id")
+                    fileUploadButtonId = fileUploadButton.getDomAttribute("id")
                     fileUploadButtonExists = fileUploadButton.isDisplayed
                     logger.info("Form preview - file upload button ID: $fileUploadButtonId, exists: $fileUploadButtonExists")
 
@@ -1074,7 +1080,7 @@ class AipoLoginService(
                     val fileUploadIframes = driver.findElements(By.cssSelector("iframe[id^='if_fileupload_']"))
                     if (fileUploadIframes.isNotEmpty()) {
                         val iframe = fileUploadIframes.first()
-                        val iframeId = iframe.getAttribute("id") ?: ""
+                        val iframeId = iframe.getDomAttribute("id") ?: ""
                         logger.info("Form preview - Found file upload iframe: $iframeId, switching to iframe...")
 
                         try {
@@ -1085,7 +1091,7 @@ class AipoLoginService(
                                 driver.findElements(By.cssSelector("[id^='fileuploadButton']"))
                             if (iframeFileUploadButtons.isNotEmpty()) {
                                 val btn = iframeFileUploadButtons.first()
-                                fileUploadButtonId = btn.getAttribute("id")
+                                fileUploadButtonId = btn.getDomAttribute("id")
                                 fileUploadButtonExists = true
                                 logger.info("Form preview - file upload button found in iframe: $fileUploadButtonId")
                             }
