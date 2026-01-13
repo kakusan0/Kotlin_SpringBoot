@@ -3,6 +3,7 @@ package com.example.demo.controller
 import com.example.demo.service.WebAuthnService
 import com.webauthn4j.util.Base64UrlUtil
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.ResponseEntity
@@ -10,6 +11,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.core.userdetails.UsernameNotFoundException
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository
 import org.springframework.web.bind.annotation.*
 
@@ -17,7 +19,8 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/webauthn")
 class WebAuthnController(
     private val webAuthnService: WebAuthnService,
-    private val userDetailsService: UserDetailsService
+    private val userDetailsService: UserDetailsService,
+    private val sessionAuthenticationStrategy: SessionAuthenticationStrategy
 ) {
     private val logger = LoggerFactory.getLogger(WebAuthnController::class.java)
 
@@ -200,7 +203,8 @@ class WebAuthnController(
     fun finishDiscoverableAuthentication(
         @RequestParam challengeId: String,
         @RequestBody req: FinishAuthenticationRequest,
-        request: HttpServletRequest
+        request: HttpServletRequest,
+        response: HttpServletResponse
     ): ResponseEntity<Any> {
         val challenge = webAuthnService.consumeDiscoverableChallenge(challengeId)
             ?: return ResponseEntity.badRequest().body(mapOf("message" to "Challenge not found or expired"))
@@ -239,7 +243,7 @@ class WebAuthnController(
             )
 
             // Spring Securityの認証セッションを確立
-            establishSecuritySession(credential.username, request)
+            establishSecuritySession(credential.username, request, response)
 
             logger.info("Discoverable passkey authentication successful for user: ${credential.username}")
             ResponseEntity.ok(mapOf("message" to "authenticated", "username" to credential.username))
@@ -254,7 +258,8 @@ class WebAuthnController(
     fun finishAuthentication(
         @RequestParam username: String,
         @RequestBody req: FinishAuthenticationRequest,
-        request: HttpServletRequest
+        request: HttpServletRequest,
+        response: HttpServletResponse
     ): ResponseEntity<Any> {
         val challenge = webAuthnService.consumeAuthenticationChallenge(username)
             ?: return ResponseEntity.badRequest().body(mapOf("message" to "Challenge not found or expired"))
@@ -287,7 +292,7 @@ class WebAuthnController(
             )
 
             // Spring Securityの認証セッションを確立
-            establishSecuritySession(username, request)
+            establishSecuritySession(username, request, response)
 
             logger.info("Passkey authentication successful for user: $username")
             ResponseEntity.ok(mapOf("message" to "authenticated"))
@@ -298,7 +303,11 @@ class WebAuthnController(
         }
     }
 
-    private fun establishSecuritySession(username: String, request: HttpServletRequest) {
+    private fun establishSecuritySession(
+        username: String,
+        request: HttpServletRequest,
+        response: HttpServletResponse
+    ) {
         val userDetails = userDetailsService.loadUserByUsername(username)
         val authentication = UsernamePasswordAuthenticationToken(
             userDetails,
@@ -308,6 +317,9 @@ class WebAuthnController(
         val securityContext = SecurityContextHolder.createEmptyContext()
         securityContext.authentication = authentication
         SecurityContextHolder.setContext(securityContext)
+
+        // Spring Securityの標準セッション戦略を適用
+        sessionAuthenticationStrategy.onAuthentication(authentication, request, response)
 
         // セッションにセキュリティコンテキストを保存
         val session = request.getSession(true)

@@ -46,7 +46,7 @@ spring:
   servlet:
     session:
       cookie:
-        same-site: strict
+        same-site: lax
         http-only: true
       timeout: 30m
   flyway:
@@ -103,6 +103,9 @@ app:
   trust-proxy: true
   csp:
     connect-src: "'self'"
+
+server:
+  forward-headers-strategy: framework
 
 # WebAuthn (パスキー) 設定
 webauthn:

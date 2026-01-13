@@ -18,6 +18,7 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.authentication.session.*
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
@@ -243,6 +244,17 @@ class SecurityConfig(
         } else {
             SessionRegistryImpl()
         }
+    }
+
+    @Bean
+    fun sessionAuthenticationStrategy(sessionRegistry: SessionRegistry): SessionAuthenticationStrategy {
+        val concurrent = ConcurrentSessionControlAuthenticationStrategy(sessionRegistry).apply {
+            setMaximumSessions(1)
+            setExceptionIfMaximumExceeded(false)
+        }
+        val fixation = SessionFixationProtectionStrategy()
+        val register = RegisterSessionAuthenticationStrategy(sessionRegistry)
+        return CompositeSessionAuthenticationStrategy(listOf(concurrent, fixation, register))
     }
 
     @Bean
