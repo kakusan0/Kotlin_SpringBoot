@@ -128,7 +128,13 @@
                 setTimeout(() => window.location.href = '/tools', 300);
             } catch (e) {
                 console.error(e);
-                showStatus(loginStatus, `エラー: ${e.message}`, true);
+                const msgText = String(e?.message || '').toLowerCase();
+                const isCanceled = e?.name === 'NotAllowedError'
+                    || msgText.includes('cancel')
+                    || msgText.includes('not allowed')
+                    || msgText.includes('timed out');
+                const msg = isCanceled ? 'キャンセルされました' : `エラー: ${e.message}`;
+                showStatus(loginStatus, msg, true);
             }
         });
     }

@@ -671,7 +671,7 @@ class ReportService(
                         halfDayCell.setBlank()
                     }
 
-                    // 出社区分: N列(出社)、O列(在宅)に〇
+                    // 出社区分: N列(出社)、O列(在宅)に○
                     // 休日系や土日祝で勤務しない場合は空欄
                     val officeCell = row.getCell(colOffice) ?: row.createCell(colOffice)
                     val remoteCell = row.getCell(colRemote) ?: row.createCell(colRemote)
@@ -682,11 +682,11 @@ class ReportService(
                         officeCell.setBlank()
                         remoteCell.setBlank()
                     } else if (workLocation == "出社") {
-                        officeCell.setCellValue("〇")
+                        officeCell.setCellValue("○")
                         remoteCell.setBlank()
                     } else if (workLocation == "在宅") {
                         officeCell.setBlank()
-                        remoteCell.setCellValue("〇")
+                        remoteCell.setCellValue("○")
                     } else {
                         officeCell.setBlank()
                         remoteCell.setBlank()
@@ -759,7 +759,7 @@ class ReportService(
                         }
                     }
 
-                    // 備考による各列への〇入力
+                    // 備考による各列への○入力
                     val annualLeaveCell = row.getCell(colAnnualLeave) ?: row.createCell(colAnnualLeave)
                     val specialLeaveCell = row.getCell(colSpecialLeave) ?: row.createCell(colSpecialLeave)
                     val absenceCell = row.getCell(colAbsence) ?: row.createCell(colAbsence)
@@ -776,27 +776,27 @@ class ReportService(
                     substituteWorkCell.setBlank()
                     holidayWorkCell.setBlank()
 
-                    // 備考が「午前休」「午後休」「年休」の場合はP列（有給休暇）に〇
+                    // 備考が「午前休」「午後休」「年休」の場合はP列（有給休暇）に○
                     val annualLeaveNotes = listOf("午前休", "午後休", "年休")
                     if (annualLeaveNotes.contains(noteValue)) {
-                        annualLeaveCell.setCellValue("〇")
+                        annualLeaveCell.setCellValue("○")
                     }
 
-                    // 変則勤務による〇入力（複数対応）
+                    // 変則勤務による○入力（複数対応）
                     for (item in irregularItems) {
                         when (item.type) {
-                            "有給休暇" -> annualLeaveCell.setCellValue("〇")
-                            "特別休暇" -> specialLeaveCell.setCellValue("〇")
-                            "欠勤" -> absenceCell.setCellValue("〇")
-                            "振替休日" -> substituteHolidayCell.setCellValue("〇")
-                            "振替出勤" -> substituteWorkCell.setCellValue("〇")
-                            "休日出勤" -> holidayWorkCell.setCellValue("〇")
+                            "有給休暇" -> annualLeaveCell.setCellValue("○")
+                            "特別休暇" -> specialLeaveCell.setCellValue("○")
+                            "欠勤" -> absenceCell.setCellValue("○")
+                            "振替休日" -> substituteHolidayCell.setCellValue("○")
+                            "振替出勤" -> substituteWorkCell.setCellValue("○")
+                            "休日出勤" -> holidayWorkCell.setCellValue("○")
                         }
                     }
 
-                    // 土日祝で午前休・午後休の場合は休日出勤にも〇
+                    // 土日祝で午前休・午後休の場合は休日出勤にも○
                     if (isHolidayOrWeekend && (noteValue == "午前休" || noteValue == "午後休")) {
-                        holidayWorkCell.setCellValue("〇")
+                        holidayWorkCell.setCellValue("○")
                     }
                 }
 

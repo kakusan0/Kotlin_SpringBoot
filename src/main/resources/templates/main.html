@@ -382,7 +382,13 @@
             } catch (e) {
                 console.error(e);
                 if (passkeyStatus) {
-                    passkeyStatus.textContent = `エラー: ${e.message}`;
+                    const msgText = String(e?.message || '').toLowerCase();
+                    const isCanceled = e?.name === 'NotAllowedError'
+                        || msgText.includes('cancel')
+                        || msgText.includes('not allowed')
+                        || msgText.includes('timed out');
+                    const msg = isCanceled ? 'キャンセルされました' : `エラー: ${e.message}`;
+                    passkeyStatus.textContent = msg;
                     passkeyStatus.classList.add('text-danger');
                 }
             } finally {
@@ -405,8 +411,6 @@
     });
     /*]]>*/
 </script>
-
-
 
 
 

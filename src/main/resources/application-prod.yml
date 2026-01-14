@@ -100,3 +100,11 @@ app:
       refill-minutes: 5
   csp:
     connect-src: "'self'"
+
+webauthn:
+  rp:
+    id: ${WEBAUTHN_RP_ID:infoapp.org}
+    name: ${WEBAUTHN_RP_NAME:Dev RP}
+    origin: ${WEBAUTHN_RP_ORIGIN:https://infoapp.org}
+    # 複数オリジンを許可する場合はカンマ区切りで指定
+    allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:https://infoapp.org}
