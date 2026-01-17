@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service
 import java.sql.ResultSet
 
 @Service
-class UserSettingsService(private val jdbcTemplate: NamedParameterJdbcTemplate) {
+class UserSettingsService(
+    private val jdbcTemplate: NamedParameterJdbcTemplate,
+    private val cryptoService: CryptoService
+) {
 
     companion object {
         private val logger = org.slf4j.LoggerFactory.getLogger(UserSettingsService::class.java)
@@ -66,9 +69,9 @@ class UserSettingsService(private val jdbcTemplate: NamedParameterJdbcTemplate) 
             addValue("section", settings.section)
             addValue("branchOffice", settings.branchOffice)
             addValue("workGroup", settings.workGroup)
-            addValue("employeeNumber", settings.employeeNumber)
+            addValue("employeeNumber", cryptoService.encrypt(settings.employeeNumber))
             addValue("siteRegularHours", settings.siteRegularHours)
-            addValue("displayName", settings.displayName)
+            addValue("displayName", cryptoService.encrypt(settings.displayName))
         }
 
         val keyHolder = GeneratedKeyHolder()
@@ -100,9 +103,9 @@ class UserSettingsService(private val jdbcTemplate: NamedParameterJdbcTemplate) 
             addValue("section", settings.section)
             addValue("branchOffice", settings.branchOffice)
             addValue("workGroup", settings.workGroup)
-            addValue("employeeNumber", settings.employeeNumber)
+            addValue("employeeNumber", cryptoService.encrypt(settings.employeeNumber))
             addValue("siteRegularHours", settings.siteRegularHours)
-            addValue("displayName", settings.displayName)
+            addValue("displayName", cryptoService.encrypt(settings.displayName))
         }
 
         jdbcTemplate.update(sql, params)
@@ -121,9 +124,9 @@ class UserSettingsService(private val jdbcTemplate: NamedParameterJdbcTemplate) 
             section = rs.getObject("section") as Int?,
             branchOffice = rs.getString("branch_office"),
             workGroup = rs.getObject("work_group") as Int?,
-            employeeNumber = rs.getString("employee_number"),
+            employeeNumber = cryptoService.decrypt(rs.getString("employee_number")),
             siteRegularHours = rs.getTime("site_regular_hours")?.toLocalTime(),
-            displayName = rs.getString("display_name"),
+            displayName = cryptoService.decrypt(rs.getString("display_name")),
             createdAt = rs.getTimestamp("created_at")?.toInstant()?.atOffset(java.time.ZoneOffset.UTC),
             updatedAt = rs.getTimestamp("updated_at")?.toInstant()?.atOffset(java.time.ZoneOffset.UTC)
         )

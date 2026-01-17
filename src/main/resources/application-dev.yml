@@ -54,6 +54,8 @@ geoip:
   allowed-country-codes: JP
 
 app:
+  encryption:
+    key: "CHANGE_ME_LOCAL_ONLY"
   login:
     rate-limit:
       capacity: 10

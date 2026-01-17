@@ -44,6 +44,22 @@ services:
     cap_add:
       - IPC_LOCK
 
+  github-runner:
+    image: myoung34/github-runner:latest
+    container_name: github-runner
+    restart: unless-stopped
+    environment:
+      REPO_URL: "https://github.com/OWNER/REPO"
+      RUNNER_NAME: "docker-mac-runner"
+      RUNNER_WORKDIR: "/tmp/runner"
+      RUNNER_LABELS: "self-hosted,linux,docker"
+      RUNNER_SCOPE: "repo"
+      ACCESS_TOKEN: "${GITHUB_RUNNER_PAT}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner_data:/tmp/runner
+
 volumes:
   db_data:
   redis_data:
+  runner_data:

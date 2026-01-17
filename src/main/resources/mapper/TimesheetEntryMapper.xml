@@ -8,7 +8,7 @@
         <result property="userName" column="user_name"/>
         <result property="startTime" column="start_time"/>
         <result property="endTime" column="end_time"/>
-        <result property="note" column="note"/>
+        <result property="note" column="note" typeHandler="com.example.demo.mybatis.EncryptedStringTypeHandler"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="breakMinutes" column="break_minutes" javaType="java.lang.Integer"/>
@@ -18,13 +18,17 @@
         <result property="holidayWork" column="holiday_work" javaType="java.lang.Boolean"/>
         <result property="workLocation" column="work_location"/>
         <result property="irregularWorkType" column="irregular_work_type"/>
-        <result property="irregularWorkDesc" column="irregular_work_desc"/>
+        <result property="irregularWorkDesc" column="irregular_work_desc"
+                typeHandler="com.example.demo.mybatis.EncryptedStringTypeHandler"/>
         <result property="irregularWorkData" column="irregular_work_data"/>
         <result property="lateTime" column="late_time"/>
-        <result property="lateDesc" column="late_desc"/>
+        <result property="lateDesc" column="late_desc"
+                typeHandler="com.example.demo.mybatis.EncryptedStringTypeHandler"/>
         <result property="earlyTime" column="early_time"/>
-        <result property="earlyDesc" column="early_desc"/>
-        <result property="freeNote" column="free_note"/>
+        <result property="earlyDesc" column="early_desc"
+                typeHandler="com.example.demo.mybatis.EncryptedStringTypeHandler"/>
+        <result property="freeNote" column="free_note"
+                typeHandler="com.example.demo.mybatis.EncryptedStringTypeHandler"/>
         <result property="paidLeave" column="paid_leave"/>
     </resultMap>
 
@@ -101,9 +105,15 @@
                              , irregular_work_desc, irregular_work_data, late_time, late_desc, early_time, early_desc
                              , free_note, paid_leave)
         VALUES
-            ( #{workDate}, #{userName}, #{startTime}, #{endTime}, #{note}, #{breakMinutes}, #{durationMinutes}
-            , #{workingMinutes}, #{version}, #{holidayWork}, #{workLocation}, #{irregularWorkType}, #{irregularWorkDesc}
-            , #{irregularWorkData}, #{lateTime}, #{lateDesc}, #{earlyTime}, #{earlyDesc}, #{freeNote}, #{paidLeave})
+            ( #{workDate}, #{userName}, #{startTime}, #{endTime}
+            , #{note, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}, #{breakMinutes}
+            , #{durationMinutes}
+            , #{workingMinutes}, #{version}, #{holidayWork}, #{workLocation}, #{irregularWorkType}
+            , #{irregularWorkDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
+            , #{irregularWorkData}, #{lateTime}
+            , #{lateDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}, #{earlyTime}
+            , #{earlyDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
+            , #{freeNote, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}, #{paidLeave})
     </insert>
 
     <update id="updateTimes" parameterType="com.example.demo.model.TimesheetEntry">
@@ -111,7 +121,7 @@
         SET
             start_time            = #{startTime}
             , end_time            = #{endTime}
-            , note                = #{note}
+            , note                = #{note, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , updated_at          = NOW()
             , break_minutes       = #{breakMinutes}
             , duration_minutes    = #{durationMinutes}
@@ -120,13 +130,13 @@
             , holiday_work        = #{holidayWork}
             , work_location       = #{workLocation}
             , irregular_work_type = #{irregularWorkType}
-            , irregular_work_desc = #{irregularWorkDesc}
+            , irregular_work_desc = #{irregularWorkDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , irregular_work_data = #{irregularWorkData}
             , late_time           = #{lateTime}
-            , late_desc           = #{lateDesc}
+            , late_desc           = #{lateDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , early_time          = #{earlyTime}
-            , early_desc          = #{earlyDesc}
-            , free_note = #{freeNote}
+            , early_desc          = #{earlyDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
+            , free_note           = #{freeNote, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , paid_leave          = #{paidLeave}
         WHERE
             id = #{id}
@@ -138,7 +148,7 @@
         SET
             start_time            = #{startTime}
             , end_time            = #{endTime}
-            , note                = #{note}
+            , note                = #{note, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , updated_at          = NOW()
             , break_minutes       = #{breakMinutes}
             , duration_minutes    = #{durationMinutes}
@@ -147,13 +157,13 @@
             , holiday_work        = #{holidayWork}
             , work_location       = #{workLocation}
             , irregular_work_type = #{irregularWorkType}
-            , irregular_work_desc = #{irregularWorkDesc}
+            , irregular_work_desc = #{irregularWorkDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , irregular_work_data = #{irregularWorkData}
             , late_time           = #{lateTime}
-            , late_desc           = #{lateDesc}
+            , late_desc           = #{lateDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , early_time          = #{earlyTime}
-            , early_desc          = #{earlyDesc}
-            , free_note = #{freeNote}
+            , early_desc          = #{earlyDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
+            , free_note           = #{freeNote, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , paid_leave          = #{paidLeave}
         WHERE
             id = #{id}
@@ -162,7 +172,7 @@
     <update id="updateNote">
         UPDATE timesheet_entries
         SET
-            note         = #{note}
+            note         = #{note, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
             , updated_at = NOW()
         WHERE
             id = #{id}
