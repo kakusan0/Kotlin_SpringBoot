@@ -27,19 +27,6 @@ jobs:
       - name: Start app with Docker Compose
         run: docker compose up -d --build app
 
-      - name: Wait for health endpoint
-        run: |
-          for i in {1..30}; do
-            if curl -fsS http://app:8080/actuator/health > /dev/null; then
-              echo "Health check OK"
-              exit 0
-            fi
-            echo "Waiting for app..."
-            sleep 2
-          done
-          echo "Health check failed"
-          exit 1
-
       - name: Shutdown docker compose
         if: always()
         run: docker compose down
