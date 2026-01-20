@@ -11,6 +11,15 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: "prod"
+
+      # Vault（コンテナ間通信はサービス名で）
+      VAULT_URI: "http://vault:8200"
+      VAULT_TOKEN: "root-token"
+      VAULT_ENABLED: "true"
+
+      # Redis（コンテナ間通信はサービス名で）
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
     depends_on:
       db:
         condition: service_healthy
