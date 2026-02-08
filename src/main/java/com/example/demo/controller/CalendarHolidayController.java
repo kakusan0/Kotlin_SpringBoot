@@ -1,0 +1,92 @@
+package com.example.demo.controller;
+
+import com.example.demo.model.CalendarHoliday;
+import com.example.demo.service.CalendarHolidayService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/calendar")
+public class CalendarHolidayController {
+
+    private final CalendarHolidayService calendarHolidayService;
+
+    public CalendarHolidayController(CalendarHolidayService calendarHolidayService) {
+        this.calendarHolidayService = calendarHolidayService;
+    }
+
+    @GetMapping("/holidays")
+    public Map<String, String> getHolidays(@RequestParam int year) {
+        return calendarHolidayService.getHolidaysMapByYear(year);
+    }
+
+    @GetMapping("/holidays/list")
+    public List<CalendarHoliday> getHolidaysList(@RequestParam int year) {
+        return calendarHolidayService.getHolidaysByYear(year);
+    }
+
+    @GetMapping("/holidays/range")
+    public Map<String, String> getHolidaysByRange(
+            @RequestParam String from,
+            @RequestParam String to
+    ) {
+        LocalDate fromDate = LocalDate.parse(from);
+        LocalDate toDate = LocalDate.parse(to);
+        List<CalendarHoliday> holidays = calendarHolidayService.getHolidaysByRange(fromDate, toDate);
+        return holidays.stream().collect(Collectors.toMap(
+                h -> h.getHolidayDate().toString(),
+                CalendarHoliday::getName
+        ));
+    }
+
+    @PostMapping("/holidays")
+    public ResponseEntity<Map<String, Object>> addHoliday(
+            Authentication auth,
+            @RequestBody Map<String, String> body
+    ) {
+        String dateStr = body.get("date");
+        if (dateStr == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "date is required"));
+        }
+        String name = body.get("name");
+        if (name == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "name is required"));
+        }
+
+        try {
+            LocalDate date = LocalDate.parse(dateStr);
+            CalendarHoliday holiday = calendarHolidayService.addHoliday(date, name);
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("success", true);
+            resp.put("holiday", holiday);
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage() != null ? e.getMessage() : "Failed to add holiday"));
+        }
+    }
+
+    @DeleteMapping("/holidays/{id}")
+    public ResponseEntity<Map<String, Object>> deleteHoliday(
+            Authentication auth,
+            @PathVariable Long id
+    ) {
+        try {
+            int deleted = calendarHolidayService.deleteHoliday(id);
+            if (deleted > 0) {
+                return ResponseEntity.ok(Map.of("success", true, "deleted", deleted));
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage() != null ? e.getMessage() : "Failed to delete holiday"));
+        }
+    }
+}

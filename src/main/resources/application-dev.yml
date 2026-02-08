@@ -13,7 +13,7 @@ spring:
   devtools:
     restart:
       enabled: true
-      additional-paths: src/main/resources/templates,src/main/resources/static,src/main/kotlin
+      additional-paths: src/main/resources/templates,src/main/resources/static
       exclude: logs/**,tmp/**,**/*Test.class,**/*.log
     livereload:
       enabled: true
