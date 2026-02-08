@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -22,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
+@RequiredArgsConstructor
 public class AipoLoginService {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AipoLoginService.class);
@@ -34,9 +36,6 @@ public class AipoLoginService {
     private final ReportService reportService;
     private final Map<String, WebDriver> userSessions = new ConcurrentHashMap<>();
 
-    public AipoLoginService(ReportService reportService) {
-        this.reportService = reportService;
-    }
 
     private static String safe(String value) {
         return value != null ? value : "";

@@ -7,6 +7,7 @@ import com.example.demo.service.BlacklistEventService;
 import com.example.demo.util.BlacklistEventFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/ip")
 @PreAuthorize("hasRole('ADMIN')")
+@RequiredArgsConstructor
 public class ApiIpController {
 
     private final WhitelistIpMapper whitelistIpMapper;
@@ -29,17 +31,6 @@ public class ApiIpController {
     private final AccessLogMapper accessLogMapper;
     private final BlacklistEventService blacklistEventService;
 
-    public ApiIpController(
-            WhitelistIpMapper whitelistIpMapper,
-            BlacklistIpMapper blacklistIpMapper,
-            AccessLogMapper accessLogMapper,
-            BlacklistEventService blacklistEventService
-    ) {
-        this.whitelistIpMapper = whitelistIpMapper;
-        this.blacklistIpMapper = blacklistIpMapper;
-        this.accessLogMapper = accessLogMapper;
-        this.blacklistEventService = blacklistEventService;
-    }
 
     @GetMapping("/whitelist")
     public ResponseEntity<Object> listWhitelist() {

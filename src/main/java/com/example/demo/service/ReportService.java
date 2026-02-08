@@ -5,6 +5,8 @@ import com.example.demo.model.UserSettings;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -37,30 +39,18 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@RequiredArgsConstructor
 public class ReportService {
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ReportService.class);
     private final TimesheetService timesheetService;
     private final UserSettingsService userSettingsService;
-    private final HolidayPosition holidayPosition;
+
+    @Value("${report.holidayPosition:MIDDLE}")
+    private final String holidayPositionStr;
     private final ConcurrentHashMap<Integer, Map<LocalDate, String>> holidayCache = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public ReportService(
-            TimesheetService timesheetService,
-            UserSettingsService userSettingsService,
-            @Value("${report.holidayPosition:MIDDLE}") String holidayPositionStr
-    ) {
-        this.timesheetService = timesheetService;
-        this.userSettingsService = userSettingsService;
-        HolidayPosition pos;
-        try {
-            pos = HolidayPosition.valueOf(holidayPositionStr.toUpperCase());
-        } catch (Exception ex) {
-            pos = HolidayPosition.MIDDLE;
-        }
-        this.holidayPosition = pos;
-    }
+    private HolidayPosition holidayPosition;
 
     private static String safe(String value) {
         return value != null ? value : "";
@@ -85,6 +75,17 @@ public class ReportService {
     private static Cell getCell(org.apache.poi.ss.usermodel.Sheet sheet, int rowIdx, int colIdx) {
         var row = sheet.getRow(rowIdx) != null ? sheet.getRow(rowIdx) : sheet.createRow(rowIdx);
         return row.getCell(colIdx) != null ? row.getCell(colIdx) : row.createCell(colIdx);
+    }
+
+    @PostConstruct
+    public void init() {
+        HolidayPosition pos;
+        try {
+            pos = HolidayPosition.valueOf(holidayPositionStr.toUpperCase());
+        } catch (Exception ex) {
+            pos = HolidayPosition.MIDDLE;
+        }
+        this.holidayPosition = pos;
     }
 
     public byte[] generateXlsxBytes(String username, LocalDate from, LocalDate to) {

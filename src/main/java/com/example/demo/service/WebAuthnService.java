@@ -15,6 +15,7 @@ import com.webauthn4j.data.client.Origin;
 import com.webauthn4j.data.client.challenge.DefaultChallenge;
 import com.webauthn4j.server.ServerProperty;
 import com.webauthn4j.util.Base64UrlUtil;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@RequiredArgsConstructor
 public class WebAuthnService {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(WebAuthnService.class);
@@ -42,10 +44,6 @@ public class WebAuthnService {
     private String rpId;
     @Value("${webauthn.rp.origin:http://localhost:8080}")
     private String rpOrigin;
-
-    public WebAuthnService(WebAuthnCredentialMapper credentialMapper) {
-        this.credentialMapper = credentialMapper;
-    }
 
     public byte[] generateChallenge() {
         byte[] bytes = new byte[32];

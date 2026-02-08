@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.mapper.UaBlacklistRuleMapper;
 import com.example.demo.model.UaBlacklistRule;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -11,16 +12,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 @Service
+@RequiredArgsConstructor
 public class UaBlacklistService {
 
     private final UaBlacklistRuleMapper ruleMapper;
     private final AtomicReference<List<UaBlacklistRule>> cacheRef = new AtomicReference<>(List.of());
     private final AtomicLong lastLoadEpochMs = new AtomicLong(0);
     private final long ttlMs = 60_000L;
-
-    public UaBlacklistService(UaBlacklistRuleMapper ruleMapper) {
-        this.ruleMapper = ruleMapper;
-    }
 
     private void ensureLoaded() {
         long now = Instant.now().toEpochMilli();

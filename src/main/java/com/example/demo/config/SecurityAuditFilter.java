@@ -1,7 +1,6 @@
 package com.example.demo.config;
 
 import com.example.demo.mapper.AccessLogMapper;
-import com.example.demo.mapper.BlacklistEventMapper;
 import com.example.demo.mapper.BlacklistIpMapper;
 import com.example.demo.mapper.WhitelistIpMapper;
 import com.example.demo.model.AccessLog;
@@ -15,6 +14,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
@@ -31,6 +31,7 @@ import java.util.UUID;
  */
 @Component
 @Order(2)
+@RequiredArgsConstructor
 public class SecurityAuditFilter extends OncePerRequestFilter {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(SecurityAuditFilter.class);
@@ -39,30 +40,11 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
     private final WhitelistIpMapper whitelistIpMapper;
     private final BlacklistIpMapper blacklistIpMapper;
     private final GeoIpCountryService geoIpCountryService;
-    private final BlacklistEventMapper blacklistEventMapper;
     private final BlacklistEventService blacklistEventService;
     private final UaBlacklistService uaBlacklistService;
-    private final boolean trustProxy;
 
-    public SecurityAuditFilter(
-            AccessLogMapper accessLogMapper,
-            WhitelistIpMapper whitelistIpMapper,
-            BlacklistIpMapper blacklistIpMapper,
-            GeoIpCountryService geoIpCountryService,
-            BlacklistEventMapper blacklistEventMapper,
-            BlacklistEventService blacklistEventService,
-            UaBlacklistService uaBlacklistService,
-            @Value("${app.trust-proxy:false}") boolean trustProxy
-    ) {
-        this.accessLogMapper = accessLogMapper;
-        this.whitelistIpMapper = whitelistIpMapper;
-        this.blacklistIpMapper = blacklistIpMapper;
-        this.geoIpCountryService = geoIpCountryService;
-        this.blacklistEventMapper = blacklistEventMapper;
-        this.blacklistEventService = blacklistEventService;
-        this.uaBlacklistService = uaBlacklistService;
-        this.trustProxy = trustProxy;
-    }
+    @Value("${app.trust-proxy:false}")
+    private final boolean trustProxy;
 
     @Override
     protected void doFilterInternal(
@@ -82,20 +64,18 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
         class EarlyLog {
             void write(int statusCode, String reason) {
                 long duration = System.currentTimeMillis() - start;
-                AccessLog accessLog = new AccessLog(
-                        requestId,
-                        request.getMethod(),
-                        request.getRequestURI(),
-                        request.getQueryString(),
-                        statusCode,
-                        duration,
-                        remoteIp,
-                        request.getHeader("User-Agent"),
-                        request.getHeader("Referer"),
-                        request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null,
-                        null,
-                        null
-                );
+                AccessLog accessLog = AccessLog.builder()
+                        .requestId(requestId)
+                        .method(request.getMethod())
+                        .path(request.getRequestURI())
+                        .query(request.getQueryString())
+                        .status(statusCode)
+                        .durationMs(duration)
+                        .remoteIp(remoteIp)
+                        .userAgent(request.getHeader("User-Agent"))
+                        .referer(request.getHeader("Referer"))
+                        .username(request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null)
+                        .build();
                 try {
                     accessLogMapper.insert(accessLog);
                 } catch (Exception e) {
@@ -179,7 +159,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
         }
 
         if (remoteIp != null && !remoteIp.isBlank() && !whitelistIpMapper.existsByIp(remoteIp)) {
-            whitelistIpMapper.insert(new WhitelistIp(remoteIp));
+            whitelistIpMapper.insert(WhitelistIp.builder().ipAddress(remoteIp).build());
         }
 
         ContentCachingRequestWrapper reqWrap = new ContentCachingRequestWrapper(request, 10240);
@@ -199,20 +179,20 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             } catch (Exception ignored) {
             }
 
-            AccessLog accessLog = new AccessLog(
-                    requestId,
-                    request.getMethod(),
-                    request.getRequestURI(),
-                    request.getQueryString(),
-                    status,
-                    duration,
-                    remoteIp,
-                    request.getHeader("User-Agent"),
-                    request.getHeader("Referer"),
-                    request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null,
-                    computeRequestBytes(reqWrap),
-                    computeResponseBytes(resWrap)
-            );
+            AccessLog accessLog = AccessLog.builder()
+                    .requestId(requestId)
+                    .method(request.getMethod())
+                    .path(request.getRequestURI())
+                    .query(request.getQueryString())
+                    .status(status)
+                    .durationMs(duration)
+                    .remoteIp(remoteIp)
+                    .userAgent(request.getHeader("User-Agent"))
+                    .referer(request.getHeader("Referer"))
+                    .username(request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null)
+                    .requestBytes(computeRequestBytes(reqWrap))
+                    .responseBytes(computeResponseBytes(resWrap))
+                    .build();
             try {
                 accessLogMapper.insert(accessLog);
             } catch (Exception e) {

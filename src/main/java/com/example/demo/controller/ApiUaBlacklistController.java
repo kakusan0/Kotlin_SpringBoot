@@ -8,6 +8,7 @@ import com.example.demo.model.UaBlacklistRule;
 import com.example.demo.service.BlacklistEventService;
 import com.example.demo.util.BlacklistEventFactory;
 import jakarta.validation.constraints.NotBlank;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/ua-blacklist")
 @PreAuthorize("hasRole('ADMIN')")
+@RequiredArgsConstructor
 public class ApiUaBlacklistController {
 
     private final UaBlacklistRuleMapper ruleMapper;
@@ -32,20 +34,6 @@ public class ApiUaBlacklistController {
     private final BlacklistIpMapper blacklistIpMapper;
     private final WhitelistIpMapper whitelistIpMapper;
     private final BlacklistEventService blacklistEventService;
-
-    public ApiUaBlacklistController(
-            UaBlacklistRuleMapper ruleMapper,
-            AccessLogMapper accessLogMapper,
-            BlacklistIpMapper blacklistIpMapper,
-            WhitelistIpMapper whitelistIpMapper,
-            BlacklistEventService blacklistEventService
-    ) {
-        this.ruleMapper = ruleMapper;
-        this.accessLogMapper = accessLogMapper;
-        this.blacklistIpMapper = blacklistIpMapper;
-        this.whitelistIpMapper = whitelistIpMapper;
-        this.blacklistEventService = blacklistEventService;
-    }
 
     @GetMapping
     public ResponseEntity<Object> list() {

@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.service.AipoLoginResult;
 import com.example.demo.service.AipoLoginService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -11,13 +12,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/aipo")
+@RequiredArgsConstructor
 public class AipoLoginController {
 
     private final AipoLoginService aipoLoginService;
-
-    public AipoLoginController(AipoLoginService aipoLoginService) {
-        this.aipoLoginService = aipoLoginService;
-    }
 
     @PostMapping("/login")
     public ResponseEntity<AipoLoginResult> login(Authentication auth, @RequestBody AipoLoginRequest request) {

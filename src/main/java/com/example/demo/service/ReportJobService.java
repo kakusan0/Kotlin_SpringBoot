@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.mapper.ReportJobMapper;
 import com.example.demo.model.ReportJob;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -15,26 +16,23 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class ReportJobService {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ReportJobService.class);
 
     private final ReportJobMapper reportJobMapper;
     private final ReportService reportService;
+    @Value("${app.report.dir:reports}")
     private final String reportDir;
 
-    public ReportJobService(
-            ReportJobMapper reportJobMapper,
-            ReportService reportService,
-            @Value("${app.report.dir:reports}") String reportDir
-    ) {
-        this.reportJobMapper = reportJobMapper;
-        this.reportService = reportService;
-        this.reportDir = reportDir != null ? reportDir : "reports";
-    }
-
     public Long submitJob(String username, LocalDate from, LocalDate to, String format) {
-        ReportJob job = new ReportJob(null, username, from, to, format, "PENDING", null, null, null, null);
+        ReportJob job = ReportJob.builder()
+                .username(username)
+                .fromDate(from)
+                .toDate(to)
+                .format(format)
+                .build();
         reportJobMapper.insert(job);
         logger.info("Report job submitted id={} user={} range={}..{} format={}", job.getId(), username, from, to, format);
         asyncRun(job.getId());

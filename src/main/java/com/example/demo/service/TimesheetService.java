@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.mapper.TimesheetEntryMapper;
 import com.example.demo.model.TimesheetEntry;
 import com.example.demo.util.DbUtils;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -14,17 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class TimesheetService {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TimesheetService.class);
 
     private final TimesheetEntryMapper timesheetEntryMapper;
     private final ApplicationEventPublisher eventPublisher;
-
-    public TimesheetService(TimesheetEntryMapper timesheetEntryMapper, ApplicationEventPublisher eventPublisher) {
-        this.timesheetEntryMapper = timesheetEntryMapper;
-        this.eventPublisher = eventPublisher;
-    }
 
     private TimesheetEntry applyCalc(TimesheetEntry entry) {
         TimesheetEval eval = TimesheetEvaluator.evaluate(

@@ -1,5 +1,6 @@
 package com.example.demo.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private static final long HSTS_MAX_AGE = 31536000L;
@@ -69,13 +71,6 @@ public class SecurityConfig {
     @Value("${webauthn.rp.allowed-origins:}")
     private String webAuthnAllowedOrigins;
 
-    public SecurityConfig(
-            AuthenticationFailureHandler customAuthenticationFailureHandler,
-            LoginRateLimitFilter loginRateLimitFilter
-    ) {
-        this.customAuthenticationFailureHandler = customAuthenticationFailureHandler;
-        this.loginRateLimitFilter = loginRateLimitFilter;
-    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {

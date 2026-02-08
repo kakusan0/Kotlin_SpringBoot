@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.mapper.CalendarHolidayMapper;
 import com.example.demo.model.CalendarHoliday;
 import com.example.demo.util.DbUtils;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -14,13 +15,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class CalendarHolidayService {
 
     private final CalendarHolidayMapper calendarHolidayMapper;
-
-    public CalendarHolidayService(CalendarHolidayMapper calendarHolidayMapper) {
-        this.calendarHolidayMapper = calendarHolidayMapper;
-    }
 
     @Cacheable(value = "holidays", key = "#year")
     public List<CalendarHoliday> getHolidaysByYear(int year) {
@@ -50,7 +48,11 @@ public class CalendarHolidayService {
     @Transactional
     @CacheEvict(value = {"holidays", "holidaysMap"}, allEntries = true)
     public CalendarHoliday addHoliday(LocalDate date, String name) {
-        CalendarHoliday holiday = new CalendarHoliday(null, date, name, date.getYear(), null, null);
+        CalendarHoliday holiday = CalendarHoliday.builder()
+                .holidayDate(date)
+                .name(name)
+                .year(date.getYear())
+                .build();
         DbUtils.dbCall("insert", () -> calendarHolidayMapper.insert(holiday), date, name);
         return holiday;
     }
@@ -58,7 +60,10 @@ public class CalendarHolidayService {
     @Transactional
     @CacheEvict(value = {"holidays", "holidaysMap"}, allEntries = true)
     public int updateHoliday(Long id, String name) {
-        CalendarHoliday holiday = new CalendarHoliday(id, LocalDate.now(), name, 0, null, null);
+        CalendarHoliday holiday = CalendarHoliday.builder()
+                .id(id)
+                .name(name)
+                .build();
         return DbUtils.dbCall("update", () -> calendarHolidayMapper.update(holiday), id, name);
     }
 

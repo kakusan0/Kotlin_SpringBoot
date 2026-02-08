@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.model.UserSettings;
 import com.example.demo.service.UserSettingsService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,13 +11,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/user-settings")
+@RequiredArgsConstructor
 public class UserSettingsController {
 
     private final UserSettingsService userSettingsService;
-
-    public UserSettingsController(UserSettingsService userSettingsService) {
-        this.userSettingsService = userSettingsService;
-    }
 
     @GetMapping
     public UserSettings getSettings(Authentication auth) {
