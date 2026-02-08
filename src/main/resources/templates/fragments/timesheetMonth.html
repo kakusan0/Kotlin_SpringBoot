@@ -827,45 +827,40 @@
 
             // 固定状態のチェックと更新
             function checkStickyState() {
-                let shouldFix = false;
-                let topValue = '';
-
+                // フルスクリーンモードではCSSのposition:stickyで制御するため、JSの固定ロジックをスキップ
                 if (window.isFullscreenMode) {
-                    // フルスクリーン時はモーダルヘッダーの高さを取得
-                    const modalHeader = document.querySelector('#fullscreenModal .modal-header');
-                    const modalHeaderHeight = modalHeader ? modalHeader.getBoundingClientRect().height : 0;
-                    topValue = modalHeaderHeight + 'px';
-
-                    // フルスクリーンモードでは、modal-body のスクロール位置を確認
-                    const modalBody = document.querySelector('#fullscreenModal .modal-body');
-                    if (modalBody) {
-                        // テーブルコンテナの位置を modal-body 基準で判定
-                        const containerRect = tableContainer.getBoundingClientRect();
-                        const modalBodyRect = modalBody.getBoundingClientRect();
-                        // コンテナの上端がモーダルヘッダーの下端より上に行ったら固定
-                        shouldFix = containerRect.top <= modalHeaderHeight;
+                    // フルスクリーン時はis-fixedを外してstickyに任せる
+                    if (isHeaderFixed) {
+                        isHeaderFixed = false;
+                        thead.classList.remove('is-fixed');
+                        thead.style.top = '';
+                        thead.style.zIndex = '';
+                        thead.style.left = '';
+                        thead.style.transform = '';
+                        thead.style.clipPath = '';
+                        thead.style.width = '';
+                        thead.style.maxWidth = '';
+                        thead.style.overflow = '';
+                        dummyThead.style.display = 'none';
+                        resetStyles();
                     }
-                } else {
-                    const containerRect = tableContainer.getBoundingClientRect();
-                    const threshold = isMobile ? mobileFixedTop : fixedTop;
-                    shouldFix = containerRect.top <= threshold;
+                    winTicking = false;
+                    return;
                 }
 
-                // 固定状態の更新
+                let shouldFix = false;
+
+                const containerRect = tableContainer.getBoundingClientRect();
+                const threshold = isMobile ? mobileFixedTop : fixedTop;
+                shouldFix = containerRect.top <= threshold;
+
+                // 固定状態の更新（通常モードのみ）
                 if (shouldFix) {
                     if (!isHeaderFixed) {
                         isHeaderFixed = true;
                         thead.classList.add('is-fixed');
-
-                        // フルスクリーン時はTop位置をJSで明示的に指定
-                        if (window.isFullscreenMode) {
-                            thead.style.top = topValue;
-                            thead.style.zIndex = '1060'; // モーダル(1055)より上に
-                        } else {
-                            thead.style.top = ''; // CSSの定義に戻す
-                            thead.style.zIndex = '';
-                        }
-
+                        thead.style.top = '';
+                        thead.style.zIndex = '';
                         dummyThead.style.display = 'table-header-group';
                         syncWidths();
                         updateHeaderPosition();
@@ -906,27 +901,19 @@
             const fullscreenModal = document.getElementById('fullscreenModal');
             if (fullscreenModal) {
                 fullscreenModal.addEventListener('shown.bs.modal', () => {
-                    // 強制的に状態リセットして再計算
+                    // 強制的に状態リセット（フルスクリーンではCSS stickyに任せる）
                     isHeaderFixed = false;
                     thead.classList.remove('is-fixed');
+                    thead.style.top = '';
+                    thead.style.zIndex = '';
+                    thead.style.left = '';
+                    thead.style.transform = '';
+                    thead.style.clipPath = '';
+                    thead.style.width = '';
+                    thead.style.maxWidth = '';
+                    thead.style.overflow = '';
                     dummyThead.style.display = 'none';
                     resetStyles();
-                    // DOM更新を待ってから再計算
-                    setTimeout(() => {
-                        checkStickyState();
-                        // フルスクリーンモードで、まだ固定されていなければ強制的に固定
-                        if (window.isFullscreenMode && !isHeaderFixed) {
-                            const modalHeader = document.querySelector('#fullscreenModal .modal-header');
-                            const modalHeaderHeight = modalHeader ? modalHeader.getBoundingClientRect().height : 0;
-                            isHeaderFixed = true;
-                            thead.classList.add('is-fixed');
-                            thead.style.top = modalHeaderHeight + 'px';
-                            thead.style.zIndex = '1060';
-                            dummyThead.style.display = 'table-header-group';
-                            syncWidths();
-                            updateHeaderPosition();
-                        }
-                    }, 50);
                 });
                 fullscreenModal.addEventListener('hidden.bs.modal', () => {
                     // 強制的に状態リセットして再計算

@@ -119,9 +119,31 @@
     border-bottom: 2px solid #dee2e6;
 }
 
-/* Fullscreen Modal Override */
+/* Fullscreen Modal Override - stickyで固定 (JSのfixed制御は無効化) */
+#fullscreenModal .timesheet-table-container {
+    overflow: auto;
+    max-height: none;
+}
+
 #fullscreenModal #workTable thead.sticky-header th {
+    position: -webkit-sticky;
+    position: sticky;
     top: 0;
+    background: #f8f9fa;
+    z-index: 120;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* フルスクリーン時はJSのis-fixedによるposition:fixedを無効化 */
+#fullscreenModal #workTable thead.sticky-header.is-fixed {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    left: unset;
+    right: unset;
+    transform: none;
+    clip-path: none;
 }
 
 /* フルスクリーンモーダル */
