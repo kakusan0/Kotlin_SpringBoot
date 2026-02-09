@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -49,9 +48,7 @@ class ReportJobServiceTest {
         service.asyncRun(1L);
 
         ArgumentCaptor<Map<String, Object>> statusCaptor = ArgumentCaptor.forClass(Map.class);
-        InOrder inOrder = inOrder(reportJobMapper);
-        inOrder.verify(reportJobMapper).updateStatus(statusCaptor.capture());
-        inOrder.verify(reportJobMapper).updateStatus(statusCaptor.capture());
+        verify(reportJobMapper, times(2)).updateStatus(statusCaptor.capture());
 
         Map<String, Object> running = statusCaptor.getAllValues().get(0);
         Map<String, Object> done = statusCaptor.getAllValues().get(1);
@@ -83,4 +80,3 @@ class ReportJobServiceTest {
         verify(service, times(1)).asyncRun(99L);
     }
 }
-
