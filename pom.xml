@@ -5,12 +5,11 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>4.0.2</version>
         <relativePath/>
     </parent>
     <groupId>com.jp.demo</groupId>
     <artifactId>app</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>app</name>
     <description>Demo project for Spring Boot with MyBatis</description>
@@ -212,7 +211,7 @@
         <dependency>
             <groupId>io.github.bonigarcia</groupId>
             <artifactId>webdrivermanager</artifactId>
-            <version>5.9.2</version>
+            <version>6.3.3</version>
         </dependency>
 
         <!-- Testing -->
@@ -329,6 +328,7 @@
                 <dependency>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-undertow</artifactId>
+                    <version>3.5.10</version>
                 </dependency>
             </dependencies>
         </profile>
