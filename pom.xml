@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>4.0.2</version>
         <relativePath/>
     </parent>
     <groupId>com.jp.demo</groupId>
@@ -16,7 +16,7 @@
     <description>Demo project for Spring Boot with MyBatis</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
         <mainClass>com.example.demo.DemoApplication</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -212,7 +212,7 @@
         <dependency>
             <groupId>io.github.bonigarcia</groupId>
             <artifactId>webdrivermanager</artifactId>
-            <version>5.9.2</version>
+            <version>6.3.3</version>
         </dependency>
 
         <!-- Testing -->
@@ -230,6 +230,25 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <parameters>true</parameters>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                            <version>${project.parent.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -326,9 +345,12 @@
             </properties>
             <dependencies>
                 <!-- dev環境では Undertow を使用（軽量・高速） -->
+                <!-- Source: https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-undertow -->
                 <dependency>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-undertow</artifactId>
+                    <version>3.5.10</version>
+                    <scope>compile</scope>
                 </dependency>
             </dependencies>
         </profile>
