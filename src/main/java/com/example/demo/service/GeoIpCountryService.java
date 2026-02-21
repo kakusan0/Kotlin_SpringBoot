@@ -1,7 +1,7 @@
 package com.example.demo.service;
 
 import jakarta.annotation.PostConstruct;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -12,10 +12,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 public class GeoIpCountryService {
 
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(GeoIpCountryService.class);
 
     private final String dbPath;
     private final String allowedCodesCsv;

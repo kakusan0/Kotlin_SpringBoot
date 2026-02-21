@@ -14,7 +14,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -28,11 +28,11 @@ import java.util.UUID;
 /**
  * 全HTTPアクセスをDBに記録するフィルター
  */
+@Slf4j
 @Component
 @Order(2)
 public class SecurityAuditFilter extends OncePerRequestFilter {
 
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(SecurityAuditFilter.class);
 
     private final AccessLogMapper accessLogMapper;
     private final WhitelistIpMapper whitelistIpMapper;

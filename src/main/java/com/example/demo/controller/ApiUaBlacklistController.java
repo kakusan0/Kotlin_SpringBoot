@@ -8,6 +8,7 @@ import com.example.demo.model.UaBlacklistRule;
 import com.example.demo.service.BlacklistEventService;
 import com.example.demo.util.BlacklistEventFactory;
 import jakarta.validation.constraints.NotBlank;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/ua-blacklist")
 @PreAuthorize("hasRole('ADMIN')")
+@RequiredArgsConstructor
 public class ApiUaBlacklistController {
 
     private final UaBlacklistRuleMapper ruleMapper;
@@ -33,19 +35,6 @@ public class ApiUaBlacklistController {
     private final WhitelistIpMapper whitelistIpMapper;
     private final BlacklistEventService blacklistEventService;
 
-    public ApiUaBlacklistController(
-            UaBlacklistRuleMapper ruleMapper,
-            AccessLogMapper accessLogMapper,
-            BlacklistIpMapper blacklistIpMapper,
-            WhitelistIpMapper whitelistIpMapper,
-            BlacklistEventService blacklistEventService
-    ) {
-        this.ruleMapper = ruleMapper;
-        this.accessLogMapper = accessLogMapper;
-        this.blacklistIpMapper = blacklistIpMapper;
-        this.whitelistIpMapper = whitelistIpMapper;
-        this.blacklistEventService = blacklistEventService;
-    }
 
     @GetMapping
     public ResponseEntity<Object> list() {
@@ -108,30 +97,13 @@ public class ApiUaBlacklistController {
         return ResponseEntity.noContent().build();
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class CreateRuleRequest {
         @NotBlank
         private String pattern;
         @NotBlank
         private String matchType = "EXACT";
-
-        public CreateRuleRequest() {
-        }
-
-        public String getPattern() {
-            return pattern;
-        }
-
-        public void setPattern(String pattern) {
-            this.pattern = pattern;
-        }
-
-        public String getMatchType() {
-            return matchType;
-        }
-
-        public void setMatchType(String matchType) {
-            this.matchType = matchType;
-        }
     }
 
     public record CreateRuleResponse(UaBlacklistRule rule, int blockedIpsCount) {

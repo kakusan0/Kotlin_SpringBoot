@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.service.AipoLoginResult;
 import com.example.demo.service.AipoLoginService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -11,13 +12,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/aipo")
+@RequiredArgsConstructor
 public class AipoLoginController {
 
     private final AipoLoginService aipoLoginService;
 
-    public AipoLoginController(AipoLoginService aipoLoginService) {
-        this.aipoLoginService = aipoLoginService;
-    }
 
     @PostMapping("/login")
     public ResponseEntity<AipoLoginResult> login(Authentication auth, @RequestBody AipoLoginRequest request) {
@@ -64,60 +63,18 @@ public class AipoLoginController {
         return ResponseEntity.badRequest().body(body);
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class AipoLoginRequest {
         private String username;
         private String password;
         private String yearMonth;
         private boolean autoSubmit;
-
-        public AipoLoginRequest() {
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-
-        public String getYearMonth() {
-            return yearMonth;
-        }
-
-        public void setYearMonth(String yearMonth) {
-            this.yearMonth = yearMonth;
-        }
-
-        public boolean isAutoSubmit() {
-            return autoSubmit;
-        }
-
-        public void setAutoSubmit(boolean autoSubmit) {
-            this.autoSubmit = autoSubmit;
-        }
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class AipoSubmitRequest {
         private String submitButtonId;
-
-        public AipoSubmitRequest() {
-        }
-
-        public String getSubmitButtonId() {
-            return submitButtonId;
-        }
-
-        public void setSubmitButtonId(String submitButtonId) {
-            this.submitButtonId = submitButtonId;
-        }
     }
 }

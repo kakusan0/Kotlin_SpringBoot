@@ -2,13 +2,14 @@ package com.example.demo.service;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -21,10 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class AipoLoginService {
-
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AipoLoginService.class);
 
     private static final String AIPO_LOGIN_URL = "https://apps.uniss.co.jp/aipo/";
     private static final String AIPO_LOGOUT_URL = "https://apps.uniss.co.jp/aipo/portal?action=ALJLogoutUser";
@@ -34,9 +35,6 @@ public class AipoLoginService {
     private final ReportService reportService;
     private final Map<String, WebDriver> userSessions = new ConcurrentHashMap<>();
 
-    public AipoLoginService(ReportService reportService) {
-        this.reportService = reportService;
-    }
 
     private static String safe(String value) {
         return value != null ? value : "";
@@ -58,10 +56,10 @@ public class AipoLoginService {
                 .replace("&quot;", "\"")
                 .replace("&#39;", "'");
 
-        logger.info("Extracting URL from: {}", decodedHref);
+        log.info("Extracting URL from: {}", decodedHref);
         Matcher match = URL_PATTERN.matcher(decodedHref);
         String url = match.find() ? match.group(1) : null;
-        logger.info("Extracted URL: {}", url);
+        log.info("Extracted URL: {}", url);
         return url;
     }
 
@@ -73,7 +71,7 @@ public class AipoLoginService {
         Matcher match = pattern.matcher(url);
         String portletId = match.find() ? match.group(1) : null;
         if (portletId != null) {
-            logger.info("Extracted portlet ID: {} from URL: {}", portletId, url);
+            log.info("Extracted portlet ID: {} from URL: {}", portletId, url);
         }
         return portletId;
     }
@@ -83,7 +81,7 @@ public class AipoLoginService {
             JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
             List<WebElement> overlays = driver.findElements(By.cssSelector(".modalDialogUnderlayWrapper, .dijitDialogUnderlay"));
             if (overlays.stream().anyMatch(WebElement::isDisplayed)) {
-                logger.info("Found modal overlay, attempting to close...");
+                log.info("Found modal overlay, attempting to close...");
                 List<WebElement> closeButtons = driver.findElements(
                         By.cssSelector(
                                 ".dijitDialogCloseIcon, " +
@@ -99,7 +97,7 @@ public class AipoLoginService {
                     if (btn.isDisplayed()) {
                         try {
                             btn.click();
-                            logger.info("Clicked close button to dismiss modal");
+                            log.info("Clicked close button to dismiss modal");
                             Thread.sleep(500);
                             break;
                         } catch (Exception e) {
@@ -112,14 +110,14 @@ public class AipoLoginService {
 
                 List<WebElement> stillOpen = driver.findElements(By.cssSelector(".modalDialogUnderlayWrapper, .dijitDialogUnderlay"));
                 if (stillOpen.stream().anyMatch(WebElement::isDisplayed)) {
-                    logger.info("Modal still open, sending Escape key...");
+                    log.info("Modal still open, sending Escape key...");
                     driver.switchTo().activeElement().sendKeys(Keys.ESCAPE);
                     Thread.sleep(500);
                 }
 
                 List<WebElement> finalCheck = driver.findElements(By.cssSelector(".modalDialogUnderlayWrapper"));
                 if (finalCheck.stream().anyMatch(WebElement::isDisplayed)) {
-                    logger.info("Hiding modal via JavaScript...");
+                    log.info("Hiding modal via JavaScript...");
                     jsExecutor.executeScript(
                             "var overlays = document.querySelectorAll('.modalDialogUnderlayWrapper, .dijitDialogUnderlay');" +
                                     "overlays.forEach(function(el) { el.style.display = 'none'; });" +
@@ -130,7 +128,7 @@ public class AipoLoginService {
                 }
             }
         } catch (Exception e) {
-            logger.warn("Error while trying to close modals: {}", e.getMessage());
+            log.warn("Error while trying to close modals: {}", e.getMessage());
         }
     }
 
@@ -151,7 +149,7 @@ public class AipoLoginService {
                 try {
                     existingDriver.quit();
                 } catch (Exception e) {
-                    logger.warn("Failed to close existing session for user: {}", username, e);
+                    log.warn("Failed to close existing session for user: {}", username, e);
                 }
             }
 
@@ -167,7 +165,7 @@ public class AipoLoginService {
             driver = new ChromeDriver(options);
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(LOGIN_TIMEOUT_SECONDS));
 
-            logger.info("Navigating to Aipo login page for user: {}", username);
+            log.info("Navigating to Aipo login page for user: {}", username);
             driver.get(AIPO_LOGIN_URL);
 
             wait.until(ExpectedConditions.presenceOfElementLocated(By.id("member_username")));
@@ -180,7 +178,7 @@ public class AipoLoginService {
             passwordField.clear();
             passwordField.sendKeys(aipoPassword);
 
-            logger.info("Submitting login form for user: {}", username);
+            log.info("Submitting login form for user: {}", username);
             WebElement loginButton = driver.findElement(By.cssSelector("button[type='submit'], input[type='submit'], .login-button, #loginButton"));
             loginButton.click();
 
@@ -191,7 +189,7 @@ public class AipoLoginService {
             });
 
             String currentUrl = driver.getCurrentUrl();
-            logger.info("Login completed. Current URL: {}", currentUrl);
+            log.info("Login completed. Current URL: {}", currentUrl);
 
             List<WebElement> errorElements = driver.findElements(By.cssSelector(".error, .alert-danger, .login-error"));
             if (!errorElements.isEmpty() && errorElements.stream().anyMatch(WebElement::isDisplayed)) {
@@ -217,7 +215,7 @@ public class AipoLoginService {
                     String linkText = link.getText();
                     if (linkText.contains("ワークフロー")) {
                         workflowUrl = link.getDomAttribute("href");
-                        logger.info("Found workflow link: {}", workflowUrl);
+                        log.info("Found workflow link: {}", workflowUrl);
                         break;
                     }
                 }
@@ -226,12 +224,12 @@ public class AipoLoginService {
                     List<WebElement> altLinks = driver.findElements(By.xpath("//a[contains(text(), 'ワークフロー')]"));
                     if (!altLinks.isEmpty()) {
                         workflowUrl = altLinks.get(0).getDomAttribute("href");
-                        logger.info("Found workflow link (alt): {}", workflowUrl);
+                        log.info("Found workflow link (alt): {}", workflowUrl);
                     }
                 }
 
                 if (workflowUrl != null) {
-                    logger.info("Clicking workflow link to navigate to workflow page...");
+                    log.info("Clicking workflow link to navigate to workflow page...");
                     jsExecutor = (JavascriptExecutor) driver;
 
                     WebElement workflowLinkElement = driver.findElements(By.cssSelector(".auiPortletTitle a"))
@@ -240,64 +238,64 @@ public class AipoLoginService {
                     if (workflowLinkElement != null) {
                         try {
                             workflowLinkElement.click();
-                            logger.info("Clicked workflow link (normal click)");
+                            log.info("Clicked workflow link (normal click)");
                         } catch (org.openqa.selenium.ElementClickInterceptedException e) {
-                            logger.warn("Click intercepted, trying to close modal and retry...");
+                            log.warn("Click intercepted, trying to close modal and retry...");
                             closeAnyOpenModals(driver);
                             Thread.sleep(500);
                             try {
                                 workflowLinkElement.click();
-                                logger.info("Clicked workflow link after closing modal");
+                                log.info("Clicked workflow link after closing modal");
                             } catch (Exception e2) {
                                 jsExecutor.executeScript("arguments[0].click();", workflowLinkElement);
-                                logger.info("Clicked workflow link via JavaScript");
+                                log.info("Clicked workflow link via JavaScript");
                             }
                         }
                         Thread.sleep(3000);
                     } else {
                         driver.get(workflowUrl);
-                        logger.info("Navigated to workflow URL directly");
+                        log.info("Navigated to workflow URL directly");
                     }
 
                     try {
                         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".auiWidget, .auiButtonAction, a[title]")));
                     } catch (Exception e) {
-                        logger.warn("Timeout waiting for workflow page elements: {}", e.getMessage());
+                        log.warn("Timeout waiting for workflow page elements: {}", e.getMessage());
                     }
 
-                    logger.info("Searching for create request button to extract portlet ID...");
+                    log.info("Searching for create request button to extract portlet ID...");
                     String portletId = null;
 
                     List<WebElement> createButtons = driver.findElements(By.cssSelector(".auiWidget a.auiButtonAction"));
-                    logger.info("Found {} buttons with .auiWidget a.auiButtonAction", createButtons.size());
+                    log.info("Found {} buttons with .auiWidget a.auiButtonAction", createButtons.size());
                     for (WebElement btn : createButtons) {
                         String title = safe(btn.getDomAttribute("title"));
                         String text = btn.getText();
                         String href = safe(btn.getDomAttribute("href"));
-                        logger.info("Button: title='{}', text='{}', href='{}...'", title, text, href.length() > 100 ? href.substring(0, 100) : href);
+                        log.info("Button: title='{}', text='{}', href='{}...'", title, text, href.length() > 100 ? href.substring(0, 100) : href);
                         if (title.contains("依頼を作成") || text.contains("依頼を作成")) {
                             createRequestUrl = extractUrlFromJavascript(href);
                             portletId = extractPortletId(createRequestUrl);
-                            logger.info("Found create request button (method 1): portletId={}", portletId);
+                            log.info("Found create request button (method 1): portletId={}", portletId);
                             break;
                         }
                     }
 
                     if (portletId == null) {
                         List<WebElement> altButtons = driver.findElements(By.xpath("//a[contains(@title, '依頼を作成') or contains(text(), '依頼を作成')]"));
-                        logger.info("Found {} buttons with XPath", altButtons.size());
+                        log.info("Found {} buttons with XPath", altButtons.size());
                         if (!altButtons.isEmpty()) {
                             WebElement btn = altButtons.get(0);
                             String href = safe(btn.getDomAttribute("href"));
                             createRequestUrl = extractUrlFromJavascript(href);
                             portletId = extractPortletId(createRequestUrl);
-                            logger.info("Found create request button (method 2): portletId={}", portletId);
+                            log.info("Found create request button (method 2): portletId={}", portletId);
                         }
                     }
 
                     if (portletId != null) {
                         try {
-                            logger.info("Executing JavaScript to open modal dialog with portletId: {}", portletId);
+                            log.info("Executing JavaScript to open modal dialog with portletId: {}", portletId);
                             jsExecutor = (JavascriptExecutor) driver;
                             String showDialogScript =
                                     "aipo.common.showDialog(" +
@@ -306,14 +304,14 @@ public class AipoLoginService {
                                             "aipo.workflow.onLoadWorkflowDialog" +
                                             ");";
                             jsExecutor.executeScript(showDialogScript);
-                            logger.info("JavaScript executed: aipo.common.showDialog for portletId={}", portletId);
+                            log.info("JavaScript executed: aipo.common.showDialog for portletId={}", portletId);
 
-                            logger.info("Waiting for modal dialog to appear...");
+                            log.info("Waiting for modal dialog to appear...");
                             try {
                                 wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("modalDialog")));
-                                logger.info("Modal dialog (id=modalDialog) is now visible");
+                                log.info("Modal dialog (id=modalDialog) is now visible");
                             } catch (Exception e) {
-                                logger.warn("Timeout waiting for modalDialog: {}", e.getMessage());
+                                log.warn("Timeout waiting for modalDialog: {}", e.getMessage());
                             }
 
                             List<WebElement> modalDialogElements = driver.findElements(By.id("modalDialog"));
@@ -321,22 +319,22 @@ public class AipoLoginService {
                                 WebElement modalDialog = modalDialogElements.get(0);
                                 String displayStyle = modalDialog.getCssValue("display");
                                 String opacity = modalDialog.getCssValue("opacity");
-                                logger.info("Modal dialog found - display: {}, opacity: {}", displayStyle, opacity);
+                                log.info("Modal dialog found - display: {}, opacity: {}", displayStyle, opacity);
                                 if ("block".equals(displayStyle) && ("1".equals(opacity) || "1.0".equals(opacity))) {
-                                    logger.info("Modal dialog is fully visible and ready for interaction");
+                                    log.info("Modal dialog is fully visible and ready for interaction");
                                 } else {
-                                    logger.warn("Modal dialog may not be fully visible yet, waiting...");
+                                    log.warn("Modal dialog may not be fully visible yet, waiting...");
                                     Thread.sleep(2000);
                                 }
                             } else {
-                                logger.warn("Modal dialog (id=modalDialog) not found");
+                                log.warn("Modal dialog (id=modalDialog) not found");
                             }
 
                             try {
                                 wait.until(ExpectedConditions.presenceOfElementLocated(By.id("category_id")));
-                                logger.info("Modal dialog loaded - category_id found");
+                                log.info("Modal dialog loaded - category_id found");
                             } catch (Exception e) {
-                                logger.warn("Timeout waiting for category_id in modal: {}", e.getMessage());
+                                log.warn("Timeout waiting for category_id in modal: {}", e.getMessage());
                             }
 
                             List<WebElement> categoryElements = driver.findElements(By.id("category_id"));
@@ -344,11 +342,11 @@ public class AipoLoginService {
                                 WebElement categorySelect = categoryElements.get(0);
                                 Select select = new Select(categorySelect);
                                 select.selectByValue("69");
-                                logger.info("Selected '勤務表' from category dropdown");
+                                log.info("Selected '勤務表' from category dropdown");
                                 timesheetSelected = true;
                                 Thread.sleep(2000);
                             } else {
-                                logger.warn("Category dropdown not found in modal");
+                                log.warn("Category dropdown not found in modal");
                             }
 
                             try {
@@ -357,12 +355,12 @@ public class AipoLoginService {
                                     WebElement noteTextarea = noteElements.get(0);
                                     noteTextarea.clear();
                                     noteTextarea.sendKeys("勤務表を提出します。");
-                                    logger.info("Entered text in workflow_Note textarea");
+                                    log.info("Entered text in workflow_Note textarea");
                                 } else {
-                                    logger.warn("workflow_Note textarea not found in modal");
+                                    log.warn("workflow_Note textarea not found in modal");
                                 }
                             } catch (Exception e) {
-                                logger.warn("Failed to enter text in textarea: {}", e.getMessage());
+                                log.warn("Failed to enter text in textarea: {}", e.getMessage());
                             }
 
                             try {
@@ -372,17 +370,17 @@ public class AipoLoginService {
                                             "arguments[0].value = 'TRUE';",
                                             isSavedRouteElements.get(0)
                                     );
-                                    logger.info("Set is_saved_route to TRUE");
+                                    log.info("Set is_saved_route to TRUE");
                                 }
 
                                 List<WebElement> routeSelectButton = driver.findElements(By.id("is_saved_route_button"));
                                 if (!routeSelectButton.isEmpty() && routeSelectButton.get(0).isDisplayed()) {
                                     String buttonValue = safe(routeSelectButton.get(0).getDomProperty("value"));
-                                    logger.info("Route select button value: '{}'", buttonValue);
+                                    log.info("Route select button value: '{}'", buttonValue);
                                     if (!buttonValue.contains("ユーザー一覧から選択する")) {
                                         routeSelectButton.get(0).click();
                                         Thread.sleep(1500);
-                                        logger.info("Clicked to switch to user list mode");
+                                        log.info("Clicked to switch to user list mode");
                                     }
                                 }
 
@@ -401,16 +399,16 @@ public class AipoLoginService {
                                                 memberFromSelect
                                         );
                                         memberFromDropdown.selectByValue("921");
-                                        logger.info("Selected '921' via JavaScript and triggered change event");
+                                        log.info("Selected '921' via JavaScript and triggered change event");
                                         Thread.sleep(2000);
                                     } catch (Exception e) {
-                                        logger.warn("Failed to select member: {}", e.getMessage());
+                                        log.warn("Failed to select member: {}", e.getMessage());
                                     }
                                 } else {
-                                    logger.warn("Member from list (tmp_member_from) not found in modal");
+                                    log.warn("Member from list (tmp_member_from) not found in modal");
                                 }
                             } catch (Exception e) {
-                                logger.warn("Failed to set route: {}", e.getMessage());
+                                log.warn("Failed to set route: {}", e.getMessage());
                             }
 
                             String uploadFilePath = timesheetFilePath;
@@ -434,7 +432,7 @@ public class AipoLoginService {
                                     LocalDate from = LocalDate.of(year, month, 1);
                                     LocalDate to = from.withDayOfMonth(from.lengthOfMonth());
 
-                                    logger.info("Generating UNISS timesheet for {}: {} to {}", username, from, to);
+                                    log.info("Generating UNISS timesheet for {}: {} to {}", username, from, to);
                                     byte[] xlsxBytes = reportService.generateUnissXlsxBytes(username, from, to);
 
                                     String fileName = from.getYear() + "年" + String.format("%02d", from.getMonthValue()) +
@@ -444,9 +442,9 @@ public class AipoLoginService {
                                     java.nio.file.Files.write(tempFile.toPath(), xlsxBytes);
                                     uploadFilePath = tempFile.getAbsolutePath();
 
-                                    logger.info("Generated UNISS timesheet: {}, saved to: {}", fileName, uploadFilePath);
+                                    log.info("Generated UNISS timesheet: {}, saved to: {}", fileName, uploadFilePath);
                                 } catch (Exception e) {
-                                    logger.warn("Failed to generate UNISS timesheet: {}", e.getMessage(), e);
+                                    log.warn("Failed to generate UNISS timesheet: {}", e.getMessage(), e);
                                 }
                             }
 
@@ -454,46 +452,46 @@ public class AipoLoginService {
                                 try {
                                     File timesheetFile = new File(uploadFilePath);
                                     if (!timesheetFile.exists()) {
-                                        logger.warn("Timesheet file not found: {}", uploadFilePath);
+                                        log.warn("Timesheet file not found: {}", uploadFilePath);
                                     } else {
                                         List<WebElement> fileUploadButtons = new ArrayList<>();
                                         boolean inIframe = false;
                                         String uploadPortletId = portletId;
 
-                                        logger.info("Looking for file upload elements for workflow portlet: {}", portletId);
+                                        log.info("Looking for file upload elements for workflow portlet: {}", portletId);
 
                                         String targetIframeId = "if_fileupload_" + portletId;
                                         List<WebElement> targetIframes = driver.findElements(By.id(targetIframeId));
 
                                         if (!targetIframes.isEmpty()) {
                                             WebElement iframe = targetIframes.get(0);
-                                            logger.info("Found target iframe: {}, switching to iframe...", targetIframeId);
+                                            log.info("Found target iframe: {}, switching to iframe...", targetIframeId);
                                             driver.switchTo().frame(iframe);
                                             inIframe = true;
 
                                             fileUploadButtons = driver.findElements(By.cssSelector("[id^='fileuploadButton']"));
                                             if (!fileUploadButtons.isEmpty()) {
                                                 String buttonId = safe(fileUploadButtons.get(0).getDomAttribute("id"));
-                                                logger.info("Found file upload button in target iframe: {}", buttonId);
+                                                log.info("Found file upload button in target iframe: {}", buttonId);
                                             }
                                         } else {
-                                            logger.info("Target iframe '{}' not found, checking all iframes...", targetIframeId);
+                                            log.info("Target iframe '{}' not found, checking all iframes...", targetIframeId);
 
                                             List<WebElement> allIframes = driver.findElements(By.cssSelector("iframe[id^='if_fileupload_']"));
-                                            logger.info("Found {} file upload iframe(s)", allIframes.size());
+                                            log.info("Found {} file upload iframe(s)", allIframes.size());
 
                                             for (WebElement iframe : allIframes) {
                                                 String iframeId = safe(iframe.getDomAttribute("id"));
-                                                logger.info("Checking iframe: {}", iframeId);
+                                                log.info("Checking iframe: {}", iframeId);
                                                 if (iframeId.contains(portletId)) {
-                                                    logger.info("Found matching iframe for workflow: {}", iframeId);
+                                                    log.info("Found matching iframe for workflow: {}", iframeId);
                                                     driver.switchTo().frame(iframe);
                                                     inIframe = true;
 
                                                     fileUploadButtons = driver.findElements(By.cssSelector("[id^='fileuploadButton']"));
                                                     if (!fileUploadButtons.isEmpty()) {
                                                         String buttonId = safe(fileUploadButtons.get(0).getDomAttribute("id"));
-                                                        logger.info("Found file upload button: {}", buttonId);
+                                                        log.info("Found file upload button: {}", buttonId);
                                                     }
                                                     break;
                                                 }
@@ -502,7 +500,7 @@ public class AipoLoginService {
                                             if (!inIframe && !allIframes.isEmpty()) {
                                                 WebElement iframe = allIframes.get(0);
                                                 String iframeId = safe(iframe.getDomAttribute("id"));
-                                                logger.warn("No matching iframe found, using first iframe: {}", iframeId);
+                                                log.warn("No matching iframe found, using first iframe: {}", iframeId);
                                                 driver.switchTo().frame(iframe);
                                                 inIframe = true;
 
@@ -510,14 +508,14 @@ public class AipoLoginService {
                                                 if (!fileUploadButtons.isEmpty()) {
                                                     String buttonId = safe(fileUploadButtons.get(0).getDomAttribute("id"));
                                                     uploadPortletId = buttonId.replace("fileuploadButton", "").replace("global-", "");
-                                                    logger.info("Found file upload button in fallback iframe: {}, portletId: {}", buttonId, uploadPortletId);
+                                                    log.info("Found file upload button in fallback iframe: {}, portletId: {}", buttonId, uploadPortletId);
                                                 }
                                             }
                                         }
 
                                         if (!fileUploadButtons.isEmpty()) {
                                             WebElement fileUploadButton = fileUploadButtons.get(0);
-                                            logger.info("Upload portlet ID: {}", uploadPortletId);
+                                            log.info("Upload portlet ID: {}", uploadPortletId);
 
                                             List<WebElement> fileInputs = fileUploadButton.findElements(By.cssSelector("input[type='file']"));
                                             if (fileInputs.isEmpty()) {
@@ -527,7 +525,7 @@ public class AipoLoginService {
                                             if (!fileInputs.isEmpty()) {
                                                 WebElement fileInput = fileInputs.get(0);
                                                 fileInput.sendKeys(timesheetFile.getAbsolutePath());
-                                                logger.info("Set file to input: {}", timesheetFile.getAbsolutePath());
+                                                log.info("Set file to input: {}", timesheetFile.getAbsolutePath());
 
                                                 Thread.sleep(500);
 
@@ -542,11 +540,11 @@ public class AipoLoginService {
                                                                 "})();";
 
                                                 Object triggerResult = jsExecutor.executeScript(triggerScript);
-                                                logger.info("Trigger result (in iframe): {}", triggerResult);
+                                                log.info("Trigger result (in iframe): {}", triggerResult);
 
                                                 if (inIframe) {
                                                     driver.switchTo().defaultContent();
-                                                    logger.info("Switched back to main context after triggering change event");
+                                                    log.info("Switched back to main context after triggering change event");
                                                     inIframe = false;
                                                 }
 
@@ -560,24 +558,24 @@ public class AipoLoginService {
                                                             ? dataFilename
                                                             : first.getText().replace("削除", "").replace("\u200B", "").trim();
                                                     fileUploaded = true;
-                                                    logger.info("File upload confirmed via attachment list: {}", uploadedFileName);
+                                                    log.info("File upload confirmed via attachment list: {}", uploadedFileName);
                                                 } else {
-                                                    logger.warn("Attachment list is empty after upload attempt");
+                                                    log.warn("Attachment list is empty after upload attempt");
                                                     List<WebElement> folderNameInputs = driver.findElements(By.cssSelector("[id^='folderName_']"));
                                                     if (!folderNameInputs.isEmpty()) {
                                                         String folderValue = safe(folderNameInputs.get(0).getDomProperty("value"));
                                                         if (!folderValue.isBlank()) {
                                                             fileUploaded = true;
                                                             uploadedFileName = timesheetFile.getName();
-                                                            logger.info("File upload confirmed via folderName input: {}, using filename: {}", folderValue, uploadedFileName);
+                                                            log.info("File upload confirmed via folderName input: {}, using filename: {}", folderValue, uploadedFileName);
                                                         }
                                                     }
                                                 }
                                             } else {
-                                                logger.warn("File input not found in button or by id='attachment'");
+                                                log.warn("File input not found in button or by id='attachment'");
                                             }
                                         } else {
-                                            logger.warn("File upload button not found in any context");
+                                            log.warn("File upload button not found in any context");
                                         }
 
                                         if (inIframe) {
@@ -585,7 +583,7 @@ public class AipoLoginService {
                                         }
                                     }
                                 } catch (Exception e) {
-                                    logger.warn("Failed to upload: {}", e.getMessage(), e);
+                                    log.warn("Failed to upload: {}", e.getMessage(), e);
                                     try {
                                         driver.switchTo().defaultContent();
                                     } catch (Exception ignored) {
@@ -601,37 +599,37 @@ public class AipoLoginService {
                             if (uploadedFileName != null && !uploadedFileName.isBlank() &&
                                     (collectedFormPreview.attachedFileName() == null || collectedFormPreview.attachedFileName().isBlank())) {
                                 formPreview = collectedFormPreview.withAttachedFileName(uploadedFileName);
-                                logger.info("Form preview - attached file updated from upload: {}", uploadedFileName);
+                                log.info("Form preview - attached file updated from upload: {}", uploadedFileName);
                             } else {
                                 formPreview = collectedFormPreview;
                             }
 
-                            logger.info("Form preview collected: {}", formPreview);
+                            log.info("Form preview collected: {}", formPreview);
 
                             AipoFormPreview currentFormPreview = formPreview;
                             if (autoSubmit && currentFormPreview != null && currentFormPreview.ready()
                                     && currentFormPreview.submitButtonId() != null) {
                                 try {
-                                    logger.info("Auto submit enabled. Clicking submit button: {}", currentFormPreview.submitButtonId());
+                                    log.info("Auto submit enabled. Clicking submit button: {}", currentFormPreview.submitButtonId());
                                     WebElement submitButton = driver.findElement(By.id(currentFormPreview.submitButtonId()));
                                     if (submitButton.isDisplayed()) {
                                         submitButton.click();
-                                        logger.info("Auto submit: Clicked submit button");
+                                        log.info("Auto submit: Clicked submit button");
                                         Thread.sleep(3000);
                                         autoSubmitted = true;
                                     }
                                 } catch (Exception e) {
-                                    logger.warn("Auto submit failed: {}", e.getMessage(), e);
+                                    log.warn("Auto submit failed: {}", e.getMessage(), e);
                                 }
                             }
                         } catch (Exception e) {
-                            logger.warn("Failed to process modal dialog: {}", e.getMessage(), e);
+                            log.warn("Failed to process modal dialog: {}", e.getMessage(), e);
                             formPreview = collectFormPreview(driver);
                         }
                     }
                 }
             } catch (Exception e) {
-                logger.warn("Failed to find workflow link or create request button: {}", e.getMessage(), e);
+                log.warn("Failed to find workflow link or create request button: {}", e.getMessage(), e);
             }
 
             String sessionId = "unknown";
@@ -643,7 +641,7 @@ public class AipoLoginService {
             }
             userSessions.put(username, driver);
 
-            logger.info("Aipo login successful for user: {}, sessionId: {}, workflowUrl: {}, createRequestUrl: {}, timesheetSelected: {}, fileUploaded: {}, formReady: {}, autoSubmitted: {}",
+            log.info("Aipo login successful for user: {}, sessionId: {}, workflowUrl: {}, createRequestUrl: {}, timesheetSelected: {}, fileUploaded: {}, formReady: {}, autoSubmitted: {}",
                     username, sessionId, workflowUrl, createRequestUrl, timesheetSelected, fileUploaded,
                     formPreview != null ? formPreview.ready() : null, autoSubmitted);
 
@@ -676,7 +674,7 @@ public class AipoLoginService {
                     autoSubmitted
             );
         } catch (Exception e) {
-            logger.error("Aipo login failed for user: {}", username, e);
+            log.error("Aipo login failed for user: {}", username, e);
             if (driver != null) {
                 driver.quit();
             }
@@ -691,18 +689,18 @@ public class AipoLoginService {
             if (driver != null) {
                 try {
                     driver.get(AIPO_LOGOUT_URL);
-                    logger.info("Aipo logout URL accessed for user: {}", username);
+                    log.info("Aipo logout URL accessed for user: {}", username);
                 } catch (Exception e) {
-                    logger.warn("Failed to access Aipo logout URL for user: {}", username, e);
+                    log.warn("Failed to access Aipo logout URL for user: {}", username, e);
                 } finally {
                     driver.quit();
                 }
-                logger.info("Aipo session closed for user: {}", username);
+                log.info("Aipo session closed for user: {}", username);
                 return true;
             }
             return false;
         } catch (Exception e) {
-            logger.error("Failed to logout Aipo session for user: {}", username, e);
+            log.error("Failed to logout Aipo session for user: {}", username, e);
             return false;
         }
     }
@@ -723,41 +721,41 @@ public class AipoLoginService {
     public Map.Entry<Boolean, String> submitRequest(String username, String submitButtonId) {
         WebDriver driver = userSessions.get(username);
         if (driver == null) {
-            logger.warn("No session found for user: {}", username);
+            log.warn("No session found for user: {}", username);
             return Map.entry(false, "セッションが見つかりません。再度ログインしてください。");
         }
 
         try {
-            logger.info("Submitting request for user: {} with button ID: {}", username, submitButtonId);
+            log.info("Submitting request for user: {} with button ID: {}", username, submitButtonId);
             List<WebElement> submitButtons = driver.findElements(By.id(submitButtonId));
             if (submitButtons.isEmpty() || !submitButtons.get(0).isDisplayed()) {
-                logger.warn("Submit button not found or not visible: {}", submitButtonId);
+                log.warn("Submit button not found or not visible: {}", submitButtonId);
                 return Map.entry(false, "申請ボタンが見つかりません。Aipo画面を確認してください。");
             }
 
             WebElement submitButton = submitButtons.get(0);
             submitButton.click();
-            logger.info("Clicked submit button: {}", submitButtonId);
+            log.info("Clicked submit button: {}", submitButtonId);
             Thread.sleep(3000);
 
             List<WebElement> successElements = driver.findElements(By.cssSelector(".success, .alert-success, .message-success"));
             if (!successElements.isEmpty() && successElements.stream().anyMatch(WebElement::isDisplayed)) {
                 String successMessage = successElements.stream().filter(WebElement::isDisplayed).findFirst().map(WebElement::getText).orElse("");
-                logger.info("Submit successful: {}", successMessage);
+                log.info("Submit successful: {}", successMessage);
                 return Map.entry(true, "申請が完了しました: " + successMessage);
             }
 
             List<WebElement> errorElements = driver.findElements(By.cssSelector(".error, .alert-danger, .message-error"));
             if (!errorElements.isEmpty() && errorElements.stream().anyMatch(WebElement::isDisplayed)) {
                 String errorMessage = errorElements.stream().filter(WebElement::isDisplayed).findFirst().map(WebElement::getText).orElse("");
-                logger.warn("Submit error: {}", errorMessage);
+                log.warn("Submit error: {}", errorMessage);
                 return Map.entry(false, "申請エラー: " + errorMessage);
             }
 
-            logger.info("Submit completed (no message found)");
+            log.info("Submit completed (no message found)");
             return Map.entry(true, "申請が完了しました");
         } catch (Exception e) {
-            logger.error("Failed to submit request for user: {}", username, e);
+            log.error("Failed to submit request for user: {}", username, e);
             return Map.entry(false, "申請に失敗しました: " + e.getMessage());
         }
     }
@@ -777,17 +775,17 @@ public class AipoLoginService {
                 WebElement categorySelect = driver.findElement(By.id("category_id"));
                 Select select = new Select(categorySelect);
                 category = select.getFirstSelectedOption() != null ? select.getFirstSelectedOption().getText() : null;
-                logger.info("Form preview - category: {}", category);
+                log.info("Form preview - category: {}", category);
             } catch (Exception e) {
-                logger.warn("Failed to get category: {}", e.getMessage());
+                log.warn("Failed to get category: {}", e.getMessage());
             }
 
             try {
                 WebElement noteTextarea = driver.findElement(By.id("workflow_Note"));
                 note = noteTextarea.getDomProperty("value");
-                logger.info("Form preview - note: {}", note);
+                log.info("Form preview - note: {}", note);
             } catch (Exception e) {
-                logger.warn("Failed to get note: {}", e.getMessage());
+                log.warn("Failed to get note: {}", e.getMessage());
             }
 
             try {
@@ -799,29 +797,29 @@ public class AipoLoginService {
                         routeMembers.add(memberName);
                     }
                 }
-                logger.info("Form preview - route members: {}", routeMembers);
+                log.info("Form preview - route members: {}", routeMembers);
             } catch (Exception e) {
-                logger.warn("Failed to get route members: {}", e.getMessage());
+                log.warn("Failed to get route members: {}", e.getMessage());
             }
 
             try {
                 List<WebElement> attachmentLists = driver.findElements(By.cssSelector("[id^='attachments_']"));
-                logger.info("Form preview - found {} attachment list(s)", attachmentLists.size());
+                log.info("Form preview - found {} attachment list(s)", attachmentLists.size());
                 for (WebElement list : attachmentLists) {
                     String listId = safe(list.getDomAttribute("id"));
                     List<WebElement> listItems = list.findElements(By.tagName("li"));
-                    logger.info("Form preview - attachment list '{}' has {} item(s)", listId, listItems.size());
+                    log.info("Form preview - attachment list '{}' has {} item(s)", listId, listItems.size());
                 }
 
                 List<WebElement> attachmentList = driver.findElements(By.cssSelector("[id^='attachments_'] li, .attachments li"));
-                logger.info("Form preview - total attachment items found: {}", attachmentList.size());
+                log.info("Form preview - total attachment items found: {}", attachmentList.size());
 
                 if (!attachmentList.isEmpty()) {
                     WebElement firstAttachment = attachmentList.get(0);
                     String dataFileId = safe(firstAttachment.getDomAttribute("data-fileid"));
                     String dataFilename = safe(firstAttachment.getDomAttribute("data-filename"));
                     String liText = firstAttachment.getText();
-                    logger.info("Form preview - first attachment: data-fileid='{}', data-filename='{}', text='{}'",
+                    log.info("Form preview - first attachment: data-fileid='{}', data-filename='{}', text='{}'",
                             dataFileId, dataFilename, liText);
 
                     if (!dataFilename.isBlank()) {
@@ -841,28 +839,28 @@ public class AipoLoginService {
                                     .replace("\u200B", "").trim();
                         }
                     }
-                    logger.info("Form preview - attached file: {}", attachedFileName);
+                    log.info("Form preview - attached file: {}", attachedFileName);
                 }
 
                 List<WebElement> allFolderNameInputs = driver.findElements(By.cssSelector("[id^='folderName_']"));
-                logger.info("Form preview - found {} folderName input(s)", allFolderNameInputs.size());
+                log.info("Form preview - found {} folderName input(s)", allFolderNameInputs.size());
                 for (WebElement input : allFolderNameInputs) {
                     String folderId = safe(input.getDomAttribute("id"));
                     String folderValue = safe(input.getDomProperty("value"));
-                    logger.info("Form preview - folderName: id='{}', value='{}'", folderId, folderValue);
+                    log.info("Form preview - folderName: id='{}', value='{}'", folderId, folderValue);
                 }
             } catch (Exception e) {
-                logger.warn("Failed to get attached file: {}", e.getMessage());
+                log.warn("Failed to get attached file: {}", e.getMessage());
             }
 
             try {
                 List<WebElement> submitButtons = driver.findElements(By.cssSelector("input[id^='al_submit_']"));
                 if (!submitButtons.isEmpty()) {
                     submitButtonId = submitButtons.get(0).getDomAttribute("id");
-                    logger.info("Form preview - submit button ID: {}", submitButtonId);
+                    log.info("Form preview - submit button ID: {}", submitButtonId);
                 }
             } catch (Exception e) {
-                logger.warn("Failed to get submit button ID: {}", e.getMessage());
+                log.warn("Failed to get submit button ID: {}", e.getMessage());
             }
 
             try {
@@ -871,26 +869,26 @@ public class AipoLoginService {
                     WebElement fileUploadButton = fileUploadButtons.get(0);
                     fileUploadButtonId = fileUploadButton.getDomAttribute("id");
                     fileUploadButtonExists = fileUploadButton.isDisplayed();
-                    logger.info("Form preview - file upload button ID: {}, exists: {}", fileUploadButtonId, fileUploadButtonExists);
+                    log.info("Form preview - file upload button ID: {}, exists: {}", fileUploadButtonId, fileUploadButtonExists);
 
                     List<WebElement> fileInputs = fileUploadButton.findElements(By.cssSelector("input[type='file']"));
                     if (!fileInputs.isEmpty()) {
                         fileInputExists = true;
-                        logger.info("Form preview - file input exists: true");
+                        log.info("Form preview - file input exists: true");
                     } else {
-                        logger.warn("Form preview - file input NOT found inside upload button");
+                        log.warn("Form preview - file input NOT found inside upload button");
                     }
                 } else {
-                    logger.warn("Form preview - file upload button NOT found in main context");
+                    log.warn("Form preview - file upload button NOT found in main context");
                 }
 
                 List<WebElement> attachmentInputs = driver.findElements(By.id("attachment"));
                 if (!attachmentInputs.isEmpty() && attachmentInputs.get(0).isDisplayed()) {
                     fileInputExists = true;
-                    logger.info("Form preview - attachment input (id='attachment') found and displayed in main context");
+                    log.info("Form preview - attachment input (id='attachment') found and displayed in main context");
                 } else if (!attachmentInputs.isEmpty()) {
                     fileInputExists = true;
-                    logger.info("Form preview - attachment input (id='attachment') found (hidden but exists) in main context");
+                    log.info("Form preview - attachment input (id='attachment') found (hidden but exists) in main context");
                 }
 
                 if (!fileUploadButtonExists || !fileInputExists) {
@@ -898,7 +896,7 @@ public class AipoLoginService {
                     if (!fileUploadIframes.isEmpty()) {
                         WebElement iframe = fileUploadIframes.get(0);
                         String iframeId = safe(iframe.getDomAttribute("id"));
-                        logger.info("Form preview - Found file upload iframe: {}, switching to iframe...", iframeId);
+                        log.info("Form preview - Found file upload iframe: {}, switching to iframe...", iframeId);
 
                         try {
                             driver.switchTo().frame(iframe);
@@ -908,41 +906,41 @@ public class AipoLoginService {
                                 WebElement btn = iframeFileUploadButtons.get(0);
                                 fileUploadButtonId = btn.getDomAttribute("id");
                                 fileUploadButtonExists = true;
-                                logger.info("Form preview - file upload button found in iframe: {}", fileUploadButtonId);
+                                log.info("Form preview - file upload button found in iframe: {}", fileUploadButtonId);
                             }
 
                             List<WebElement> iframeAttachmentInputs = driver.findElements(By.id("attachment"));
                             if (!iframeAttachmentInputs.isEmpty()) {
                                 fileInputExists = true;
-                                logger.info("Form preview - attachment input (id='attachment') found in iframe");
+                                log.info("Form preview - attachment input (id='attachment') found in iframe");
                             }
 
                             List<WebElement> iframeFileInputs = driver.findElements(By.cssSelector("input[type='file']"));
                             if (!iframeFileInputs.isEmpty()) {
                                 fileInputExists = true;
-                                logger.info("Form preview - file input found in iframe");
+                                log.info("Form preview - file input found in iframe");
                             }
                         } finally {
                             driver.switchTo().defaultContent();
-                            logger.info("Form preview - Switched back to main context");
+                            log.info("Form preview - Switched back to main context");
                         }
                     } else {
-                        logger.warn("Form preview - No file upload iframe found");
+                        log.warn("Form preview - No file upload iframe found");
                     }
                 }
 
                 if (!fileUploadButtonExists && !fileInputExists) {
-                    logger.warn("Form preview - attachment input (id='attachment') NOT found in any context");
+                    log.warn("Form preview - attachment input (id='attachment') NOT found in any context");
                 }
             } catch (Exception e) {
-                logger.warn("Failed to check file upload button: {}", e.getMessage());
+                log.warn("Failed to check file upload button: {}", e.getMessage());
                 try {
                     driver.switchTo().defaultContent();
                 } catch (Exception ignored) {
                 }
             }
         } catch (Exception e) {
-            logger.warn("Error collecting form preview: {}", e.getMessage());
+            log.warn("Error collecting form preview: {}", e.getMessage());
         }
 
         boolean isReady = category != null && !category.isBlank() && !"未分類".equals(category) &&
@@ -965,9 +963,9 @@ public class AipoLoginService {
         userSessions.forEach((username, driver) -> {
             try {
                 driver.quit();
-                logger.info("Cleaned up Aipo session for user: {}", username);
+                log.info("Cleaned up Aipo session for user: {}", username);
             } catch (Exception e) {
-                logger.warn("Failed to cleanup session for user: {}", username, e);
+                log.warn("Failed to cleanup session for user: {}", username, e);
             }
         });
         userSessions.clear();

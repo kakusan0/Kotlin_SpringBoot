@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.mapper.TimesheetEntryMapper;
 import com.example.demo.model.TimesheetEntry;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
@@ -11,15 +12,14 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@RequiredArgsConstructor
 public class TimesheetSummaryService {
 
+    private static final long TTL_MILLIS = 60_000L;
+
     private final TimesheetEntryMapper timesheetEntryMapper;
-    private final long ttlMillis = 60_000L;
     private final ConcurrentHashMap<String, Cached> cache = new ConcurrentHashMap<>();
 
-    public TimesheetSummaryService(TimesheetEntryMapper timesheetEntryMapper) {
-        this.timesheetEntryMapper = timesheetEntryMapper;
-    }
 
     private String key(String user, YearMonth ym) {
         return user + ":" + ym;
@@ -29,7 +29,7 @@ public class TimesheetSummaryService {
         String k = key(userName, ym);
         long now = System.currentTimeMillis();
         Cached cached = cache.get(k);
-        if (cached != null && now - cached.cachedAtMillis() < ttlMillis) {
+        if (cached != null && now - cached.cachedAtMillis() < TTL_MILLIS) {
             return cached.summary();
         }
         LocalDate from = ym.atDay(1);

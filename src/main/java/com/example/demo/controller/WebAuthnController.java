@@ -5,7 +5,8 @@ import com.example.demo.service.WebAuthnService;
 import com.webauthn4j.util.Base64UrlUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,25 +20,16 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/webauthn")
+@RequiredArgsConstructor
 public class WebAuthnController {
-
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(WebAuthnController.class);
 
     private final WebAuthnService webAuthnService;
     private final UserDetailsService userDetailsService;
     private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
 
-    public WebAuthnController(
-            WebAuthnService webAuthnService,
-            UserDetailsService userDetailsService,
-            SessionAuthenticationStrategy sessionAuthenticationStrategy
-    ) {
-        this.webAuthnService = webAuthnService;
-        this.userDetailsService = userDetailsService;
-        this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
-    }
 
     @Value("${webauthn.rp.id:localhost}")
     private String rpId;
@@ -51,7 +43,7 @@ public class WebAuthnController {
         try {
             userDetailsService.loadUserByUsername(username);
         } catch (UsernameNotFoundException e) {
-            logger.warn("Registration attempted for non-existent user: {}", username);
+            log.warn("Registration attempted for non-existent user: {}", username);
             return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
         }
 
@@ -90,10 +82,10 @@ public class WebAuthnController {
             byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
             byte[] attestationObject = Base64UrlUtil.decode(req.getResponse().getAttestationObject());
             webAuthnService.registerCredential(username, challenge, clientDataJSON, attestationObject);
-            logger.info("Passkey registered successfully for user: {}", username);
+            log.info("Passkey registered successfully for user: {}", username);
             return ResponseEntity.ok(Map.of("message", "registered"));
         } catch (Exception e) {
-            logger.error("Failed to register passkey for user {}: {}", username, e.getMessage(), e);
+            log.error("Failed to register passkey for user {}: {}", username, e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("message", "Registration failed: " + e.getMessage()));
         }
     }
@@ -162,7 +154,7 @@ public class WebAuthnController {
 
         String usernameFromHandle = new String(Base64UrlUtil.decode(userHandle), StandardCharsets.UTF_8);
         if (!credential.getUsername().equals(usernameFromHandle)) {
-            logger.warn("Credential ownership mismatch: credential belongs to {}, but userHandle indicates {}",
+            log.warn("Credential ownership mismatch: credential belongs to {}, but userHandle indicates {}",
                     credential.getUsername(), usernameFromHandle);
             return ResponseEntity.status(403).body(Map.of("message", "Credential does not match userHandle"));
         }
@@ -185,10 +177,10 @@ public class WebAuthnController {
 
             establishSecuritySession(credential.getUsername(), request, response);
 
-            logger.info("Discoverable passkey authentication successful for user: {}", credential.getUsername());
+            log.info("Discoverable passkey authentication successful for user: {}", credential.getUsername());
             return ResponseEntity.ok(Map.of("message", "authenticated", "username", credential.getUsername()));
         } catch (Exception e) {
-            logger.error("Discoverable passkey authentication failed: {} - {}", e.getClass().getSimpleName(), e.getMessage(), e);
+            log.error("Discoverable passkey authentication failed: {} - {}", e.getClass().getSimpleName(), e.getMessage(), e);
             String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(401).body(Map.of("message", "Authentication failed: " + errorMessage));
         }
@@ -213,7 +205,7 @@ public class WebAuthnController {
         }
 
         if (!credential.getUsername().equals(username)) {
-            logger.warn("Credential ownership mismatch: expected {}, got {}", username, credential.getUsername());
+            log.warn("Credential ownership mismatch: expected {}, got {}", username, credential.getUsername());
             return ResponseEntity.status(403).body(Map.of("message", "Credential does not belong to user"));
         }
 
@@ -237,10 +229,10 @@ public class WebAuthnController {
 
             establishSecuritySession(username, request, response);
 
-            logger.info("Passkey authentication successful for user: {}", username);
+            log.info("Passkey authentication successful for user: {}", username);
             return ResponseEntity.ok(Map.of("message", "authenticated"));
         } catch (Exception e) {
-            logger.error("Passkey authentication failed for user {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage(), e);
+            log.error("Passkey authentication failed for user {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage(), e);
             String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             return ResponseEntity.status(401).body(Map.of("message", "Authentication failed: " + errorMessage));
         }
@@ -286,10 +278,12 @@ public class WebAuthnController {
         }
 
         webAuthnService.deleteCredential(id);
-        logger.info("Passkey deleted for user: {}, credentialId: {}", username, id);
+        log.info("Passkey deleted for user: {}, credentialId: {}", username, id);
         return ResponseEntity.ok(Map.of("message", "Credential deleted"));
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class RegistrationOptionsResponse {
         private final long timeout = 60000;
         private final String attestation = "none";
@@ -298,345 +292,106 @@ public class WebAuthnController {
         private Rp rp;
         private User user;
         private List<PubKeyParam> pubKeyCredParams;
-
-        public RegistrationOptionsResponse() {
-        }
-
-        public String getChallenge() {
-            return challenge;
-        }
-
-        public void setChallenge(String challenge) {
-            this.challenge = challenge;
-        }
-
-        public Rp getRp() {
-            return rp;
-        }
-
-        public void setRp(Rp rp) {
-            this.rp = rp;
-        }
-
-        public User getUser() {
-            return user;
-        }
-
-        public void setUser(User user) {
-            this.user = user;
-        }
-
-        public List<PubKeyParam> getPubKeyCredParams() {
-            return pubKeyCredParams;
-        }
-
-        public void setPubKeyCredParams(List<PubKeyParam> pubKeyCredParams) {
-            this.pubKeyCredParams = pubKeyCredParams;
-        }
-
-        public long getTimeout() {
-            return timeout;
-        }
-
-        public String getAttestation() {
-            return attestation;
-        }
-
-        public AuthenticatorSelection getAuthenticatorSelection() {
-            return authenticatorSelection;
-        }
     }
 
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
     public static class Rp {
         private String id;
         private String name;
-
-        public Rp() {
-        }
-
-        public Rp(String id, String name) {
-            this.id = id;
-            this.name = name;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getName() {
-            return name;
-        }
     }
 
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
     public static class User {
         private String id;
         private String name;
         private String displayName;
-
-        public User() {
-        }
-
-        public User(String id, String name, String displayName) {
-            this.id = id;
-            this.name = name;
-            this.displayName = displayName;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
     }
 
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
     public static class PubKeyParam {
         private String type;
         private int alg;
-
-        public PubKeyParam() {
-        }
-
-        public PubKeyParam(String type, int alg) {
-            this.type = type;
-            this.alg = alg;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public int getAlg() {
-            return alg;
-        }
     }
 
+    @lombok.Getter
+    @lombok.NoArgsConstructor
     public static class AuthenticatorSelection {
         private final String residentKey = "required";
         private final boolean requireResidentKey = true;
         private final String userVerification = "preferred";
         private String authenticatorAttachment;
-
-        public AuthenticatorSelection() {
-        }
-
-        public String getAuthenticatorAttachment() {
-            return authenticatorAttachment;
-        }
-
-        public String getResidentKey() {
-            return residentKey;
-        }
-
-        public boolean isRequireResidentKey() {
-            return requireResidentKey;
-        }
-
-        public String getUserVerification() {
-            return userVerification;
-        }
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class FinishRegistrationRequest {
         private String id;
         private String rawId;
         private String type;
         private RegistrationResponse response;
-
-        public FinishRegistrationRequest() {
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getRawId() {
-            return rawId;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public RegistrationResponse getResponse() {
-            return response;
-        }
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class RegistrationResponse {
         private String attestationObject;
         private String clientDataJSON;
-
-        public RegistrationResponse() {
-        }
-
-        public String getAttestationObject() {
-            return attestationObject;
-        }
-
-        public String getClientDataJSON() {
-            return clientDataJSON;
-        }
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class DiscoverableAuthenticationOptionsResponse {
         private final long timeout = 60000;
         private final String userVerification = "preferred";
         private String challenge;
         private String rpId;
-
-        public DiscoverableAuthenticationOptionsResponse() {
-        }
-
-        public String getChallenge() {
-            return challenge;
-        }
-
-        public void setChallenge(String challenge) {
-            this.challenge = challenge;
-        }
-
-        public String getRpId() {
-            return rpId;
-        }
-
-        public void setRpId(String rpId) {
-            this.rpId = rpId;
-        }
-
-        public long getTimeout() {
-            return timeout;
-        }
-
-        public String getUserVerification() {
-            return userVerification;
-        }
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class AuthenticationOptionsResponse {
         private final long timeout = 60000;
         private final String userVerification = "preferred";
         private String challenge;
         private String rpId;
         private List<AllowCredential> allowCredentials;
-
-        public AuthenticationOptionsResponse() {
-        }
-
-        public String getChallenge() {
-            return challenge;
-        }
-
-        public void setChallenge(String challenge) {
-            this.challenge = challenge;
-        }
-
-        public String getRpId() {
-            return rpId;
-        }
-
-        public void setRpId(String rpId) {
-            this.rpId = rpId;
-        }
-
-        public List<AllowCredential> getAllowCredentials() {
-            return allowCredentials;
-        }
-
-        public void setAllowCredentials(List<AllowCredential> allowCredentials) {
-            this.allowCredentials = allowCredentials;
-        }
-
-        public long getTimeout() {
-            return timeout;
-        }
-
-        public String getUserVerification() {
-            return userVerification;
-        }
     }
 
+    @lombok.Getter
+    @lombok.NoArgsConstructor
     public static class AllowCredential {
         private String type;
         private String id;
         private List<String> transports = new ArrayList<>();
-
-        public AllowCredential() {
-        }
 
         public AllowCredential(String type, String id, List<String> transports) {
             this.type = type;
             this.id = id;
             this.transports = transports != null ? transports : new ArrayList<>();
         }
-
-        public String getType() {
-            return type;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public List<String> getTransports() {
-            return transports;
-        }
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class FinishAuthenticationRequest {
         private String id;
         private String rawId;
         private String type;
         private AuthenticationResponse response;
-
-        public FinishAuthenticationRequest() {
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public String getRawId() {
-            return rawId;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public AuthenticationResponse getResponse() {
-            return response;
-        }
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
     public static class AuthenticationResponse {
         private String authenticatorData;
         private String clientDataJSON;
         private String signature;
         private String userHandle;
-
-        public AuthenticationResponse() {
-        }
-
-        public String getAuthenticatorData() {
-            return authenticatorData;
-        }
-
-        public String getClientDataJSON() {
-            return clientDataJSON;
-        }
-
-        public String getSignature() {
-            return signature;
-        }
-
-        public String getUserHandle() {
-            return userHandle;
-        }
     }
 }

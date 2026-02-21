@@ -1,18 +1,18 @@
 package com.example.demo.service;
 
+import lombok.experimental.UtilityClass;
+
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class TimesheetEvaluator {
-    private static final int MAX_WORK_DURATION_MIN = 720;
-    private static final int MAX_CROSS_DURATION_MIN = 1440;
-    private static final double BREAK_RATIO_LIMIT = 0.5;
+@UtilityClass
+public class TimesheetEvaluator {
+    private final int MAX_WORK_DURATION_MIN = 720;
+    private final int MAX_CROSS_DURATION_MIN = 1440;
+    private final double BREAK_RATIO_LIMIT = 0.5;
 
-    private TimesheetEvaluator() {
-    }
-
-    public static TimesheetEval evaluate(LocalTime start, LocalTime end, Integer breakMinutes) {
+    public TimesheetEval evaluate(LocalTime start, LocalTime end, Integer breakMinutes) {
         List<String> errs = new ArrayList<>();
         int breakM = breakMinutes != null ? breakMinutes : 0;
         if (breakM < 0) {
@@ -40,7 +40,7 @@ public final class TimesheetEvaluator {
                 if (breakM > duration) {
                     errs.add("休憩が勤務時間を超過");
                 }
-                if (duration >= 1 && duration <= MAX_CROSS_DURATION_MIN) {
+                if (duration <= MAX_CROSS_DURATION_MIN) {
                     working = Math.max(duration - breakM, 0);
                 }
             }

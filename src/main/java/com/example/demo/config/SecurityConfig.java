@@ -8,6 +8,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HttpBasicConfigurer;
+import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.core.userdetails.User;
@@ -37,9 +40,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private static final long HSTS_MAX_AGE = 31536000L;
@@ -54,13 +60,6 @@ public class SecurityConfig {
     private final AuthenticationFailureHandler customAuthenticationFailureHandler;
     private final LoginRateLimitFilter loginRateLimitFilter;
 
-    public SecurityConfig(
-            AuthenticationFailureHandler customAuthenticationFailureHandler,
-            LoginRateLimitFilter loginRateLimitFilter
-    ) {
-        this.customAuthenticationFailureHandler = customAuthenticationFailureHandler;
-        this.loginRateLimitFilter = loginRateLimitFilter;
-    }
 
     @Value("${app.csp.connect-src:'self'}")
     private String cspConnectSrc;
@@ -101,7 +100,7 @@ public class SecurityConfig {
                 })
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .headers(headers -> headers
-                        .frameOptions(frame -> frame.deny())
+                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
                         .contentTypeOptions(contentType -> {
                         })
                         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
@@ -154,7 +153,7 @@ public class SecurityConfig {
                     }
                     webAuthn.allowedOrigins(origins);
                 })
-                .httpBasic(basic -> basic.disable())
+                .httpBasic(HttpBasicConfigurer::disable)
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/tools")
@@ -164,7 +163,7 @@ public class SecurityConfig {
                         .permitAll()
                 )
                 .sessionManagement(sess -> sess
-                        .sessionFixation(fixation -> fixation.migrateSession())
+                        .sessionFixation(SessionManagementConfigurer.SessionFixationConfigurer::migrateSession)
                         .invalidSessionUrl("/tools")
                         .maximumSessions(1)
                         .maxSessionsPreventsLogin(false)

@@ -1,12 +1,12 @@
 package com.example.demo.util;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.experimental.UtilityClass;
 
-public final class IpUtils {
-    private IpUtils() {
-    }
+@UtilityClass
+public class IpUtils {
 
-    public static String clientIp(HttpServletRequest request, boolean trustProxy) {
+    public String clientIp(HttpServletRequest request, boolean trustProxy) {
         if (trustProxy) {
             String fwd = request.getHeader("X-Forwarded-For");
             if (fwd != null && !fwd.isBlank()) {

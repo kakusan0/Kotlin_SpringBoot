@@ -1,7 +1,8 @@
 package com.example.demo.config;
 
 import com.example.demo.service.AipoLoginService;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -16,16 +17,12 @@ import java.util.List;
  * Spring Securityによるセッション破棄（タイムアウト、強制ログアウト、同時セッション制限等）を検知し、
  * 関連する外部サービス（Aipo等）のセッションもクリーンアップする。
  */
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class SessionDestroyedListener {
 
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(SessionDestroyedListener.class);
-
     private final AipoLoginService aipoLoginService;
-
-    public SessionDestroyedListener(AipoLoginService aipoLoginService) {
-        this.aipoLoginService = aipoLoginService;
-    }
 
     /**
      * HTTPセッションが破棄されたときに呼び出される
@@ -41,17 +38,17 @@ public class SessionDestroyedListener {
             Authentication authentication = securityContext.getAuthentication();
             if (authentication != null) {
                 String username = authentication.getName();
-                logger.info("Session destroyed for user: {}. Logging out from Aipo...", username);
+                log.info("Session destroyed for user: {}. Logging out from Aipo...", username);
 
                 try {
                     boolean success = aipoLoginService.logout(username);
                     if (success) {
-                        logger.info("Successfully logged out from Aipo for user: {}", username);
+                        log.info("Successfully logged out from Aipo for user: {}", username);
                     } else {
-                        logger.debug("No Aipo session found for user: {}", username);
+                        log.debug("No Aipo session found for user: {}", username);
                     }
                 } catch (Exception e) {
-                    logger.warn("Failed to logout from Aipo for user: {}", username, e);
+                    log.warn("Failed to logout from Aipo for user: {}", username, e);
                 }
             }
         }

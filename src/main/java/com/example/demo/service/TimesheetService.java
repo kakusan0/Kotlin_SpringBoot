@@ -3,7 +3,8 @@ package com.example.demo.service;
 import com.example.demo.mapper.TimesheetEntryMapper;
 import com.example.demo.model.TimesheetEntry;
 import com.example.demo.util.DbUtils;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,18 +14,14 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class TimesheetService {
-
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TimesheetService.class);
 
     private final TimesheetEntryMapper timesheetEntryMapper;
     private final ApplicationEventPublisher eventPublisher;
 
-    public TimesheetService(TimesheetEntryMapper timesheetEntryMapper, ApplicationEventPublisher eventPublisher) {
-        this.timesheetEntryMapper = timesheetEntryMapper;
-        this.eventPublisher = eventPublisher;
-    }
 
     private TimesheetEntry applyCalc(TimesheetEntry entry) {
         TimesheetEval eval = TimesheetEvaluator.evaluate(
@@ -33,7 +30,7 @@ public class TimesheetService {
                 entry.getBreakMinutes()
         );
         if (!eval.isValid()) {
-            logger.warn("Timesheet validation warnings for entry {}: {}",
+            log.warn("Timesheet validation warnings for entry {}: {}",
                     entry.getId(),
                     String.join(";", eval.errors()));
         }
@@ -169,14 +166,14 @@ public class TimesheetService {
             TimesheetEval eval = TimesheetEvaluator.evaluate(e.getStartTime(), e.getEndTime(), e.getBreakMinutes());
             if (!eval.isValid()) {
                 invalidCount++;
-                logger.debug("Entry {} validation issues: {}", e.getId(), String.join(";", eval.errors()));
+                log.debug("Entry {} validation issues: {}", e.getId(), String.join(";", eval.errors()));
             }
             TimesheetEntry updated = copyEntry(e);
             updated.setDurationMinutes(eval.durationMinutes());
             updated.setWorkingMinutes(eval.workingMinutes());
             calculatedEntries.add(updated);
         }
-        logger.info(
+        log.info(
                 "Timesheet entries user={} range={}..{} total={} invalid={}",
                 userName, from, to, entries.size(), invalidCount
         );

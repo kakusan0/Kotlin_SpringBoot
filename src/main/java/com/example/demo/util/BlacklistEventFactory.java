@@ -1,15 +1,15 @@
 package com.example.demo.util;
 
 import com.example.demo.model.BlacklistEvent;
+import lombok.experimental.UtilityClass;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public final class BlacklistEventFactory {
-    private BlacklistEventFactory() {
-    }
+@UtilityClass
+public class BlacklistEventFactory {
 
-    public static BlacklistEvent create(
+    public BlacklistEvent create(
             String ipAddress,
             String reason,
             String source,
@@ -21,20 +21,17 @@ public final class BlacklistEventFactory {
             String referer,
             OffsetDateTime createdAt
     ) {
-        OffsetDateTime created = createdAt != null ? createdAt : OffsetDateTime.now();
-        String reqId = requestId != null ? requestId : UUID.randomUUID().toString();
-        return new BlacklistEvent(
-                null,
-                created,
-                reqId,
-                ipAddress,
-                method,
-                path,
-                status,
-                userAgent,
-                referer,
-                reason,
-                source
-        );
+        return BlacklistEvent.builder()
+                .createdAt(createdAt != null ? createdAt : OffsetDateTime.now())
+                .requestId(requestId != null ? requestId : UUID.randomUUID().toString())
+                .ipAddress(ipAddress)
+                .method(method)
+                .path(path)
+                .status(status)
+                .userAgent(userAgent)
+                .referer(referer)
+                .reason(reason)
+                .source(source)
+                .build();
     }
 }

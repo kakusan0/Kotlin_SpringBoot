@@ -2,7 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.mapper.ReportJobMapper;
 import com.example.demo.model.ReportJob;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -14,10 +14,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 public class ReportJobService {
 
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ReportJobService.class);
 
     private final ReportJobMapper reportJobMapper;
     private final ReportService reportService;
@@ -40,7 +40,7 @@ public class ReportJobService {
         job.setToDate(to);
         job.setFormat(format);
         reportJobMapper.insert(job);
-        logger.info("Report job submitted id={} user={} range={}..{} format={}", job.getId(), username, from, to, format);
+        log.info("Report job submitted id={} user={} range={}..{} format={}", job.getId(), username, from, to, format);
         asyncRun(job.getId());
         return job.getId();
     }
@@ -78,7 +78,7 @@ public class ReportJobService {
             done.put("errorMessage", null);
             reportJobMapper.updateStatus(done);
         } catch (Throwable ex) {
-            logger.error("Report job failed id={}", jobId, ex);
+            log.error("Report job failed id={}", jobId, ex);
             Map<String, Object> failed = new HashMap<>();
             failed.put("id", jobId);
             failed.put("status", "FAILED");

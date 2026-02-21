@@ -1,6 +1,8 @@
 package com.example.demo.service;
 
 import com.example.demo.model.UserSettings;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -11,18 +13,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserSettingsService {
-
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(UserSettingsService.class);
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final CryptoService cryptoService;
 
-    public UserSettingsService(NamedParameterJdbcTemplate jdbcTemplate, CryptoService cryptoService) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.cryptoService = cryptoService;
-    }
 
     public UserSettings getSettings(String userName) {
         String sql = """

@@ -1,27 +1,25 @@
 package com.example.demo.constants;
 
+import lombok.experimental.UtilityClass;
+
 /**
  * Common path constants.
  */
-public final class ApplicationConstants {
-    public static final String ROOT = "/";
-    public static final String REDIRECT = "redirect:";
-    public static final String USERNAME_CHECK = "/userNameCheck";
-    public static final String USER_CHECK = "/userCheck";
-    public static final String CONTENT = "/content";
-    public static final String ALL = "/**";
-    public static final String MAIN = "/main";
-    public static final String LOGIN = "/login";
-    public static final String REGISTER = "/register";
+@UtilityClass
+public class ApplicationConstants {
+    public final String ROOT = "/";
+    public final String REDIRECT = "redirect:";
+    public final String USERNAME_CHECK = "/userNameCheck";
+    public final String USER_CHECK = "/userCheck";
+    public final String CONTENT = "/content";
+    public final String ALL = "/**";
+    public final String MAIN = "/main";
+    public final String LOGIN = "/login";
+    public final String REGISTER = "/register";
 
-    private ApplicationConstants() {
-    }
-
-    public static final class RegisterConstants {
-        public static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        public static final int PASSWORD_LENGTH = 15;
-
-        private RegisterConstants() {
-        }
+    @UtilityClass
+    public class RegisterConstants {
+        public final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        public final int PASSWORD_LENGTH = 15;
     }
 }

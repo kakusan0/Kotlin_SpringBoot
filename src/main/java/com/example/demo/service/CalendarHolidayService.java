@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.mapper.CalendarHolidayMapper;
 import com.example.demo.model.CalendarHoliday;
 import com.example.demo.util.DbUtils;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -14,13 +15,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class CalendarHolidayService {
 
     private final CalendarHolidayMapper calendarHolidayMapper;
 
-    public CalendarHolidayService(CalendarHolidayMapper calendarHolidayMapper) {
-        this.calendarHolidayMapper = calendarHolidayMapper;
-    }
 
     @Cacheable(value = "holidays", key = "#year")
     public List<CalendarHoliday> getHolidaysByYear(int year) {

@@ -6,7 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -25,19 +25,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * ログインエンドポイントへのリクエスト数を制限してブルートフォース攻撃を防ぐ
  * 設定: 5分間に5回のログイン試行まで許可
  */
+@Slf4j
 @Component
 @Order(2)
 public class LoginRateLimitFilter extends OncePerRequestFilter {
 
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(LoginRateLimitFilter.class);
 
-    @Value("${app.trust-proxy:false}")
     private final boolean trustProxy;
-
-    @Value("${app.login.rate-limit.capacity:5}")
     private final long capacity;
-
-    @Value("${app.login.rate-limit.refill-minutes:5}")
     private final long refillMinutes;
 
     private final Map<String, Bucket> cache = new ConcurrentHashMap<>();

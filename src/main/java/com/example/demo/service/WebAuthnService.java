@@ -15,7 +15,8 @@ import com.webauthn4j.data.client.Origin;
 import com.webauthn4j.data.client.challenge.DefaultChallenge;
 import com.webauthn4j.server.ServerProperty;
 import com.webauthn4j.util.Base64UrlUtil;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -25,10 +26,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class WebAuthnService {
-
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(WebAuthnService.class);
 
     private final WebAuthnCredentialMapper credentialMapper;
     private final SecureRandom random = new SecureRandom();
@@ -43,9 +44,6 @@ public class WebAuthnService {
     @Value("${webauthn.rp.origin:http://localhost:8080}")
     private String rpOrigin;
 
-    public WebAuthnService(WebAuthnCredentialMapper credentialMapper) {
-        this.credentialMapper = credentialMapper;
-    }
 
     public byte[] generateChallenge() {
         byte[] bytes = new byte[32];
@@ -105,7 +103,7 @@ public class WebAuthnService {
 
     public void deleteCredential(Long id) {
         credentialMapper.deleteById(id);
-        logger.info("Deleted WebAuthn credential with id: {}", id);
+        log.info("Deleted WebAuthn credential with id: {}", id);
     }
 
     public WebAuthnCredential registerCredential(
@@ -156,7 +154,7 @@ public class WebAuthnService {
         credential.setAaguid(aaguid);
 
         credentialMapper.insert(credential);
-        logger.info(
+        log.info(
                 "WebAuthn credential registered for user: {}, credentialId: {}",
                 username,
                 Base64UrlUtil.encodeToString(credentialId)
@@ -210,10 +208,10 @@ public class WebAuthnService {
         long newSignCount = authenticationData.getAuthenticatorData().getSignCount();
         if (newSignCount > credential.getSignCount()) {
             credentialMapper.updateSignCount(credential.getId(), newSignCount);
-            logger.debug("Updated signCount for credential {}: {} -> {}",
+            log.debug("Updated signCount for credential {}: {} -> {}",
                     credential.getId(), credential.getSignCount(), newSignCount);
         } else if (newSignCount > 0 && newSignCount <= credential.getSignCount()) {
-            logger.warn(
+            log.warn(
                     "Possible cloned authenticator detected for user {}. Expected signCount > {}, got {}",
                     credential.getUsername(),
                     credential.getSignCount(),
@@ -221,7 +219,7 @@ public class WebAuthnService {
             );
         }
 
-        logger.info("WebAuthn authentication successful for user: {}", credential.getUsername());
+        log.info("WebAuthn authentication successful for user: {}", credential.getUsername());
         return true;
     }
 
@@ -262,6 +260,7 @@ public class WebAuthnService {
         }
     }
 
+    @lombok.Getter
     public static class ChallengeData {
         private final byte[] challenge;
         private final long createdAt;
@@ -271,9 +270,6 @@ public class WebAuthnService {
             this.createdAt = System.currentTimeMillis();
         }
 
-        public byte[] getChallenge() {
-            return challenge;
-        }
 
         public boolean isExpired() {
             return System.currentTimeMillis() - createdAt > 5 * 60 * 1000;

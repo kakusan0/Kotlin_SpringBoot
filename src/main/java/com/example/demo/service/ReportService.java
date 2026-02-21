@@ -17,6 +17,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -37,10 +38,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Service
 public class ReportService {
 
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ReportService.class);
     private final TimesheetService timesheetService;
     private final UserSettingsService userSettingsService;
 
@@ -373,7 +374,7 @@ public class ReportService {
                 HttpRequest req = HttpRequest.newBuilder().uri(uri).GET().build();
                 HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() != 200) {
-                    logger.warn("Holiday API returned {} for year {}", resp.statusCode(), y);
+                    log.warn("Holiday API returned {} for year {}", resp.statusCode(), y);
                     holidayCache.put(y, Map.of());
                     continue;
                 }
@@ -391,7 +392,7 @@ public class ReportService {
                                 LocalDate ld = LocalDate.parse(dateStr);
                                 mapForYear.put(ld, localName);
                             } catch (Exception e) {
-                                logger.warn("Failed to parse holiday date '{}' for year {}: {}", dateStr, y, e.getMessage());
+                                log.warn("Failed to parse holiday date '{}' for year {}: {}", dateStr, y, e.getMessage());
                             }
                         }
                     }
@@ -399,7 +400,7 @@ public class ReportService {
                 holidayCache.put(y, mapForYear);
                 result.putAll(mapForYear);
             } catch (Exception e) {
-                logger.warn("Failed to fetch holidays for year {}: {}", y, e.getMessage());
+                log.warn("Failed to fetch holidays for year {}: {}", y, e.getMessage());
                 holidayCache.put(y, Map.of());
             }
         }
@@ -817,10 +818,10 @@ public class ReportService {
             int holidayStartRow = 9;
 
             int fiscalYear = (from.getMonthValue() >= 4) ? from.getYear() : from.getYear() - 1;
-            logger.info("[UNISS] Fiscal year calculated: {} (from month: {})", fiscalYear, from.getMonthValue());
+            log.info("[UNISS] Fiscal year calculated: {} (from month: {})", fiscalYear, from.getMonthValue());
 
             Map<LocalDate, String> fiscalYearHolidayMap = fetchHolidayDates(fiscalYear, fiscalYear + 1);
-            logger.info("[UNISS] Fetched holidays for fiscal year {}: {} holidays", fiscalYear, fiscalYearHolidayMap.size());
+            log.info("[UNISS] Fetched holidays for fiscal year {}: {} holidays", fiscalYear, fiscalYearHolidayMap.size());
 
             LocalDate displayYearStart = LocalDate.of(from.getYear(), 1, 1);
             LocalDate displayYearEnd = LocalDate.of(from.getYear(), 12, 31);
@@ -831,7 +832,7 @@ public class ReportService {
                 }
             }
             displayYearHolidays.sort(LocalDate::compareTo);
-            logger.info("[UNISS] Filtered holidays in display year range: {} holidays", displayYearHolidays.size());
+            log.info("[UNISS] Filtered holidays in display year range: {} holidays", displayYearHolidays.size());
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
             for (int i = 0; i < displayYearHolidays.size(); i++) {
@@ -844,7 +845,7 @@ public class ReportService {
                 }
                 String formattedDate = holidayDate.format(formatter);
                 holidayCell.setCellValue(formattedDate);
-                logger.debug("[UNISS] Set holiday at AR{}: {} ({})", rowIdx + 1, formattedDate, fiscalYearHolidayMap.get(holidayDate));
+                log.debug("[UNISS] Set holiday at AR{}: {} ({})", rowIdx + 1, formattedDate, fiscalYearHolidayMap.get(holidayDate));
             }
 
             wb.setForceFormulaRecalculation(true);
@@ -875,7 +876,7 @@ public class ReportService {
                 }
                 return out;
             } catch (Exception e) {
-                logger.warn("[UNISS] irregularWorkData parse error: {} irregularWorkData=[{}]", e.getMessage(), irregularWorkData);
+                log.warn("[UNISS] irregularWorkData parse error: {} irregularWorkData=[{}]", e.getMessage(), irregularWorkData);
                 return List.of();
             }
         }

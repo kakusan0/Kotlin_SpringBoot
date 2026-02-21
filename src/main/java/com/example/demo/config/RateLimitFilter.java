@@ -6,7 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -23,15 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * APIエンドポイントへのリクエスト数を制限してDDoS攻撃やブルートフォース攻撃を防ぐ
  * 設定: 1分間に300リクエスト（平均5リクエスト/秒）
  */
+@Slf4j
 @Component
 @Order(1)
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
     private static final long CAPACITY = 300L;
     private static final Duration REFILL_DURATION = Duration.ofMinutes(1);
 
-    @Value("${app.trust-proxy:false}")
     private final boolean trustProxy;
 
     private final Map<String, Bucket> cache = new ConcurrentHashMap<>();

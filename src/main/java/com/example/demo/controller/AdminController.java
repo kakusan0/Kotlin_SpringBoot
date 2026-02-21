@@ -7,6 +7,7 @@ import com.example.demo.mapper.WhitelistIpMapper;
 import com.example.demo.model.BlacklistIp;
 import com.example.demo.model.IpLatestPath;
 import com.example.demo.model.WhitelistIp;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,6 +17,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Controller
+@RequiredArgsConstructor
 public class AdminController {
 
     private final WhitelistIpMapper whitelistIpMapper;
@@ -23,17 +25,6 @@ public class AdminController {
     private final UaBlacklistRuleMapper uaBlacklistRuleMapper;
     private final AccessLogMapper accessLogMapper;
 
-    public AdminController(
-            WhitelistIpMapper whitelistIpMapper,
-            BlacklistIpMapper blacklistIpMapper,
-            UaBlacklistRuleMapper uaBlacklistRuleMapper,
-            AccessLogMapper accessLogMapper
-    ) {
-        this.whitelistIpMapper = whitelistIpMapper;
-        this.blacklistIpMapper = blacklistIpMapper;
-        this.uaBlacklistRuleMapper = uaBlacklistRuleMapper;
-        this.accessLogMapper = accessLogMapper;
-    }
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/manage")
