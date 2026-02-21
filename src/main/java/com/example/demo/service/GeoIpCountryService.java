@@ -1,7 +1,6 @@
 package com.example.demo.service;
 
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,19 +13,23 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
-@RequiredArgsConstructor
 public class GeoIpCountryService {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(GeoIpCountryService.class);
 
-    @Value("${geoip.mmdb-path:}")
     private final String dbPath;
-
-    @Value("${geoip.allowed-country-codes:JP}")
     private final String allowedCodesCsv;
 
     private final AtomicReference<Object> readerRef = new AtomicReference<>();
     private Class<?> readerClass;
+
+    public GeoIpCountryService(
+            @Value("${geoip.mmdb-path:}") String dbPath,
+            @Value("${geoip.allowed-country-codes:JP}") String allowedCodesCsv
+    ) {
+        this.dbPath = dbPath;
+        this.allowedCodesCsv = allowedCodesCsv;
+    }
 
     @PostConstruct
     public void init() {

@@ -5,7 +5,6 @@ import com.example.demo.service.WebAuthnService;
 import com.webauthn4j.util.Base64UrlUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +21,6 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/webauthn")
-@RequiredArgsConstructor
 public class WebAuthnController {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(WebAuthnController.class);
@@ -30,6 +28,16 @@ public class WebAuthnController {
     private final WebAuthnService webAuthnService;
     private final UserDetailsService userDetailsService;
     private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
+
+    public WebAuthnController(
+            WebAuthnService webAuthnService,
+            UserDetailsService userDetailsService,
+            SessionAuthenticationStrategy sessionAuthenticationStrategy
+    ) {
+        this.webAuthnService = webAuthnService;
+        this.userDetailsService = userDetailsService;
+        this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
+    }
 
     @Value("${webauthn.rp.id:localhost}")
     private String rpId;

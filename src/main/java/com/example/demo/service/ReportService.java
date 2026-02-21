@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -39,7 +38,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor
 public class ReportService {
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ReportService.class);
@@ -51,6 +49,16 @@ public class ReportService {
     private final ConcurrentHashMap<Integer, Map<LocalDate, String>> holidayCache = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private HolidayPosition holidayPosition;
+
+    public ReportService(
+            TimesheetService timesheetService,
+            UserSettingsService userSettingsService,
+            @Value("${report.holidayPosition:MIDDLE}") String holidayPositionStr
+    ) {
+        this.timesheetService = timesheetService;
+        this.userSettingsService = userSettingsService;
+        this.holidayPositionStr = holidayPositionStr;
+    }
 
     private static String safe(String value) {
         return value != null ? value : "";

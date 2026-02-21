@@ -3,7 +3,6 @@ package com.example.demo.controller;
 import com.example.demo.model.TimesheetEntry;
 import com.example.demo.service.TimesheetService;
 import com.example.demo.service.TimesheetSummaryService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -20,13 +19,17 @@ import java.util.concurrent.*;
 
 @RestController
 @RequestMapping("/timesheet/api")
-@RequiredArgsConstructor
 public class TimesheetController {
 
     private final TimesheetService timesheetService;
     private final TimesheetSummaryService summaryService;
 
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
+
+    public TimesheetController(TimesheetService timesheetService, TimesheetSummaryService summaryService) {
+        this.timesheetService = timesheetService;
+        this.summaryService = summaryService;
+    }
 
     private static String toString(Object value) {
         return value != null ? value.toString() : null;

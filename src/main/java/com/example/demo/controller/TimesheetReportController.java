@@ -3,7 +3,6 @@ package com.example.demo.controller;
 import com.example.demo.model.ReportJob;
 import com.example.demo.service.ReportJobService;
 import com.example.demo.service.ReportService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,11 +19,15 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/timesheet/report")
-@RequiredArgsConstructor
 public class TimesheetReportController {
 
     private final ReportJobService reportJobService;
     private final ReportService reportService;
+
+    public TimesheetReportController(ReportJobService reportJobService, ReportService reportService) {
+        this.reportJobService = reportJobService;
+        this.reportService = reportService;
+    }
 
     @GetMapping("/xlsx")
     public ResponseEntity<byte[]> xlsx(

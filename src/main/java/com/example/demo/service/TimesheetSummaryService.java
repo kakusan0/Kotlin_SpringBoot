@@ -2,7 +2,6 @@ package com.example.demo.service;
 
 import com.example.demo.mapper.TimesheetEntryMapper;
 import com.example.demo.model.TimesheetEntry;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
@@ -12,12 +11,15 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor
 public class TimesheetSummaryService {
 
     private final TimesheetEntryMapper timesheetEntryMapper;
     private final long ttlMillis = 60_000L;
     private final ConcurrentHashMap<String, Cached> cache = new ConcurrentHashMap<>();
+
+    public TimesheetSummaryService(TimesheetEntryMapper timesheetEntryMapper) {
+        this.timesheetEntryMapper = timesheetEntryMapper;
+    }
 
     private String key(String user, YearMonth ym) {
         return user + ":" + ym;

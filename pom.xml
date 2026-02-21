@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>4.0.3</version>
         <relativePath/>
     </parent>
     <groupId>com.jp.demo</groupId>
@@ -16,13 +16,13 @@
     <description>Demo project for Spring Boot with MyBatis</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
         <mainClass>com.example.demo.DemoApplication</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <flyway.version>11.18.0</flyway.version>
         <postgresql.version>42.7.8</postgresql.version>
-        <spring-cloud.version>2024.0.0</spring-cloud.version>
+        <spring-cloud.version>2025.1.1</spring-cloud.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -61,6 +61,12 @@
             <version>0.30.0.RELEASE</version>
         </dependency>
 
+        <!-- Spring Security WebAuthn (passkey support) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-webauthn</artifactId>
+        </dependency>
+
         <!-- Rate Limiting -->
         <dependency>
             <groupId>com.bucket4j</groupId>
@@ -80,11 +86,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <exclusions>
-                <!-- Tomcat を除外（プロファイルごとにサーバーを指定） -->
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-tomcat</artifactId>
-                </exclusion>
                 <!-- Logback を除外して Log4j2 を使用 -->
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
@@ -142,13 +143,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
-        </dependency>
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
         </dependency>
 
         <!-- GeoIP2 for country lookup -->
@@ -324,13 +318,6 @@
                 <spring.profiles.active>dev</spring.profiles.active>
                 <spring-boot.run.profiles>dev</spring-boot.run.profiles>
             </properties>
-            <dependencies>
-                <!-- dev環境では Undertow を使用（軽量・高速） -->
-                <dependency>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-undertow</artifactId>
-                </dependency>
-            </dependencies>
         </profile>
         <!-- ========== 本番環境プロファイル ========== -->
         <!-- 外部Apache Tomcatにwarをデプロイするため、 -->

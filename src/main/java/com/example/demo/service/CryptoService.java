@@ -2,16 +2,17 @@ package com.example.demo.service;
 
 import com.example.demo.util.EncryptionUtils;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class CryptoService {
 
-    @Value("${app.encryption.key:}")
     private final String rawKey;
+
+    public CryptoService(@Value("${app.encryption.key:}") String rawKey) {
+        this.rawKey = rawKey;
+    }
 
     @PostConstruct
     public void init() {

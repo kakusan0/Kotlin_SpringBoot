@@ -59,8 +59,6 @@ spring:
       - menuById
       - pathById
   jackson:
-    serialization:
-      write-dates-as-timestamps: false
     time-zone: Asia/Tokyo
     default-property-inclusion: non_null
   devtools:

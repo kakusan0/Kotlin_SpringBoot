@@ -6,7 +6,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
@@ -26,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 @Order(1)
-@RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
@@ -37,6 +35,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final boolean trustProxy;
 
     private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
+
+    public RateLimitFilter(@Value("${app.trust-proxy:false}") boolean trustProxy) {
+        this.trustProxy = trustProxy;
+    }
 
     @Override
     protected void doFilterInternal(
