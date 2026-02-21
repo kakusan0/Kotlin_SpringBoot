@@ -246,19 +246,6 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.4</version>
             </plugin>
-            <!-- ========== 依存関係バージョンチェック ========== -->
-            <!-- 手動実行: mvn versions:display-dependency-updates -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>versions-maven-plugin</artifactId>
-                <version>2.20.1</version>
-                <configuration>
-                    <outputFile>${project.build.directory}/dependency-updates-report.txt</outputFile>
-                    <outputEncoding>UTF-8</outputEncoding>
-                    <allowSnapshots>false</allowSnapshots>
-                    <rulesUri>file://${project.basedir}/version-rules.xml</rulesUri>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
@@ -308,67 +295,4 @@
             </plugin>
         </plugins>
     </build>
-    <profiles>
-        <profile>
-            <id>dev</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <spring.profiles.active>dev</spring.profiles.active>
-                <spring-boot.run.profiles>dev</spring-boot.run.profiles>
-            </properties>
-        </profile>
-        <!-- ========== 本番環境プロファイル ========== -->
-        <!-- 外部Apache Tomcatにwarをデプロイするため、 -->
-        <!-- 組み込みサーバー（Tomcat/Undertow）は不要 -->
-        <profile>
-            <id>prod</id>
-            <properties>
-                <!-- Spring 実行プロファイル -->
-                <spring.profiles.active>prod</spring.profiles.active>
-
-                <!-- WAR でビルド（外部Tomcatデプロイ用） -->
-                <packaging>war</packaging>
-            </properties>
-            <dependencies>
-                <!-- 外部Tomcatにデプロイするため provided scope -->
-                <dependency>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-tomcat</artifactId>
-                    <scope>provided</scope>
-                </dependency>
-            </dependencies>
-        </profile>
-        <!-- ========== バージョンチェックプロファイル ========== -->
-        <!-- mvn install -Pcheck-versions で依存関係の最新版をチェック -->
-        <profile>
-            <id>check-versions</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>versions-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>check-dependency-updates</id>
-                                <phase>validate</phase>
-                                <goals>
-                                    <goal>display-dependency-updates</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>check-plugin-updates</id>
-                                <phase>validate</phase>
-                                <goals>
-                                    <goal>display-plugin-updates</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-    </profiles>
 </project>
