@@ -80,13 +80,6 @@ logging:
     com.example.demo: INFO
     org.springframework.web: WARN
     org.springframework.security: WARN
-  file:
-    name: logs/application.log
-  logback:
-    rollingpolicy:
-      max-file-size: 10MB
-      max-history: 30
-      total-size-cap: 1GB
 
 geoip:
   mmdb-path: /opt/geoip/GeoLite2-Country.mmdb
