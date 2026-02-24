@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN" monitorInterval="60" packages="org.apache.logging.log4j">
     <Properties>
-        <Property name="LOG_DIR">logs</Property>
-        <Property name="APP_LOG">${LOG_DIR}/app.log</Property>
-        <Property name="AUDIT_LOG">${LOG_DIR}/audit.log</Property>
         <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg | rid=%X{requestId}
             uid=%X{userId} ip=%X{clientIp} %X{method} %X{uri}%n%throwable
         </Property>
@@ -13,24 +10,6 @@
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="${PATTERN}"/>
         </Console>
-
-        <RollingFile name="AppFile" fileName="${APP_LOG}" filePattern="${APP_LOG}-%d{yyyy-MM-dd}-%i.gz">
-            <PatternLayout pattern="${PATTERN}"/>
-            <Policies>
-                <TimeBasedTriggeringPolicy interval="1"/>
-                <SizeBasedTriggeringPolicy size="20 MB"/>
-            </Policies>
-            <DefaultRolloverStrategy max="30"/>
-        </RollingFile>
-
-        <RollingFile name="AuditFile" fileName="${AUDIT_LOG}" filePattern="${AUDIT_LOG}-%d{yyyy-MM-dd}-%i.gz">
-            <PatternLayout pattern="${PATTERN}"/>
-            <Policies>
-                <TimeBasedTriggeringPolicy interval="1"/>
-                <SizeBasedTriggeringPolicy size="20 MB"/>
-            </Policies>
-            <DefaultRolloverStrategy max="60"/>
-        </RollingFile>
 
         <JDBC name="AuditDB" tableName="audit_log">
             <ConnectionSource class="org.apache.logging.log4j.core.appender.db.jdbc.DriverManagerConnectionSource"
@@ -56,20 +35,16 @@
         <!-- Application loggers -->
         <AsyncLogger name="com.example.demo" level="info" additivity="false">
             <AppenderRef ref="Console"/>
-            <AppenderRef ref="AppFile"/>
         </AsyncLogger>
 
         <!-- Dedicated audit logger -->
         <AsyncLogger name="AUDIT" level="info" additivity="false">
             <AppenderRef ref="Console"/>
-            <AppenderRef ref="AuditFile"/>
             <AppenderRef ref="AuditDB"/>
         </AsyncLogger>
 
         <Root level="warn">
             <AppenderRef ref="Console"/>
-            <AppenderRef ref="AppFile"/>
         </Root>
     </Loggers>
 </Configuration>
-
