@@ -22,22 +22,22 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>4.0.3</spring-boot.version>
         <spring-cloud.version>2025.1.1</spring-cloud.version>
-        <postgresql.version>42.7.8</postgresql.version>
-        <flyway.version>11.18.0</flyway.version>
+        <postgresql.version>42.7.10</postgresql.version>
+        <flyway.version>11.20.3</flyway.version>
         <lombok.version>1.18.42</lombok.version>
         <mybatis-spring-boot.version>3.0.5</mybatis-spring-boot.version>
-        <webauthn4j.version>0.30.0.RELEASE</webauthn4j.version>
+        <webauthn4j.version>0.31.0.RELEASE</webauthn4j.version>
         <bucket4j.version>8.10.1</bucket4j.version>
         <bootstrap.version>5.3.8</bootstrap.version>
         <bootstrap-icons.version>1.13.1</bootstrap-icons.version>
-        <geoip2.version>4.2.0</geoip2.version>
+        <geoip2.version>4.4.0</geoip2.version>
         <pdfbox.version>3.0.6</pdfbox.version>
         <poi.version>5.5.1</poi.version>
-        <selenium.version>4.27.0</selenium.version>
+        <selenium.version>4.41.0</selenium.version>
         <webdrivermanager.version>6.3.3</webdrivermanager.version>
-        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <maven-war-plugin.version>3.5.1</maven-war-plugin.version>
-        <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+        <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <frontend-maven-plugin.version>1.15.4</frontend-maven-plugin.version>
         <node.version>v24.11.1</node.version>
         <npm.version>11.6.4</npm.version>
