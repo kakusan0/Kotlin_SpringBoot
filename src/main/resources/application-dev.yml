@@ -1,8 +1,14 @@
 spring:
   datasource:
+    url: ${db.url}
+    username: ${db.username}
+    password: ${db.password}
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   flyway:
     baseline-version: 0
     validate-on-migrate: true
