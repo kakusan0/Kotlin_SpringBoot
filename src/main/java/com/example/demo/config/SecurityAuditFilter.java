@@ -1,10 +1,10 @@
 package com.example.demo.config;
 
-import com.example.demo.mapper.AccessLogMapper;
 import com.example.demo.mapper.BlacklistIpMapper;
 import com.example.demo.mapper.WhitelistIpMapper;
 import com.example.demo.model.AccessLog;
 import com.example.demo.model.WhitelistIp;
+import com.example.demo.service.AccessLogWriteService;
 import com.example.demo.service.BlacklistEventService;
 import com.example.demo.service.GeoIpCountryService;
 import com.example.demo.service.UaBlacklistService;
@@ -23,6 +23,7 @@ import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -34,7 +35,11 @@ import java.util.UUID;
 public class SecurityAuditFilter extends OncePerRequestFilter {
 
 
-    private final AccessLogMapper accessLogMapper;
+    private static final Set<String> SKIP_PREFIXES = Set.of(
+            "/css/", "/js/", "/webjars/", "/favicon", "/actuator/", "/robots.txt"
+    );
+
+    private final AccessLogWriteService accessLogWriteService;
     private final WhitelistIpMapper whitelistIpMapper;
     private final BlacklistIpMapper blacklistIpMapper;
     private final GeoIpCountryService geoIpCountryService;
@@ -44,7 +49,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
     private final boolean trustProxy;
 
     public SecurityAuditFilter(
-            AccessLogMapper accessLogMapper,
+            AccessLogWriteService accessLogWriteService,
             WhitelistIpMapper whitelistIpMapper,
             BlacklistIpMapper blacklistIpMapper,
             GeoIpCountryService geoIpCountryService,
@@ -52,13 +57,27 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             UaBlacklistService uaBlacklistService,
             @Value("${app.trust-proxy:false}") boolean trustProxy
     ) {
-        this.accessLogMapper = accessLogMapper;
+        this.accessLogWriteService = accessLogWriteService;
         this.whitelistIpMapper = whitelistIpMapper;
         this.blacklistIpMapper = blacklistIpMapper;
         this.geoIpCountryService = geoIpCountryService;
         this.blacklistEventService = blacklistEventService;
         this.uaBlacklistService = uaBlacklistService;
         this.trustProxy = trustProxy;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        if (uri == null || uri.isBlank()) {
+            return false;
+        }
+        for (String prefix : SKIP_PREFIXES) {
+            if (uri.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -91,7 +110,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                 accessLog.setReferer(request.getHeader("Referer"));
                 accessLog.setUsername(request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null);
                 try {
-                    accessLogMapper.insert(accessLog);
+                    accessLogWriteService.write(accessLog);
                 } catch (Exception e) {
                     log.warn(
                             "早期アクセスログ保存に失敗: method={}, path={}, status={}, err={}",
@@ -209,7 +228,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             accessLog.setRequestBytes(computeRequestBytes(reqWrap));
             accessLog.setResponseBytes(computeResponseBytes(resWrap));
             try {
-                accessLogMapper.insert(accessLog);
+                accessLogWriteService.write(accessLog);
             } catch (Exception e) {
                 log.warn(
                         "アクセスログ保存に失敗: method={}, path={}, status={}, err={}",

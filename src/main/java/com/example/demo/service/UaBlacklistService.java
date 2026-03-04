@@ -6,7 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -18,7 +20,7 @@ public class UaBlacklistService {
     private static final long TTL_MS = 60_000L;
 
     private final UaBlacklistRuleMapper ruleMapper;
-    private final AtomicReference<List<UaBlacklistRule>> cacheRef = new AtomicReference<>(List.of());
+    private final AtomicReference<List<CachedRule>> cacheRef = new AtomicReference<>(List.of());
     private final AtomicLong lastLoadEpochMs = new AtomicLong(0);
 
 
@@ -26,9 +28,31 @@ public class UaBlacklistService {
         long now = Instant.now().toEpochMilli();
         if (now - lastLoadEpochMs.get() > TTL_MS) {
             List<UaBlacklistRule> rules = ruleMapper.selectActive();
-            cacheRef.set(rules);
+            List<CachedRule> cached = new ArrayList<>(rules.size());
+            for (UaBlacklistRule rule : rules) {
+                if (rule == null || rule.getPattern() == null || rule.getPattern().isBlank()) {
+                    continue;
+                }
+                String matchType = rule.getMatchType() != null
+                        ? rule.getMatchType().toUpperCase(Locale.ROOT)
+                        : "EXACT";
+                Pattern regex = null;
+                if ("REGEX".equals(matchType)) {
+                    try {
+                        regex = Pattern.compile(rule.getPattern(), Pattern.CASE_INSENSITIVE);
+                    } catch (Exception ignored) {
+                        continue;
+                    }
+                }
+                cached.add(new CachedRule(matchType, rule.getPattern(), regex));
+            }
+            cacheRef.set(cached);
             lastLoadEpochMs.set(now);
         }
+    }
+
+    public void evictCache() {
+        lastLoadEpochMs.set(0);
     }
 
     public boolean matches(String userAgent) {
@@ -36,25 +60,21 @@ public class UaBlacklistService {
             return false;
         }
         ensureLoaded();
-        for (UaBlacklistRule r : cacheRef.get()) {
-            String matchType = r.getMatchType() != null ? r.getMatchType().toUpperCase() : "EXACT";
-            switch (matchType) {
+        for (CachedRule r : cacheRef.get()) {
+            switch (r.matchType()) {
                 case "EXACT" -> {
-                    if (userAgent.equalsIgnoreCase(r.getPattern())) {
+                    if (userAgent.equalsIgnoreCase(r.pattern())) {
                         return true;
                     }
                 }
                 case "PREFIX" -> {
-                    if (userAgent.regionMatches(true, 0, r.getPattern(), 0, r.getPattern().length())) {
+                    if (userAgent.regionMatches(true, 0, r.pattern(), 0, r.pattern().length())) {
                         return true;
                     }
                 }
                 case "REGEX" -> {
-                    try {
-                        if (Pattern.compile(r.getPattern(), Pattern.CASE_INSENSITIVE).matcher(userAgent).find()) {
-                            return true;
-                        }
-                    } catch (Exception ignored) {
+                    if (r.regex() != null && r.regex().matcher(userAgent).find()) {
+                        return true;
                     }
                 }
                 default -> {
@@ -62,5 +82,8 @@ public class UaBlacklistService {
             }
         }
         return false;
+    }
+
+    private record CachedRule(String matchType, String pattern, Pattern regex) {
     }
 }

@@ -6,6 +6,7 @@ import com.example.demo.mapper.UaBlacklistRuleMapper;
 import com.example.demo.mapper.WhitelistIpMapper;
 import com.example.demo.model.UaBlacklistRule;
 import com.example.demo.service.BlacklistEventService;
+import com.example.demo.service.UaBlacklistService;
 import com.example.demo.util.BlacklistEventFactory;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class ApiUaBlacklistController {
     private final BlacklistIpMapper blacklistIpMapper;
     private final WhitelistIpMapper whitelistIpMapper;
     private final BlacklistEventService blacklistEventService;
+    private final UaBlacklistService uaBlacklistService;
 
 
     @GetMapping
@@ -55,6 +57,7 @@ public class ApiUaBlacklistController {
         rule.setMatchType(mt);
         rule.setDeleted(false);
         ruleMapper.insert(rule);
+        uaBlacklistService.evictCache();
 
         int blockedCount = 0;
         try {
@@ -94,6 +97,7 @@ public class ApiUaBlacklistController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         ruleMapper.logicalDelete(id);
+        uaBlacklistService.evictCache();
         return ResponseEntity.noContent().build();
     }
 

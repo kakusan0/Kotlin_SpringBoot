@@ -4,9 +4,6 @@
 
     const regBtn = document.getElementById('btnPasskeyRegister');
     const regStatus = document.getElementById('registerStatus');
-    const loginBtn = document.getElementById('btnPasskeyLogin');
-    const loginStatus = document.getElementById('loginStatus');
-    const loginUserInput = document.getElementById('passkeyLoginUsername');
 
     const showStatus = (el, msg, isError = false) => {
         if (!el) return;
@@ -55,86 +52,6 @@
             } catch (e) {
                 console.error(e);
                 showStatus(regStatus, `エラー: ${e.message}`, true);
-            }
-        });
-    }
-
-    // ログインフロー（ユーザー名あり/なし両対応）
-    if (loginBtn) {
-        loginBtn.addEventListener('click', async () => {
-            const username = (loginUserInput?.value || '').trim();
-            try {
-                showStatus(loginStatus, 'チャレンジ取得中...');
-
-                // ユーザー名があれば従来の認証、なければDiscoverable認証
-                const optionsUrl = username
-                    ? `/api/webauthn/authentication/options?username=${encodeURIComponent(username)}`
-                    : '/api/webauthn/authentication/options';
-
-                const res = await fetch(optionsUrl);
-                if (!res.ok) {
-                    const msg = (await res.json().catch(() => ({}))).message || 'options取得失敗';
-                    throw new Error(msg);
-                }
-                const options = await res.json();
-                const challengeId = options.challengeId; // Discoverable認証用
-
-                const publicKeyOptions = {
-                    challenge: b64uToArray(options.challenge).buffer,
-                    rpId: options.rpId,
-                    timeout: options.timeout,
-                    userVerification: options.userVerification
-                };
-
-                // allowCredentialsがある場合のみ設定（Discoverable認証では空）
-                if (options.allowCredentials && options.allowCredentials.length > 0) {
-                    publicKeyOptions.allowCredentials = options.allowCredentials.map(ac => ({
-                        ...ac,
-                        id: b64uToArray(ac.id).buffer
-                    }));
-                }
-
-                showStatus(loginStatus, '認証中...');
-                const assertion = await navigator.credentials.get({publicKey: publicKeyOptions});
-                if (!assertion) throw new Error('認証に失敗');
-
-                // 認証完了エンドポイント（Discoverable認証用かどうかで分岐）
-                const finishUrl = challengeId
-                    ? `/api/webauthn/authentication/finish/discoverable?challengeId=${encodeURIComponent(challengeId)}`
-                    : `/api/webauthn/authentication/finish?username=${encodeURIComponent(username)}`;
-
-                const finishRes = await fetch(finishUrl, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        id: assertion.id,
-                        rawId: arrayToB64u(assertion.rawId),
-                        type: assertion.type,
-                        response: {
-                            authenticatorData: arrayToB64u(assertion.response.authenticatorData),
-                            clientDataJSON: arrayToB64u(assertion.response.clientDataJSON),
-                            signature: arrayToB64u(assertion.response.signature),
-                            userHandle: assertion.response.userHandle ? arrayToB64u(assertion.response.userHandle) : null
-                        }
-                    })
-                });
-
-                if (!finishRes.ok) {
-                    const msg = (await finishRes.json().catch(() => ({}))).message || '認証完了に失敗';
-                    throw new Error(msg);
-                }
-                const result = await finishRes.json();
-                showStatus(loginStatus, `ログイン成功${result.username ? ` (${result.username})` : ''}。リダイレクトします...`);
-                setTimeout(() => window.location.href = '/tools', 300);
-            } catch (e) {
-                console.error(e);
-                const msgText = String(e?.message || '').toLowerCase();
-                const isCanceled = e?.name === 'NotAllowedError'
-                    || msgText.includes('cancel')
-                    || msgText.includes('not allowed')
-                    || msgText.includes('timed out');
-                const msg = isCanceled ? 'キャンセルされました' : `エラー: ${e.message}`;
-                showStatus(loginStatus, msg, true);
             }
         });
     }
