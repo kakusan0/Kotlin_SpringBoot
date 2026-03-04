@@ -14,7 +14,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -51,10 +50,17 @@ public class AdminController {
 
         if (!ips.isEmpty()) {
             List<IpLatestPath> latestList = accessLogMapper.selectLatestPathByIps(ips);
-            Map<String, String> latestPathMap = latestList.stream()
-                    .collect(Collectors.toMap(IpLatestPath::getIpAddress, IpLatestPath::getPath, (a, b) -> a));
-            Map<String, String> latestUaMap = latestList.stream()
-                    .collect(Collectors.toMap(IpLatestPath::getIpAddress, IpLatestPath::getUserAgent, (a, b) -> a));
+            Map<String, String> latestPathMap = new HashMap<>();
+            Map<String, String> latestUaMap = new HashMap<>();
+            for (IpLatestPath latest : latestList) {
+                if (latest == null || latest.getIpAddress() == null) {
+                    continue;
+                }
+                latestPathMap.putIfAbsent(latest.getIpAddress(),
+                        latest.getPath() == null ? "" : latest.getPath());
+                latestUaMap.putIfAbsent(latest.getIpAddress(),
+                        latest.getUserAgent() == null ? "" : latest.getUserAgent());
+            }
             model.addAttribute("latestPathsByIp", latestPathMap);
             model.addAttribute("latestUserAgentsByIp", latestUaMap);
         } else {
