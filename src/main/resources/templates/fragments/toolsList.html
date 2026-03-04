@@ -8,7 +8,9 @@
                 <a class="btn btn-primary" th:href="@{/tools/password}">
                     <i class="bi bi-key me-1"></i>パスワード生成ツール
                 </a>
-                <a class="btn btn-outline-primary" th:href="@{/tools/passkey}">
+                <a class="btn btn-outline-primary"
+                   th:href="@{/tools/passkey}"
+                   th:if="${#authorization.expression('isAuthenticated()')}">
                     <i class="bi bi-fingerprint me-1"></i>パスキー管理
                 </a>
             </div>

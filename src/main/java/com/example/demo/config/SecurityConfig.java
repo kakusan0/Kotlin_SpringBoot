@@ -1,5 +1,6 @@
 package com.example.demo.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
@@ -20,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.session.*;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -39,8 +41,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -121,6 +121,7 @@ public class SecurityConfig {
                                 "/favicon.ico", "/favicon.svg", "/.well-known/**",
                                 "/login", "/api/webauthn/**"
                         ).permitAll()
+                        .requestMatchers("/tools/passkey", "/tools/passkey/**").authenticated()
                         .requestMatchers("/", "/home", "/home/**", "/tools", "/tools/**").permitAll()
                         .requestMatchers("/timesheet", "/timesheet/**").hasRole("UNISS")
                         .requestMatchers("/api/calendar/holidays").permitAll()
@@ -133,6 +134,13 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").denyAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/tools"),
+                                request -> request.getRequestURI() != null
+                                        && request.getRequestURI().startsWith("/tools/passkey")
+                        )
                 )
                 .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .formLogin(form -> form
