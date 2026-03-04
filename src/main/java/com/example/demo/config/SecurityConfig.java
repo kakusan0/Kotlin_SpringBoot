@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -78,7 +79,7 @@ public class SecurityConfig {
 
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, SessionRegistry sessionRegistry) {
         String cspPolicy = "default-src 'self'; " +
                 "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
                 "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
@@ -93,7 +94,6 @@ public class SecurityConfig {
                 .csrf(csrf -> {
                     CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
                     XorCsrfTokenRequestAttributeHandler requestHandler = new XorCsrfTokenRequestAttributeHandler();
-                    requestHandler.setCsrfRequestAttributeName(null);
                     csrf.csrfTokenRepository(csrfTokenRepository);
                     csrf.csrfTokenRequestHandler(requestHandler);
                     csrf.ignoringRequestMatchers("/api/webauthn/**");
@@ -101,8 +101,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
-                        .contentTypeOptions(contentType -> {
-                        })
+                        .contentTypeOptions(Customizer.withDefaults())
                         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
                         .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(HSTS_MAX_AGE))
                         .referrerPolicy(referrer -> referrer.policy(
@@ -112,8 +111,7 @@ public class SecurityConfig {
                                 "Permissions-Policy",
                                 "geolocation=(), microphone=(), camera=(), usb=(), payment=(), fullscreen()"
                         ))
-                        .cacheControl(cache -> {
-                        })
+                        .cacheControl(Customizer.withDefaults())
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(

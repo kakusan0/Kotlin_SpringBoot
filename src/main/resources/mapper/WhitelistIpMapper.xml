@@ -44,4 +44,14 @@
         WHERE
             ip_address = #{ipAddress}
     </update>
+    <update id="markBlacklistedAndIncrementBulk" parameterType="map">
+        UPDATE whitelist_ips
+        SET
+        blacklisted = TRUE
+        , blacklisted_count = COALESCE(blacklisted_count, 0) + 1
+        WHERE ip_address IN
+        <foreach collection="ipAddresses" item="ip" open="(" separator="," close=")">
+            #{ip}
+        </foreach>
+    </update>
 </mapper>

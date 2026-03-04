@@ -31,6 +31,19 @@
             SET times = blacklist_ips.times + 1,
             deleted = FALSE
     </insert>
+    <insert id="upsertIncrementTimesBulk" parameterType="map">
+        INSERT INTO blacklist_ips (ip_address, times, deleted)
+        SELECT ip_address, 1, FALSE
+        FROM (
+        VALUES
+        <foreach collection="ipAddresses" item="ip" separator=",">
+            (#{ip})
+        </foreach>
+        ) AS v(ip_address)
+        ON CONFLICT (ip_address) DO UPDATE
+        SET times = blacklist_ips.times + 1,
+        deleted = FALSE
+    </insert>
     <update id="markDeletedById" parameterType="long">
         UPDATE blacklist_ips
         SET
@@ -39,4 +52,3 @@
             id = #{id}
     </update>
 </mapper>
-

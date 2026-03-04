@@ -17,4 +17,6 @@ public interface WhitelistIpMapper {
     List<WhitelistIp> getActive();
 
     int markBlacklistedAndIncrement(@Param("ipAddress") String ipAddress);
+
+    int markBlacklistedAndIncrementBulk(@Param("ipAddresses") List<String> ipAddresses);
 }

@@ -16,5 +16,7 @@ public interface BlacklistIpMapper {
 
     int upsertIncrementTimes(@Param("ipAddress") String ipAddress);
 
+    int upsertIncrementTimesBulk(@Param("ipAddresses") List<String> ipAddresses);
+
     int markDeletedById(@Param("id") Long id);
 }

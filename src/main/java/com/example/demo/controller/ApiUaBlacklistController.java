@@ -62,10 +62,12 @@ public class ApiUaBlacklistController {
         int blockedCount = 0;
         try {
             List<String> matchingIps = accessLogMapper.selectIpsByUserAgentPattern(req.getPattern(), mt);
-            for (String ip : matchingIps) {
-                try {
-                    blacklistIpMapper.upsertIncrementTimes(ip);
-                    whitelistIpMapper.markBlacklistedAndIncrement(ip);
+            if (!matchingIps.isEmpty()) {
+                blacklistIpMapper.upsertIncrementTimesBulk(matchingIps);
+                whitelistIpMapper.markBlacklistedAndIncrementBulk(matchingIps);
+                blockedCount = matchingIps.size();
+
+                for (String ip : matchingIps) {
                     try {
                         blacklistEventService.recordEvent(
                                 BlacklistEventFactory.create(
@@ -83,8 +85,6 @@ public class ApiUaBlacklistController {
                         );
                     } catch (Exception ignored) {
                     }
-                    blockedCount++;
-                } catch (Exception ignored) {
                 }
             }
         } catch (Exception ignored) {
