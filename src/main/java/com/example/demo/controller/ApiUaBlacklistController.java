@@ -90,8 +90,9 @@ public class ApiUaBlacklistController {
         } catch (Exception ignored) {
         }
 
+        //noinspection SpringUntrustedDataFlow
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateRuleResponse(rule, blockedCount));
+                .body(new CreateRuleResponse(rule.getId(), blockedCount));
     }
 
     @DeleteMapping("/{id}")
@@ -110,6 +111,6 @@ public class ApiUaBlacklistController {
         private String matchType = "EXACT";
     }
 
-    public record CreateRuleResponse(UaBlacklistRule rule, int blockedIpsCount) {
+    public record CreateRuleResponse(Long ruleId, int blockedIpsCount) {
     }
 }
