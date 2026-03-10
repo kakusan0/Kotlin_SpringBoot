@@ -36,7 +36,6 @@
         <selenium.version>4.41.0</selenium.version>
         <webdrivermanager.version>6.3.3</webdrivermanager.version>
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
-        <maven-war-plugin.version>3.5.1</maven-war-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <frontend-maven-plugin.version>1.15.4</frontend-maven-plugin.version>
         <node.version>v24.11.1</node.version>
@@ -91,6 +90,12 @@
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
             <version>${bucket4j.version}</version>
+        </dependency>
+
+        <!-- Caffeine Cache (TTL eviction for rate-limit maps etc.) -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
 
         <!-- Jakarta Servlet API -->
@@ -278,14 +283,6 @@
                             <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>${maven-war-plugin.version}</version>
-                <configuration>
-                    <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
             </plugin>
             <plugin>

@@ -12,4 +12,4 @@ USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75", "-XX:InitialRAMPercentage=25", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-XX:InitialRAMPercentage=25", "-jar", "/app/app-0.0.1-SNAPSHOT.jar"]

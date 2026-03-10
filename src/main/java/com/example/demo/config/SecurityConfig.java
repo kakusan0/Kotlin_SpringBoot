@@ -109,7 +109,7 @@ public class SecurityConfig {
                         .contentSecurityPolicy(csp -> csp.policyDirectives(cspPolicy))
                         .addHeaderWriter(new StaticHeadersWriter(
                                 "Permissions-Policy",
-                                "geolocation=(), microphone=(), camera=(), usb=(), payment=(), fullscreen()"
+                                "geolocation=(), microphone=(), camera=(), usb=(), payment=(), fullscreen=()"
                         ))
                         .cacheControl(Customizer.withDefaults())
                 )

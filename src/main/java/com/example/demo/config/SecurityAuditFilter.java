@@ -31,7 +31,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
-@Order(2)
+@Order(3)
 public class SecurityAuditFilter extends OncePerRequestFilter {
 
 
@@ -95,54 +95,6 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             userAgent = "";
         }
 
-        class EarlyLog {
-            void write(int statusCode, String reason) {
-                long duration = System.currentTimeMillis() - start;
-                AccessLog accessLog = new AccessLog();
-                accessLog.setRequestId(requestId);
-                accessLog.setMethod(request.getMethod());
-                accessLog.setPath(request.getRequestURI());
-                accessLog.setQuery(request.getQueryString());
-                accessLog.setStatus(statusCode);
-                accessLog.setDurationMs(duration);
-                accessLog.setRemoteIp(remoteIp);
-                accessLog.setUserAgent(request.getHeader("User-Agent"));
-                accessLog.setReferer(request.getHeader("Referer"));
-                accessLog.setUsername(request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null);
-                try {
-                    accessLogWriteService.write(accessLog);
-                } catch (Exception e) {
-                    log.warn(
-                            "早期アクセスログ保存に失敗: method={}, path={}, status={}, err={}",
-                            request.getMethod(),
-                            request.getRequestURI(),
-                            statusCode,
-                            e.toString()
-                    );
-                }
-                try {
-                    blacklistEventService.recordEvent(
-                            BlacklistEventFactory.create(
-                                    remoteIp,
-                                    reason,
-                                    "FILTER",
-                                    requestId,
-                                    request.getMethod(),
-                                    request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : ""),
-                                    statusCode,
-                                    request.getHeader("User-Agent"),
-                                    request.getHeader("Referer"),
-                                    null
-                            )
-                    );
-                } catch (Exception e) {
-                    log.warn("ブラックリストイベント保存に失敗: ip={}, reason={}, err={}", remoteIp, reason, e.toString());
-                }
-            }
-        }
-
-        EarlyLog earlyLog = new EarlyLog();
-
         if (uaBlacklistService.matches(userAgent)) {
             if (remoteIp != null && !remoteIp.isBlank()) {
                 try {
@@ -156,7 +108,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                 response.getWriter().write("");
             } catch (Exception ignored) {
             }
-            earlyLog.write(404, "UA");
+            writeEarlyLog(request, requestId, remoteIp, start, 404, "UA");
             return;
         }
 
@@ -172,7 +124,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                 response.getWriter().write("");
             } catch (Exception ignored) {
             }
-            earlyLog.write(404, "COUNTRY");
+            writeEarlyLog(request, requestId, remoteIp, start, 404, "COUNTRY");
             return;
         }
 
@@ -187,7 +139,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                 response.getWriter().write("");
             } catch (Exception ignored) {
             }
-            earlyLog.write(404, "BLACKLIST");
+            writeEarlyLog(request, requestId, remoteIp, start, 404, "BLACKLIST");
             return;
         }
 
@@ -261,5 +213,49 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             }
         }
         return res.getContentSize();
+    }
+
+    private void writeEarlyLog(HttpServletRequest request, String requestId, String remoteIp, long start, int statusCode, String reason) {
+        long duration = System.currentTimeMillis() - start;
+        AccessLog accessLog = new AccessLog();
+        accessLog.setRequestId(requestId);
+        accessLog.setMethod(request.getMethod());
+        accessLog.setPath(request.getRequestURI());
+        accessLog.setQuery(request.getQueryString());
+        accessLog.setStatus(statusCode);
+        accessLog.setDurationMs(duration);
+        accessLog.setRemoteIp(remoteIp);
+        accessLog.setUserAgent(request.getHeader("User-Agent"));
+        accessLog.setReferer(request.getHeader("Referer"));
+        accessLog.setUsername(request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : null);
+        try {
+            accessLogWriteService.write(accessLog);
+        } catch (Exception e) {
+            log.warn(
+                    "早期アクセスログ保存に失敗: method={}, path={}, status={}, err={}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    statusCode,
+                    e.toString()
+            );
+        }
+        try {
+            blacklistEventService.recordEvent(
+                    BlacklistEventFactory.create(
+                            remoteIp,
+                            reason,
+                            "FILTER",
+                            requestId,
+                            request.getMethod(),
+                            request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : ""),
+                            statusCode,
+                            request.getHeader("User-Agent"),
+                            request.getHeader("Referer"),
+                            null
+                    )
+            );
+        } catch (Exception e) {
+            log.warn("ブラックリストイベント保存に失敗: ip={}, reason={}, err={}", remoteIp, reason, e.toString());
+        }
     }
 }

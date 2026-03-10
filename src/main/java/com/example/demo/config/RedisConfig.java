@@ -1,7 +1,5 @@
 package com.example.demo.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -26,8 +24,7 @@ public class RedisConfig {
     /**
      * RedisTemplate のカスタマイズ
      * <p>
-     * デフォルトでは JDK シリアライゼーションが使用されますが、
-     * JSON シリアライゼーションに変更して相互運用性を向上させます。
+     * キーは String シリアライゼーション、値は JSON シリアライゼーションを使用。
      */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
@@ -37,12 +34,6 @@ public class RedisConfig {
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
 
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.findAndRegisterModules();
-        mapper.activateDefaultTyping(
-                BasicPolymorphicTypeValidator.builder().allowIfBaseType(Object.class).build(),
-                ObjectMapper.DefaultTyping.NON_FINAL
-        );
 
         RedisSerializer<Object> jsonSerializer = RedisSerializer.json();
         template.setValueSerializer(jsonSerializer);

@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.TimesheetEntry;
+import com.example.demo.model.TimesheetSaveCommand;
 import com.example.demo.service.TimesheetService;
 import com.example.demo.service.TimesheetSummaryService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,11 @@ public class TimesheetController {
     private final TimesheetSummaryService summaryService;
 
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(1, r -> {
+        Thread t = new Thread(r, "sse-heartbeat");
+        t.setDaemon(true);
+        return t;
+    });
 
 
     private static String toString(Object value) {
@@ -129,28 +135,21 @@ public class TimesheetController {
     @GetMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(Authentication auth) {
         SseEmitter emitter = new SseEmitter(0L);
-        CopyOnWriteArrayList<SseEmitter> list = emitters.computeIfAbsent(auth.getName(), k -> new CopyOnWriteArrayList<>());
+        CopyOnWriteArrayList<SseEmitter> list = emitters.computeIfAbsent(auth.getName(), _ -> new CopyOnWriteArrayList<>());
         list.add(emitter);
         emitter.onCompletion(() -> list.remove(emitter));
         emitter.onTimeout(() -> list.remove(emitter));
 
-        ScheduledExecutorService heartbeat = Executors.newSingleThreadScheduledExecutor();
-        ScheduledFuture<?> future = heartbeat.scheduleAtFixedRate(() -> {
+        ScheduledFuture<?> future = heartbeatScheduler.scheduleAtFixedRate(() -> {
             try {
                 emitter.send(SseEmitter.event().name("heartbeat").data("ping"));
             } catch (Exception e) {
-                heartbeat.shutdownNow();
+                emitter.complete();
             }
         }, 30, 30, TimeUnit.SECONDS);
 
-        emitter.onCompletion(() -> {
-            future.cancel(true);
-            heartbeat.shutdownNow();
-        });
-        emitter.onTimeout(() -> {
-            future.cancel(true);
-            heartbeat.shutdownNow();
-        });
+        emitter.onCompletion(() -> future.cancel(true));
+        emitter.onTimeout(() -> future.cancel(true));
         return emitter;
     }
 
@@ -198,36 +197,20 @@ public class TimesheetController {
                 boolean endProvided = entry.containsKey("endTime");
                 boolean breakProvided = entry.containsKey("breakMinutes");
 
-                TimesheetEntry savedEntry = timesheetService.saveOrUpdateWithFlags(
-                        auth.getName(),
-                        workDate,
-                        startProvided,
-                        startTime,
-                        endProvided,
-                        endTime,
-                        breakProvided,
-                        breakMinutes,
-                        false,
-                        holidayWork,
-                        false,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false
-                );
+                TimesheetSaveCommand cmd = TimesheetSaveCommand.builder()
+                        .userName(auth.getName())
+                        .workDate(workDate)
+                        .startProvided(startProvided)
+                        .startTime(startTime)
+                        .endProvided(endProvided)
+                        .endTime(endTime)
+                        .breakProvided(breakProvided)
+                        .breakMinutes(breakMinutes)
+                        .force(false)
+                        .holidayWork(holidayWork)
+                        .build();
+
+                TimesheetEntry savedEntry = timesheetService.saveOrUpdateWithFlags(cmd);
                 broadcast("timesheet-updated", savedEntry, auth.getName());
                 saved++;
             } catch (Exception ex) {
@@ -293,36 +276,38 @@ public class TimesheetController {
             boolean endProvided = body.containsKey("endTime");
             boolean breakProvided = body.containsKey("breakMinutes");
 
-            TimesheetEntry saved = timesheetService.saveOrUpdateWithFlags(
-                    auth.getName(),
-                    workDate,
-                    startProvided,
-                    startTime,
-                    endProvided,
-                    endTime,
-                    breakProvided,
-                    breakMinutes,
-                    force,
-                    holidayWork,
-                    noteProvided,
-                    note,
-                    workLocation,
-                    irregularWorkType,
-                    irregularWorkDesc,
-                    irregularWorkData,
-                    lateTime,
-                    lateDesc,
-                    earlyTime,
-                    earlyDesc,
-                    freeNote,
-                    paidLeave,
-                    clearIrregular,
-                    clearLate,
-                    clearEarly,
-                    clearFreeNote,
-                    clearPaidLeave,
-                    clearWorkLocation
-            );
+            TimesheetSaveCommand cmd = TimesheetSaveCommand.builder()
+                    .userName(auth.getName())
+                    .workDate(workDate)
+                    .startProvided(startProvided)
+                    .startTime(startTime)
+                    .endProvided(endProvided)
+                    .endTime(endTime)
+                    .breakProvided(breakProvided)
+                    .breakMinutes(breakMinutes)
+                    .force(force)
+                    .holidayWork(holidayWork)
+                    .noteProvided(noteProvided)
+                    .note(note)
+                    .workLocation(workLocation)
+                    .irregularWorkType(irregularWorkType)
+                    .irregularWorkDesc(irregularWorkDesc)
+                    .irregularWorkData(irregularWorkData)
+                    .lateTime(lateTime)
+                    .lateDesc(lateDesc)
+                    .earlyTime(earlyTime)
+                    .earlyDesc(earlyDesc)
+                    .freeNote(freeNote)
+                    .paidLeave(paidLeave)
+                    .clearIrregular(clearIrregular)
+                    .clearLate(clearLate)
+                    .clearEarly(clearEarly)
+                    .clearFreeNote(clearFreeNote)
+                    .clearPaidLeave(clearPaidLeave)
+                    .clearWorkLocation(clearWorkLocation)
+                    .build();
+
+            TimesheetEntry saved = timesheetService.saveOrUpdateWithFlags(cmd);
             broadcast("timesheet-updated", saved, auth.getName());
             return Map.of("success", true, "entry", saved);
         } catch (Exception ex) {

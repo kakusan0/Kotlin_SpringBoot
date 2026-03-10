@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.mapper.TimesheetEntryMapper;
 import com.example.demo.model.TimesheetEntry;
+import com.example.demo.model.TimesheetSaveCommand;
 import com.example.demo.util.DbUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -309,124 +310,71 @@ public class TimesheetService {
     }
 
     @Transactional
-    public TimesheetEntry saveOrUpdateWithFlags(
-            String userName,
-            LocalDate workDate,
-            boolean startProvided,
-            LocalTime startTime,
-            boolean endProvided,
-            LocalTime endTime,
-            boolean breakProvided,
-            Integer breakMinutes,
-            boolean force,
-            boolean holidayWork,
-            boolean noteProvided,
-            String note,
-            String workLocation,
-            String irregularWorkType,
-            String irregularWorkDesc,
-            String irregularWorkData,
-            String lateTime,
-            String lateDesc,
-            String earlyTime,
-            String earlyDesc,
-            String freeNote,
-            String paidLeave,
-            boolean clearIrregular,
-            boolean clearLate,
-            boolean clearEarly,
-            boolean clearFreeNote,
-            boolean clearPaidLeave,
-            boolean clearWorkLocation
-    ) {
+    public TimesheetEntry saveOrUpdateWithFlags(TimesheetSaveCommand cmd) {
         TimesheetEntry existing = DbUtils.dbCall(
                 "selectByUserAndDate",
-                () -> timesheetEntryMapper.selectByUserAndDate(userName, workDate),
-                userName, workDate
+                () -> timesheetEntryMapper.selectByUserAndDate(cmd.userName(), cmd.workDate()),
+                cmd.userName(), cmd.workDate()
         );
         if (existing != null) {
             TimesheetEntry merged = copyEntry(existing);
-            merged.setStartTime(startProvided ? startTime : existing.getStartTime());
-            merged.setEndTime(endProvided ? endTime : existing.getEndTime());
-            merged.setBreakMinutes(breakProvided ? breakMinutes : existing.getBreakMinutes());
-            merged.setHolidayWork(holidayWork);
-            merged.setNote(noteProvided ? note : existing.getNote());
-            merged.setWorkLocation(clearWorkLocation ? null : (workLocation != null ? workLocation : existing.getWorkLocation()));
+            merged.setStartTime(cmd.startProvided() ? cmd.startTime() : existing.getStartTime());
+            merged.setEndTime(cmd.endProvided() ? cmd.endTime() : existing.getEndTime());
+            merged.setBreakMinutes(cmd.breakProvided() ? cmd.breakMinutes() : existing.getBreakMinutes());
+            merged.setHolidayWork(cmd.holidayWork());
+            merged.setNote(cmd.noteProvided() ? cmd.note() : existing.getNote());
+            merged.setWorkLocation(cmd.clearWorkLocation() ? null : (cmd.workLocation() != null ? cmd.workLocation() : existing.getWorkLocation()));
 
-            merged.setIrregularWorkType(clearIrregular ? null : (irregularWorkType != null ? irregularWorkType : existing.getIrregularWorkType()));
-            merged.setIrregularWorkDesc(clearIrregular ? null : (irregularWorkDesc != null ? irregularWorkDesc : existing.getIrregularWorkDesc()));
-            merged.setIrregularWorkData(clearIrregular ? null : (irregularWorkData != null ? irregularWorkData : existing.getIrregularWorkData()));
-            merged.setLateTime(clearLate ? null : (lateTime != null ? lateTime : existing.getLateTime()));
-            merged.setLateDesc(clearLate ? null : (lateDesc != null ? lateDesc : existing.getLateDesc()));
-            merged.setEarlyTime(clearEarly ? null : (earlyTime != null ? earlyTime : existing.getEarlyTime()));
-            merged.setEarlyDesc(clearEarly ? null : (earlyDesc != null ? earlyDesc : existing.getEarlyDesc()));
-            merged.setFreeNote(clearFreeNote ? null : (freeNote != null ? freeNote : existing.getFreeNote()));
-            merged.setPaidLeave(clearPaidLeave ? null : (paidLeave != null ? paidLeave : existing.getPaidLeave()));
+            merged.setIrregularWorkType(cmd.clearIrregular() ? null : (cmd.irregularWorkType() != null ? cmd.irregularWorkType() : existing.getIrregularWorkType()));
+            merged.setIrregularWorkDesc(cmd.clearIrregular() ? null : (cmd.irregularWorkDesc() != null ? cmd.irregularWorkDesc() : existing.getIrregularWorkDesc()));
+            merged.setIrregularWorkData(cmd.clearIrregular() ? null : (cmd.irregularWorkData() != null ? cmd.irregularWorkData() : existing.getIrregularWorkData()));
+            merged.setLateTime(cmd.clearLate() ? null : (cmd.lateTime() != null ? cmd.lateTime() : existing.getLateTime()));
+            merged.setLateDesc(cmd.clearLate() ? null : (cmd.lateDesc() != null ? cmd.lateDesc() : existing.getLateDesc()));
+            merged.setEarlyTime(cmd.clearEarly() ? null : (cmd.earlyTime() != null ? cmd.earlyTime() : existing.getEarlyTime()));
+            merged.setEarlyDesc(cmd.clearEarly() ? null : (cmd.earlyDesc() != null ? cmd.earlyDesc() : existing.getEarlyDesc()));
+            merged.setFreeNote(cmd.clearFreeNote() ? null : (cmd.freeNote() != null ? cmd.freeNote() : existing.getFreeNote()));
+            merged.setPaidLeave(cmd.clearPaidLeave() ? null : (cmd.paidLeave() != null ? cmd.paidLeave() : existing.getPaidLeave()));
 
             TimesheetEntry recalced = applyCalc(merged);
             int updatedCount = DbUtils.dbCall(
                     "updateTimes/updateTimesForce",
-                    () -> force ? timesheetEntryMapper.updateTimesForce(recalced)
+                    () -> cmd.force() ? timesheetEntryMapper.updateTimesForce(recalced)
                             : timesheetEntryMapper.updateTimes(recalced),
-                    recalced.getId(), userName, workDate
+                    recalced.getId(), cmd.userName(), cmd.workDate()
             );
             if (updatedCount == 0) {
                 throw new TimesheetConflictException("同時更新により保存できませんでした");
             }
-            eventPublisher.publishEvent(new TimesheetUpdatedEvent(userName, workDate));
+            eventPublisher.publishEvent(new TimesheetUpdatedEvent(cmd.userName(), cmd.workDate()));
             return recalced;
         }
 
         TimesheetEntry createdBase = new TimesheetEntry();
-        createdBase.setWorkDate(workDate);
-        createdBase.setUserName(userName);
-        createdBase.setStartTime(startTime);
-        createdBase.setEndTime(endTime);
-        createdBase.setBreakMinutes(breakMinutes);
-        createdBase.setHolidayWork(holidayWork);
-        createdBase.setNote(note);
-        createdBase.setWorkLocation(workLocation);
-        createdBase.setIrregularWorkType(irregularWorkType);
-        createdBase.setIrregularWorkDesc(irregularWorkDesc);
-        createdBase.setIrregularWorkData(irregularWorkData);
-        createdBase.setLateTime(lateTime);
-        createdBase.setLateDesc(lateDesc);
-        createdBase.setEarlyTime(earlyTime);
-        createdBase.setEarlyDesc(earlyDesc);
-        createdBase.setFreeNote(freeNote);
-        createdBase.setPaidLeave(paidLeave);
+        createdBase.setWorkDate(cmd.workDate());
+        createdBase.setUserName(cmd.userName());
+        createdBase.setStartTime(cmd.startTime());
+        createdBase.setEndTime(cmd.endTime());
+        createdBase.setBreakMinutes(cmd.breakMinutes());
+        createdBase.setHolidayWork(cmd.holidayWork());
+        createdBase.setNote(cmd.note());
+        createdBase.setWorkLocation(cmd.workLocation());
+        createdBase.setIrregularWorkType(cmd.irregularWorkType());
+        createdBase.setIrregularWorkDesc(cmd.irregularWorkDesc());
+        createdBase.setIrregularWorkData(cmd.irregularWorkData());
+        createdBase.setLateTime(cmd.lateTime());
+        createdBase.setLateDesc(cmd.lateDesc());
+        createdBase.setEarlyTime(cmd.earlyTime());
+        createdBase.setEarlyDesc(cmd.earlyDesc());
+        createdBase.setFreeNote(cmd.freeNote());
+        createdBase.setPaidLeave(cmd.paidLeave());
 
         TimesheetEntry created = applyCalc(createdBase);
-        DbUtils.dbCall("insert", () -> timesheetEntryMapper.insert(created), userName, workDate);
-        eventPublisher.publishEvent(new TimesheetUpdatedEvent(userName, workDate));
+        DbUtils.dbCall("insert", () -> timesheetEntryMapper.insert(created), cmd.userName(), cmd.workDate());
+        eventPublisher.publishEvent(new TimesheetUpdatedEvent(cmd.userName(), cmd.workDate()));
         return created;
     }
 
     private TimesheetEntry copyEntry(TimesheetEntry source) {
-        TimesheetEntry entry = new TimesheetEntry();
-        entry.setId(source.getId());
-        entry.setWorkDate(source.getWorkDate());
-        entry.setUserName(source.getUserName());
-        entry.setStartTime(source.getStartTime());
-        entry.setEndTime(source.getEndTime());
-        entry.setNote(source.getNote());
-        entry.setCreatedAt(source.getCreatedAt());
-        entry.setUpdatedAt(source.getUpdatedAt());
-        entry.setBreakMinutes(source.getBreakMinutes());
-        entry.setDurationMinutes(source.getDurationMinutes());
-        entry.setWorkingMinutes(source.getWorkingMinutes());
-        entry.setVersion(source.getVersion());
-        entry.setHolidayWork(source.getHolidayWork());
-        entry.setWorkLocation(source.getWorkLocation());
-        entry.setIrregularWorkType(source.getIrregularWorkType());
-        entry.setIrregularWorkDesc(source.getIrregularWorkDesc());
-        entry.setIrregularWorkData(source.getIrregularWorkData());
-        entry.setLateTime(source.getLateTime());
-        entry.setLateDesc(source.getLateDesc());
-        entry.setEarlyTime(source.getEarlyTime());
-        entry.setEarlyDesc(source.getEarlyDesc());
-        entry.setFreeNote(source.getFreeNote());
-        entry.setPaidLeave(source.getPaidLeave());
-        return entry;
+        return source.toBuilder().build();
     }
 }

@@ -1,6 +1,8 @@
 package com.example.demo.config;
 
 import com.example.demo.util.IpUtils;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bucket;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,8 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * レート制限フィルター
@@ -33,7 +34,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final boolean trustProxy;
 
-    private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
+    private final Cache<String, Bucket> cache = Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .build();
 
     public RateLimitFilter(@Value("${app.trust-proxy:false}") boolean trustProxy) {
         this.trustProxy = trustProxy;
@@ -46,7 +50,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         String clientIp = IpUtils.clientIp(request, trustProxy);
-        Bucket bucket = cache.computeIfAbsent(clientIp, key -> createBucket());
+        Bucket bucket = cache.get(clientIp, key -> createBucket());
 
         if (bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);

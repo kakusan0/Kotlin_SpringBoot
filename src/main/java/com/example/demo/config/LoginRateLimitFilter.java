@@ -1,6 +1,8 @@
 package com.example.demo.config;
 
 import com.example.demo.util.IpUtils;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bucket;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,8 +19,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * ログイン試行レート制限フィルター
@@ -35,7 +36,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     private final long capacity;
     private final long refillMinutes;
 
-    private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
+    private final Cache<String, Bucket> cache;
 
     public LoginRateLimitFilter(
             @Value("${app.trust-proxy:false}") boolean trustProxy,
@@ -45,6 +46,10 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         this.trustProxy = trustProxy;
         this.capacity = capacity;
         this.refillMinutes = refillMinutes;
+        this.cache = Caffeine.newBuilder()
+                .maximumSize(10_000)
+                .expireAfterAccess(Math.max(refillMinutes * 2, 10), TimeUnit.MINUTES)
+                .build();
     }
 
     @Override
@@ -59,7 +64,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         }
 
         String clientIp = IpUtils.clientIp(request, trustProxy);
-        Bucket bucket = cache.computeIfAbsent(clientIp, key -> createBucket());
+        Bucket bucket = cache.get(clientIp, key -> createBucket());
 
         if (bucket.tryConsume(1)) {
             log.debug("ログイン試行許可: IP={}, 残り試行回数={}", clientIp, bucket.getAvailableTokens());

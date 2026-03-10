@@ -15,7 +15,7 @@ import java.time.OffsetDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class TimesheetEntry {
     private Long id;
     private LocalDate workDate;

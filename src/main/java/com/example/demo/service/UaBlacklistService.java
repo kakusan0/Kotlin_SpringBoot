@@ -9,8 +9,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 @Service
@@ -20,13 +18,13 @@ public class UaBlacklistService {
     private static final long TTL_MS = 60_000L;
 
     private final UaBlacklistRuleMapper ruleMapper;
-    private final AtomicReference<List<CachedRule>> cacheRef = new AtomicReference<>(List.of());
-    private final AtomicLong lastLoadEpochMs = new AtomicLong(0);
+    private volatile CacheSnapshot snapshot = new CacheSnapshot(List.of(), 0L);
 
 
     private void ensureLoaded() {
         long now = Instant.now().toEpochMilli();
-        if (now - lastLoadEpochMs.get() > TTL_MS) {
+        CacheSnapshot current = snapshot;
+        if (now - current.loadedAtMs() > TTL_MS) {
             List<UaBlacklistRule> rules = ruleMapper.selectActive();
             List<CachedRule> cached = new ArrayList<>(rules.size());
             for (UaBlacklistRule rule : rules) {
@@ -46,13 +44,12 @@ public class UaBlacklistService {
                 }
                 cached.add(new CachedRule(matchType, rule.getPattern(), regex));
             }
-            cacheRef.set(cached);
-            lastLoadEpochMs.set(now);
+            snapshot = new CacheSnapshot(cached, now);
         }
     }
 
     public void evictCache() {
-        lastLoadEpochMs.set(0);
+        snapshot = new CacheSnapshot(List.of(), 0L);
     }
 
     public boolean matches(String userAgent) {
@@ -60,7 +57,7 @@ public class UaBlacklistService {
             return false;
         }
         ensureLoaded();
-        for (CachedRule r : cacheRef.get()) {
+        for (CachedRule r : snapshot.rules()) {
             switch (r.matchType()) {
                 case "EXACT" -> {
                     if (userAgent.equalsIgnoreCase(r.pattern())) {
@@ -82,6 +79,9 @@ public class UaBlacklistService {
             }
         }
         return false;
+    }
+
+    private record CacheSnapshot(List<CachedRule> rules, long loadedAtMs) {
     }
 
     private record CachedRule(String matchType, String pattern, Pattern regex) {

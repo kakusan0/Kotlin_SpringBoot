@@ -22,6 +22,7 @@ public class GeoIpCountryService {
 
     private final AtomicReference<Object> readerRef = new AtomicReference<>();
     private Class<?> readerClass;
+    private volatile Set<String> allowedCodes = Set.of();
 
     public GeoIpCountryService(
             @Value("${geoip.mmdb-path:}") String dbPath,
@@ -33,6 +34,11 @@ public class GeoIpCountryService {
 
     @PostConstruct
     public void init() {
+        this.allowedCodes = Stream.of(allowedCodesCsv.split(","))
+                .map(String::trim)
+                .map(String::toUpperCase)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
         tryLoad();
     }
 
@@ -87,15 +93,10 @@ public class GeoIpCountryService {
     }
 
     public boolean isAllowedCountry(String ip) {
-        Set<String> codes = Stream.of(allowedCodesCsv.split(","))
-                .map(String::trim)
-                .map(String::toUpperCase)
-                .filter(s -> !s.isBlank())
-                .collect(Collectors.toSet());
         String code = lookupCountryCode(ip);
         if (code == null) {
             return true;
         }
-        return codes.contains(code.toUpperCase());
+        return allowedCodes.contains(code.toUpperCase());
     }
 }

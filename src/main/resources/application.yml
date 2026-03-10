@@ -41,10 +41,7 @@ spring:
 
 mybatis:
   mapper-locations: classpath*:mapper/*.xml
-  configuration:
-    map-underscore-to-camel-case: true
-    lazy-loading-enabled: true
-    aggressive-lazy-loading: false
+  # configuration は MyBatisConfig.java で一元管理
 
 logging:
   pattern:

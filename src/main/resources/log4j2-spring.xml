@@ -13,9 +13,9 @@
 
         <JDBC name="AuditDB" tableName="audit_log">
             <ConnectionSource class="org.apache.logging.log4j.core.appender.db.jdbc.DriverManagerConnectionSource"
-                              url="${env:LOG_DB_URL:-jdbc:postgresql://localhost:5432/demo_db}"
-                              user="${env:LOG_DB_USER:-demo_user}"
-                              password="${env:LOG_DB_PASS:-demo_pass}"
+                              url="${env:LOG_DB_URL}"
+                              user="${env:LOG_DB_USER}"
+                              password="${env:LOG_DB_PASS}"
                               driverClassName="org.postgresql.Driver"/>
             <Column name="event_time" isEventTimestamp="true"/>
             <Column name="level" pattern="%level"/>

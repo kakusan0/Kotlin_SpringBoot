@@ -21,11 +21,6 @@ spring:
   data:
     redis:
       host: localhost
-  session:
-    store-type: redis
-  servlet:
-    session:
-      timeout: 30m
 
 geoip:
   mmdb-path: ${location.path:/opt/geoip/GeoLite2-Country.mmdb}
@@ -45,9 +40,6 @@ server:
   port: 8080
   compression:
     enabled: true
-  servlet:
-    session:
-      timeout: 30m
 
 logging:
   level:
