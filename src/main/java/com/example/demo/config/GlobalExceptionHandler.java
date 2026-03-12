@@ -73,7 +73,7 @@ public class GlobalExceptionHandler {
         log.warn("型変換エラー: parameter={}, value={}", ex.getName(), ex.getValue());
 
         return ResponseEntity.badRequest().body(
-                new ErrorResponse("パラメータの型が正しくありません: " + ex.getName(), null)
+                new ErrorResponse("パラメータの型が正しくありません", null)
         );
     }
 
@@ -141,7 +141,7 @@ public class GlobalExceptionHandler {
     ) {
         log.debug("NoResourceFound: path={}", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse("リソースが見つかりません: " + request.getRequestURI(), null));
+                .body(new ErrorResponse("リソースが見つかりません", null));
     }
 
     /**
@@ -151,7 +151,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleNoHandler(NoHandlerFoundException ex) {
         log.debug("NoHandlerFound: method={}, path={}", ex.getHttpMethod(), ex.getRequestURL());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse("ページが見つかりません: " + ex.getRequestURL(), null));
+                .body(new ErrorResponse("ページが見つかりません", null));
     }
 
     public record ErrorResponse(String message, Map<String, String> errors) {

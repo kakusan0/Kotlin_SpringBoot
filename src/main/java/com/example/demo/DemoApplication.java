@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import org.jspecify.annotations.NonNull;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -17,7 +18,8 @@ public class DemoApplication extends SpringBootServletInitializer {
     }
 
     @Override
-    protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
+    @NonNull
+    protected SpringApplicationBuilder configure(@NonNull SpringApplicationBuilder builder) {
         return builder.sources(DemoApplication.class);
     }
 }
