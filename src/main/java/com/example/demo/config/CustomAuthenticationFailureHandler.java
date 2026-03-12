@@ -3,6 +3,7 @@ package com.example.demo.config;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
@@ -17,8 +18,8 @@ public class CustomAuthenticationFailureHandler extends SimpleUrlAuthenticationF
     @Override
     public void onAuthenticationFailure(
             HttpServletRequest request,
-            HttpServletResponse response,
-            AuthenticationException exception
+            @NonNull HttpServletResponse response,
+            @NonNull AuthenticationException exception
     ) throws ServletException, IOException {
         String username = request.getParameter("username");
         if (username == null) {

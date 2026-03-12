@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.constants.ApplicationConstants;
 import com.example.demo.util.TimesheetGenerator;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -19,9 +18,9 @@ public class MainController {
 
     private static final Pattern YM_PATTERN = Pattern.compile("\\d{4}-\\d{2}");
 
-    @GetMapping(ApplicationConstants.ROOT)
+    @GetMapping("/")
     public String index() {
-        return ApplicationConstants.REDIRECT + "/tools";
+        return "redirect:/tools";
     }
 
     @GetMapping("/tools")

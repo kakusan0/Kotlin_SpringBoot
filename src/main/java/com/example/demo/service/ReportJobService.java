@@ -65,9 +65,7 @@ public class ReportJobService {
             String fname = "timesheet_" + job.getUsername() + "_" + job.getFromDate() + "_" + job.getToDate()
                     + "_" + df.format(OffsetDateTime.now()) + ".xlsx";
             File dir = new File(reportDir);
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
+            java.nio.file.Files.createDirectories(dir.toPath());
             File f = new File(dir, fname);
             java.nio.file.Files.write(f.toPath(), bytes);
 

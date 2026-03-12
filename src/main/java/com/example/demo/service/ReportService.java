@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -17,7 +18,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -361,48 +361,51 @@ public class ReportService {
 
     private Map<LocalDate, String> fetchHolidayDates(int fromYear, int toYear) {
         Map<LocalDate, String> result = new HashMap<>();
-        HttpClient client = HttpClient.newBuilder().build();
 
-        for (int y = fromYear; y <= toYear; y++) {
-            Map<LocalDate, String> cached = holidayCache.get(y);
-            if (cached != null) {
-                result.putAll(cached);
-                continue;
-            }
-            try {
-                URI uri = URI.create("https://date.nager.at/api/v3/PublicHolidays/" + y + "/JP");
-                HttpRequest req = HttpRequest.newBuilder().uri(uri).GET().build();
-                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
-                if (resp.statusCode() != 200) {
-                    log.warn("Holiday API returned {} for year {}", resp.statusCode(), y);
-                    holidayCache.put(y, Map.of());
+        try (HttpClient client = HttpClient.newBuilder().build()) {
+            for (int y = fromYear; y <= toYear; y++) {
+                Map<LocalDate, String> cached = holidayCache.get(y);
+                if (cached != null) {
+                    result.putAll(cached);
                     continue;
                 }
-                JsonNode root = objectMapper.readTree(resp.body());
-                Map<LocalDate, String> mapForYear = new HashMap<>();
-                if (root.isArray()) {
-                    for (JsonNode node : root) {
-                        String dateStr = node.path("date").asText(null);
-                        String localName = node.path("localName").asText(null);
-                        if (localName == null || localName.isBlank()) {
-                            localName = node.path("name").asText("");
-                        }
-                        if (dateStr != null && !dateStr.isBlank()) {
-                            try {
-                                LocalDate ld = LocalDate.parse(dateStr);
-                                mapForYear.put(ld, localName);
-                            } catch (Exception e) {
-                                log.warn("Failed to parse holiday date '{}' for year {}: {}", dateStr, y, e.getMessage());
+                try {
+                    URI uri = URI.create("https://date.nager.at/api/v3/PublicHolidays/" + y + "/JP");
+                    HttpRequest req = HttpRequest.newBuilder().uri(uri).GET().build();
+                    HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+                    if (resp.statusCode() != 200) {
+                        log.warn("Holiday API returned {} for year {}", resp.statusCode(), y);
+                        holidayCache.put(y, Map.of());
+                        continue;
+                    }
+                    JsonNode root = objectMapper.readTree(resp.body());
+                    Map<LocalDate, String> mapForYear = new HashMap<>();
+                    if (root.isArray()) {
+                        for (JsonNode node : root) {
+                            String dateStr = node.path("date").asText(null);
+                            String localName = node.path("localName").asText(null);
+                            if (localName == null || localName.isBlank()) {
+                                localName = node.path("name").asText("");
+                            }
+                            if (dateStr != null && !dateStr.isBlank()) {
+                                try {
+                                    LocalDate ld = LocalDate.parse(dateStr);
+                                    mapForYear.put(ld, localName);
+                                } catch (Exception e) {
+                                    log.warn("Failed to parse holiday date '{}' for year {}: {}", dateStr, y, e.getMessage());
+                                }
                             }
                         }
                     }
+                    holidayCache.put(y, mapForYear);
+                    result.putAll(mapForYear);
+                } catch (Exception e) {
+                    log.warn("Failed to fetch holidays for year {}: {}", y, e.getMessage());
+                    holidayCache.put(y, Map.of());
                 }
-                holidayCache.put(y, mapForYear);
-                result.putAll(mapForYear);
-            } catch (Exception e) {
-                log.warn("Failed to fetch holidays for year {}: {}", y, e.getMessage());
-                holidayCache.put(y, Map.of());
             }
+        } catch (Exception e) {
+            log.warn("Failed to create HttpClient for holiday fetch: {}", e.getMessage());
         }
 
         return result;
@@ -412,10 +415,12 @@ public class ReportService {
         List<TimesheetEntry> entries = timesheetService.list(username, from, to);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PDDocument doc = new PDDocument()) {
-            InputStream fontStream = getClass().getClassLoader().getResourceAsStream("fonts/KazukiReiwa - Bold.ttf");
-            var font = fontStream != null
-                    ? PDType0Font.load(doc, fontStream, true)
-                    : new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
+            org.apache.pdfbox.pdmodel.font.PDFont font = new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
+            try (InputStream fontStream = getClass().getClassLoader().getResourceAsStream("fonts/KazukiReiwa - Bold.ttf")) {
+                if (fontStream != null) {
+                    font = PDType0Font.load(doc, fontStream, true);
+                }
+            }
             List<String> headers = List.of("備考", "日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働");
             float[] colWidths = new float[]{80f, 50f, 40f, 60f, 60f, 40f, 60f, 60f};
             float tableWidth = 0f;
@@ -862,7 +867,7 @@ public class ReportService {
             try {
                 List<Map<String, String>> items = objectMapper.readValue(
                         irregularWorkData,
-                        new TypeReference<List<Map<String, String>>>() {
+                        new TypeReference<>() {
                         }
                 );
                 List<IrregularItem> out = new ArrayList<>();

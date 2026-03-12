@@ -134,7 +134,12 @@ public class WebAuthnService {
         @SuppressWarnings("deprecation")
         var ignored = webAuthnManager.validate(registrationData, registrationParameters);
 
-        var attestedCredentialData = registrationData.getAttestationObject().getAuthenticatorData().getAttestedCredentialData();
+        var parsedAttestationObject = registrationData.getAttestationObject();
+        if (parsedAttestationObject == null) {
+            throw new IllegalStateException("Attestation object is null");
+        }
+        var authenticatorData = parsedAttestationObject.getAuthenticatorData();
+        var attestedCredentialData = authenticatorData.getAttestedCredentialData();
         if (attestedCredentialData == null) {
             throw new IllegalStateException("Attested credential data is null");
         }
@@ -142,7 +147,7 @@ public class WebAuthnService {
         byte[] credentialId = attestedCredentialData.getCredentialId();
         byte[] publicKeyCose = attestedCredentialDataConverter.convert(attestedCredentialData);
         String aaguid = attestedCredentialData.getAaguid().toString();
-        long signCount = registrationData.getAttestationObject().getAuthenticatorData().getSignCount();
+        long signCount = authenticatorData.getSignCount();
 
         WebAuthnCredential credential = new WebAuthnCredential();
         credential.setUsername(username);
@@ -150,7 +155,7 @@ public class WebAuthnService {
         credential.setPublicKeyCose(publicKeyCose);
         credential.setSignCount(signCount);
         credential.setTransports(null);
-        credential.setAttestationType(registrationData.getAttestationObject().getAttestationStatement().getFormat());
+        credential.setAttestationType(parsedAttestationObject.getAttestationStatement().getFormat());
         credential.setAaguid(aaguid);
 
         credentialMapper.insert(credential);
@@ -205,12 +210,16 @@ public class WebAuthnService {
         @SuppressWarnings("deprecation")
         var ignored = webAuthnManager.validate(authenticationData, authenticationParameters);
 
-        long newSignCount = authenticationData.getAuthenticatorData().getSignCount();
+        var authAuthenticatorData = authenticationData.getAuthenticatorData();
+        if (authAuthenticatorData == null) {
+            throw new IllegalStateException("Authentication authenticator data is null");
+        }
+        long newSignCount = authAuthenticatorData.getSignCount();
         if (newSignCount > credential.getSignCount()) {
             credentialMapper.updateSignCount(credential.getId(), newSignCount);
             log.debug("Updated signCount for credential {}: {} -> {}",
                     credential.getId(), credential.getSignCount(), newSignCount);
-        } else if (newSignCount > 0 && newSignCount <= credential.getSignCount()) {
+        } else if (newSignCount > 0) {
             log.warn(
                     "Possible cloned authenticator detected for user {}. Expected signCount > {}, got {}",
                     credential.getUsername(),
