@@ -3,9 +3,9 @@ spring:
     vault:
       enabled: true
   datasource:
-    url: ${db.url}
-    username: ${db.username}
-    password: ${db.password}
+    url: ${db.url:${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/demo_db}}
+    username: ${db.username:${SPRING_DATASOURCE_USERNAME:demo_user}}
+    password: ${db.password:${SPRING_DATASOURCE_PASSWORD:demo_pass}}
     hikari:
       maximum-pool-size: 20
   flyway:
@@ -20,7 +20,7 @@ spring:
           cache-public: true
   data:
     redis:
-      host: ${redis.host:redis-host}
+      host: ${redis.host:${REDIS_HOST:redis}}
       password: ${redis.password:}
       jedis:
         pool:

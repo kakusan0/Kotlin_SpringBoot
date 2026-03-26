@@ -31,6 +31,7 @@
         <poi.version>5.5.1</poi.version>
         <selenium.version>4.41.0</selenium.version>
         <webdrivermanager.version>6.3.3</webdrivermanager.version>
+        <disruptor.version>3.4.4</disruptor.version>
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <frontend-maven-plugin.version>1.15.4</frontend-maven-plugin.version>
@@ -72,6 +73,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.thymeleaf.extras</groupId>
@@ -125,6 +132,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-log4j2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.lmax</groupId>
+            <artifactId>disruptor</artifactId>
+            <version>${disruptor.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -220,10 +232,10 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Flyway migration (PostgreSQL対応) -->
+        <!-- Flyway migration (Spring Boot 4 uses dedicated Flyway starter) -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -257,6 +269,27 @@
 
     </dependencies>
     <build>
+        <!-- 親POM(spring-boot-starter-parent)のリソース設定をオーバーライド。
+             親POMは include/exclude を組み合わせた2エントリ構成のため、
+             IntelliJ IDEAが正しく解釈できず mapper/*.xml 等がtarget/classesに
+             コピーされないことがある。ここでは全ファイルをコピーする単純な設定を明示する。 -->
+        <resources>
+            <!-- 全リソースをフィルタリングなしでコピー -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+            <!-- application*.yml / *.properties のみMavenフィルタリングを適用 (@var@ 置換) -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/application*.yml</include>
+                    <include>**/application*.yaml</include>
+                    <include>**/application*.properties</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

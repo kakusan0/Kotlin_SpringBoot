@@ -28,6 +28,7 @@ spring:
       timeout: 30m
   flyway:
     baseline-on-migrate: true
+    baseline-version: "0"
   cache:
     cache-names:
       - menuById
