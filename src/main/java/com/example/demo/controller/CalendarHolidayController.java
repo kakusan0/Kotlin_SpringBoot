@@ -1,10 +1,12 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.AddHolidayRequest;
 import com.example.demo.model.CalendarHoliday;
 import com.example.demo.service.CalendarHolidayService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/calendar")
+@Validated
 @RequiredArgsConstructor
 public class CalendarHolidayController {
 
@@ -47,21 +50,10 @@ public class CalendarHolidayController {
 
     @PostMapping("/holidays")
     public ResponseEntity<Map<String, Object>> addHoliday(
-            Authentication auth,
-            @RequestBody Map<String, String> body
+            @Valid @RequestBody AddHolidayRequest body
     ) {
-        String dateStr = body.get("date");
-        if (dateStr == null) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "date is required"));
-        }
-        String name = body.get("name");
-        if (name == null) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "name is required"));
-        }
-
         try {
-            LocalDate date = LocalDate.parse(dateStr);
-            CalendarHoliday holiday = calendarHolidayService.addHoliday(date, name);
+            CalendarHoliday holiday = calendarHolidayService.addHoliday(body.getDate(), body.getName());
             Map<String, Object> resp = new HashMap<>();
             resp.put("success", true);
             resp.put("holiday", holiday);
@@ -74,7 +66,6 @@ public class CalendarHolidayController {
 
     @DeleteMapping("/holidays/{id}")
     public ResponseEntity<Map<String, Object>> deleteHoliday(
-            Authentication auth,
             @PathVariable Long id
     ) {
         try {
@@ -88,4 +79,5 @@ public class CalendarHolidayController {
                     .body(Map.of("success", false, "message", e.getMessage() != null ? e.getMessage() : "Failed to delete holiday"));
         }
     }
+
 }

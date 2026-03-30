@@ -63,8 +63,17 @@
             addBtn.addEventListener('click', async () => {
                 const pattern = (patternEl.value || '').trim();
                 const matchType = (typeEl.value || 'EXACT').trim();
+                const allowed = new Set(['EXACT', 'PREFIX', 'REGEX']);
                 if (!pattern) {
                     alert('パターンを入力してください');
+                    return;
+                }
+                if (pattern.length > 512) {
+                    alert('パターンは512文字以内で入力してください');
+                    return;
+                }
+                if (!allowed.has(matchType)) {
+                    alert('matchType が不正です');
                     return;
                 }
                 addBtn.disabled = true;

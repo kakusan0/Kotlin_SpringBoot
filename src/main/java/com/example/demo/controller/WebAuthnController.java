@@ -1,10 +1,22 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.WebAuthnAllowCredential;
+import com.example.demo.dto.WebAuthnAuthenticationOptionsResponse;
+import com.example.demo.dto.WebAuthnDiscoverableAuthenticationOptionsResponse;
+import com.example.demo.dto.WebAuthnFinishAuthenticationRequest;
+import com.example.demo.dto.WebAuthnFinishRegistrationRequest;
+import com.example.demo.dto.WebAuthnPubKeyParam;
+import com.example.demo.dto.WebAuthnRegistrationOptionsResponse;
+import com.example.demo.dto.WebAuthnRp;
+import com.example.demo.dto.WebAuthnUser;
 import com.example.demo.model.WebAuthnCredential;
 import com.example.demo.service.WebAuthnService;
 import com.webauthn4j.util.Base64UrlUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +27,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
@@ -23,6 +36,7 @@ import java.util.*;
 @Slf4j
 @RestController
 @RequestMapping("/api/webauthn")
+@Validated
 @RequiredArgsConstructor
 public class WebAuthnController {
 
@@ -39,7 +53,7 @@ public class WebAuthnController {
 
 
     @GetMapping("/registration/options")
-    public ResponseEntity<Object> registrationOptions(@RequestParam String username) {
+    public ResponseEntity<Object> registrationOptions(@RequestParam @NotBlank String username) {
         try {
             userDetailsService.loadUserByUsername(username);
         } catch (UsernameNotFoundException e) {
@@ -50,17 +64,17 @@ public class WebAuthnController {
         byte[] challenge = webAuthnService.generateChallenge();
         webAuthnService.saveRegistrationChallenge(username, challenge);
 
-        Rp rp = new Rp(rpId, rpName);
-        User user = new User(
+        WebAuthnRp rp = new WebAuthnRp(rpId, rpName);
+        WebAuthnUser user = new WebAuthnUser(
                 Base64UrlUtil.encodeToString(username.getBytes(StandardCharsets.UTF_8)),
                 username,
                 username
         );
-        List<PubKeyParam> params = List.of(
-                new PubKeyParam("public-key", -7),
-                new PubKeyParam("public-key", -257)
+        List<WebAuthnPubKeyParam> params = List.of(
+                new WebAuthnPubKeyParam("public-key", -7),
+                new WebAuthnPubKeyParam("public-key", -257)
         );
-        RegistrationOptionsResponse res = new RegistrationOptionsResponse();
+        WebAuthnRegistrationOptionsResponse res = new WebAuthnRegistrationOptionsResponse();
         res.setChallenge(Base64UrlUtil.encodeToString(challenge));
         res.setRp(rp);
         res.setUser(user);
@@ -70,8 +84,8 @@ public class WebAuthnController {
 
     @PostMapping("/registration/finish")
     public ResponseEntity<Object> finishRegistration(
-            @RequestParam String username,
-            @RequestBody FinishRegistrationRequest req
+            @RequestParam @NotBlank String username,
+            @Valid @RequestBody WebAuthnFinishRegistrationRequest req
     ) {
         byte[] challenge = webAuthnService.consumeRegistrationChallenge(username);
         if (challenge == null) {
@@ -95,7 +109,7 @@ public class WebAuthnController {
         byte[] challenge = webAuthnService.generateChallenge();
         if (username == null || username.isBlank()) {
             String challengeId = webAuthnService.saveDiscoverableChallenge(challenge);
-            DiscoverableAuthenticationOptionsResponse res = new DiscoverableAuthenticationOptionsResponse();
+            WebAuthnDiscoverableAuthenticationOptionsResponse res = new WebAuthnDiscoverableAuthenticationOptionsResponse();
             res.setChallenge(Base64UrlUtil.encodeToString(challenge));
             res.setRpId(rpId);
             Map<String, Object> body = new HashMap<>();
@@ -114,15 +128,15 @@ public class WebAuthnController {
 
         webAuthnService.saveAuthenticationChallenge(username, challenge);
 
-        List<AllowCredential> allow = new ArrayList<>();
+        List<WebAuthnAllowCredential> allow = new ArrayList<>();
         for (WebAuthnCredential cred : creds) {
             List<String> transports = new ArrayList<>();
             if (cred.getTransports() != null) {
                 Collections.addAll(transports, cred.getTransports().split(","));
             }
-            allow.add(new AllowCredential("public-key", Base64UrlUtil.encodeToString(cred.getCredentialId()), transports));
+            allow.add(new WebAuthnAllowCredential("public-key", Base64UrlUtil.encodeToString(cred.getCredentialId()), transports));
         }
-        AuthenticationOptionsResponse res = new AuthenticationOptionsResponse();
+        WebAuthnAuthenticationOptionsResponse res = new WebAuthnAuthenticationOptionsResponse();
         res.setChallenge(Base64UrlUtil.encodeToString(challenge));
         res.setRpId(rpId);
         res.setAllowCredentials(allow);
@@ -131,8 +145,8 @@ public class WebAuthnController {
 
     @PostMapping("/authentication/finish/discoverable")
     public ResponseEntity<Object> finishDiscoverableAuthentication(
-            @RequestParam String challengeId,
-            @RequestBody FinishAuthenticationRequest req,
+            @RequestParam @NotBlank String challengeId,
+            @Valid @RequestBody WebAuthnFinishAuthenticationRequest req,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
@@ -188,8 +202,8 @@ public class WebAuthnController {
 
     @PostMapping("/authentication/finish")
     public ResponseEntity<Object> finishAuthentication(
-            @RequestParam String username,
-            @RequestBody FinishAuthenticationRequest req,
+            @RequestParam @NotBlank String username,
+            @Valid @RequestBody WebAuthnFinishAuthenticationRequest req,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
@@ -252,7 +266,7 @@ public class WebAuthnController {
     }
 
     @GetMapping("/credentials")
-    public ResponseEntity<Object> listCredentials(@RequestParam String username) {
+    public ResponseEntity<Object> listCredentials(@RequestParam @NotBlank String username) {
         List<WebAuthnCredential> creds = webAuthnService.findCredentials(username);
         List<Map<String, Object>> list = new ArrayList<>();
         for (WebAuthnCredential cred : creds) {
@@ -267,7 +281,7 @@ public class WebAuthnController {
     }
 
     @DeleteMapping("/credentials/{id}")
-    public ResponseEntity<Object> deleteCredential(@PathVariable Long id, @RequestParam String username) {
+    public ResponseEntity<Object> deleteCredential(@PathVariable Long id, @RequestParam @NotBlank String username) {
         WebAuthnCredential credential = webAuthnService.findCredentialById(id);
         if (credential == null) {
             return ResponseEntity.status(404).body(Map.of("message", "Credential not found"));
@@ -282,116 +296,4 @@ public class WebAuthnController {
         return ResponseEntity.ok(Map.of("message", "Credential deleted"));
     }
 
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class RegistrationOptionsResponse {
-        private final long timeout = 60000;
-        private final String attestation = "none";
-        private final AuthenticatorSelection authenticatorSelection = new AuthenticatorSelection();
-        private String challenge;
-        private Rp rp;
-        private User user;
-        private List<PubKeyParam> pubKeyCredParams;
-    }
-
-    @lombok.Getter
-    @lombok.AllArgsConstructor
-    @lombok.NoArgsConstructor
-    public static class Rp {
-        private String id;
-        private String name;
-    }
-
-    @lombok.Getter
-    @lombok.AllArgsConstructor
-    @lombok.NoArgsConstructor
-    public static class User {
-        private String id;
-        private String name;
-        private String displayName;
-    }
-
-    @lombok.Getter
-    @lombok.AllArgsConstructor
-    @lombok.NoArgsConstructor
-    public static class PubKeyParam {
-        private String type;
-        private int alg;
-    }
-
-    @lombok.Getter
-    @lombok.NoArgsConstructor
-    public static class AuthenticatorSelection {
-        private final String residentKey = "required";
-        private final boolean requireResidentKey = true;
-        private final String userVerification = "preferred";
-        private String authenticatorAttachment;
-    }
-
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class FinishRegistrationRequest {
-        private String id;
-        private String rawId;
-        private String type;
-        private RegistrationResponse response;
-    }
-
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class RegistrationResponse {
-        private String attestationObject;
-        private String clientDataJSON;
-    }
-
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class DiscoverableAuthenticationOptionsResponse {
-        private final long timeout = 60000;
-        private final String userVerification = "preferred";
-        private String challenge;
-        private String rpId;
-    }
-
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class AuthenticationOptionsResponse {
-        private final long timeout = 60000;
-        private final String userVerification = "preferred";
-        private String challenge;
-        private String rpId;
-        private List<AllowCredential> allowCredentials;
-    }
-
-    @lombok.Getter
-    @lombok.NoArgsConstructor
-    public static class AllowCredential {
-        private String type;
-        private String id;
-        private List<String> transports = new ArrayList<>();
-
-        public AllowCredential(String type, String id, List<String> transports) {
-            this.type = type;
-            this.id = id;
-            this.transports = transports != null ? transports : new ArrayList<>();
-        }
-    }
-
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class FinishAuthenticationRequest {
-        private String id;
-        private String rawId;
-        private String type;
-        private AuthenticationResponse response;
-    }
-
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class AuthenticationResponse {
-        private String authenticatorData;
-        private String clientDataJSON;
-        private String signature;
-        private String userHandle;
-    }
 }

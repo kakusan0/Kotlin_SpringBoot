@@ -1,12 +1,22 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.TimesheetAddNoteRequest;
+import com.example.demo.dto.TimesheetBatchEntryRequest;
+import com.example.demo.dto.TimesheetBatchSaveRequest;
+import com.example.demo.dto.TimesheetSaveEntryRequest;
+import com.example.demo.dto.TimesheetUpdateBreakRequest;
+import com.example.demo.dto.TimesheetUpdateNoteRequest;
 import com.example.demo.model.TimesheetEntry;
 import com.example.demo.model.TimesheetSaveCommand;
 import com.example.demo.service.TimesheetService;
 import com.example.demo.service.TimesheetSummaryService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -21,6 +31,7 @@ import java.util.concurrent.*;
 
 @RestController
 @RequestMapping("/timesheet/api")
+@Validated
 @RequiredArgsConstructor
 public class TimesheetController {
 
@@ -34,19 +45,6 @@ public class TimesheetController {
         return t;
     });
 
-
-    private static String toString(Object value) {
-        return value != null ? value.toString() : null;
-    }
-
-    private static Integer parseInt(String value) {
-        if (value == null || value.isBlank()) return null;
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
 
     private static LocalTime parseLocalTime(String value) {
         if (value == null || value.isBlank()) return null;
@@ -89,7 +87,7 @@ public class TimesheetController {
     @GetMapping
     public List<TimesheetEntry> list(
             Authentication auth,
-            @RequestParam String from,
+            @RequestParam @NotBlank String from,
             @RequestParam(required = false) String to
     ) {
         LocalDate fromDate = LocalDate.parse(from);
@@ -98,8 +96,8 @@ public class TimesheetController {
     }
 
     @PostMapping("/note")
-    public TimesheetEntry updateNote(Authentication auth, @RequestBody Map<String, String> body) {
-        String note = body.getOrDefault("note", "");
+    public TimesheetEntry updateNote(Authentication auth, @Valid @RequestBody TimesheetUpdateNoteRequest body) {
+        String note = body.getNote() != null ? body.getNote() : "";
         TimesheetEntry entry = timesheetService.updateNote(auth.getName(), note);
         broadcast("note", entry, auth.getName());
         return entry;
@@ -114,8 +112,8 @@ public class TimesheetController {
     }
 
     @PostMapping("/break")
-    public TimesheetEntry updateBreak(Authentication auth, @RequestBody Map<String, Integer> body) {
-        Integer minutes = body.getOrDefault("minutes", 0);
+    public TimesheetEntry updateBreak(Authentication auth, @Valid @RequestBody TimesheetUpdateBreakRequest body) {
+        Integer minutes = body.getMinutes();
         LocalDate today = LocalDate.now();
         TimesheetEntry existing = timesheetService.getToday(auth.getName());
         TimesheetEntry updated = timesheetService.saveOrUpdate(
@@ -168,34 +166,25 @@ public class TimesheetController {
     }
 
     @PostMapping("/batch")
-    public Map<String, Object> batchSave(Authentication auth, @RequestBody Map<String, Object> body) {
-        Object entriesObj = body.get("entries");
-        List<?> entries = entriesObj instanceof List<?> ? (List<?>) entriesObj : List.of();
+    public Map<String, Object> batchSave(Authentication auth, @Valid @RequestBody TimesheetBatchSaveRequest body) {
+        List<TimesheetBatchEntryRequest> entries = body.getEntries() != null ? body.getEntries() : List.of();
         int saved = 0;
         List<Map<String, Object>> failures = new ArrayList<>();
 
-        for (Object entryObj : entries) {
-            if (!(entryObj instanceof Map<?, ?> entry)) {
-                continue;
-            }
-            String workDateStr = toString(entry.get("workDate"));
-            if (workDateStr == null) {
-                continue;
-            }
-            String startTimeStr = toString(entry.get("startTime"));
-            String endTimeStr = toString(entry.get("endTime"));
-            String breakStr = toString(entry.get("breakMinutes"));
-            String holidayStr = toString(entry.get("holidayWork"));
+        for (TimesheetBatchEntryRequest entry : entries) {
+            String workDateStr = entry.getWorkDate();
+            String startTimeStr = entry.getStartTime();
+            String endTimeStr = entry.getEndTime();
             try {
                 LocalDate workDate = LocalDate.parse(workDateStr);
                 LocalTime startTime = parseLocalTime(startTimeStr);
                 LocalTime endTime = parseLocalTime(endTimeStr);
-                Integer breakMinutes = parseInt(breakStr);
-                boolean holidayWork = holidayStr != null && holidayStr.equalsIgnoreCase("true");
+                Integer breakMinutes = entry.getBreakMinutes();
+                boolean holidayWork = Boolean.TRUE.equals(entry.getHolidayWork());
 
-                boolean startProvided = entry.containsKey("startTime");
-                boolean endProvided = entry.containsKey("endTime");
-                boolean breakProvided = entry.containsKey("breakMinutes");
+                boolean startProvided = entry.getStartTime() != null;
+                boolean endProvided = entry.getEndTime() != null;
+                boolean breakProvided = entry.getBreakMinutes() != null;
 
                 TimesheetSaveCommand cmd = TimesheetSaveCommand.builder()
                         .userName(auth.getName())
@@ -219,7 +208,7 @@ public class TimesheetController {
                 failure.put("error", ex.getMessage() != null ? ex.getMessage() : "parse/save error");
                 failure.put("startTime", startTimeStr);
                 failure.put("endTime", endTimeStr);
-                failure.put("breakMinutes", breakStr);
+                failure.put("breakMinutes", entry.getBreakMinutes());
                 failures.add(failure);
             }
         }
@@ -233,48 +222,45 @@ public class TimesheetController {
     }
 
     @GetMapping("/summary")
-    public TimesheetSummaryService.Summary summary(Authentication auth, @RequestParam String month) {
+    public TimesheetSummaryService.Summary summary(Authentication auth, @RequestParam @NotBlank String month) {
         YearMonth ym = YearMonth.parse(month);
         return summaryService.summarize(auth.getName(), ym);
     }
 
     @PostMapping("/entry")
-    public Map<String, Object> saveEntry(Authentication auth, @RequestBody Map<String, Object> body) {
-        String workDateStr = toString(body.get("workDate"));
-        if (workDateStr == null) {
-            return Map.of("success", false, "message", "workDate required");
-        }
+    public Map<String, Object> saveEntry(Authentication auth, @Valid @RequestBody TimesheetSaveEntryRequest body) {
+        String workDateStr = body.getWorkDate();
         try {
             LocalDate workDate = LocalDate.parse(workDateStr);
-            LocalTime startTime = parseLocalTime(toString(body.get("startTime")));
-            LocalTime endTime = parseLocalTime(toString(body.get("endTime")));
-            Integer breakMinutes = parseInt(toString(body.get("breakMinutes")));
-            boolean force = "true".equalsIgnoreCase(toString(body.get("force")));
-            boolean holidayWork = "true".equalsIgnoreCase(toString(body.get("holidayWork")));
+            LocalTime startTime = parseLocalTime(body.getStartTime());
+            LocalTime endTime = parseLocalTime(body.getEndTime());
+            Integer breakMinutes = body.getBreakMinutes();
+            boolean force = Boolean.TRUE.equals(body.getForce());
+            boolean holidayWork = Boolean.TRUE.equals(body.getHolidayWork());
 
-            String note = trimToNull(toString(body.get("note")));
-            boolean noteProvided = body.containsKey("note");
-            String workLocation = trimToNull(toString(body.get("workLocation")));
-            String irregularWorkType = trimToNull(toString(body.get("irregularWorkType")));
-            String irregularWorkDesc = trimToNull(toString(body.get("irregularWorkDesc")));
-            String irregularWorkData = trimToNull(toString(body.get("irregularWorkData")));
-            String lateTime = trimToNull(toString(body.get("lateTime")));
-            String lateDesc = trimToNull(toString(body.get("lateDesc")));
-            String earlyTime = trimToNull(toString(body.get("earlyTime")));
-            String earlyDesc = trimToNull(toString(body.get("earlyDesc")));
-            String freeNote = trimToNull(toString(body.get("freeNote")));
-            String paidLeave = trimToNull(toString(body.get("paidLeave")));
+            String note = trimToNull(body.getNote());
+            boolean noteProvided = body.getNote() != null;
+            String workLocation = trimToNull(body.getWorkLocation());
+            String irregularWorkType = trimToNull(body.getIrregularWorkType());
+            String irregularWorkDesc = trimToNull(body.getIrregularWorkDesc());
+            String irregularWorkData = trimToNull(body.getIrregularWorkData());
+            String lateTime = trimToNull(body.getLateTime());
+            String lateDesc = trimToNull(body.getLateDesc());
+            String earlyTime = trimToNull(body.getEarlyTime());
+            String earlyDesc = trimToNull(body.getEarlyDesc());
+            String freeNote = trimToNull(body.getFreeNote());
+            String paidLeave = trimToNull(body.getPaidLeave());
 
-            boolean clearIrregular = body.containsKey("irregularWorkType") && isBlank(toString(body.get("irregularWorkType")));
-            boolean clearLate = body.containsKey("lateTime") && isBlank(toString(body.get("lateTime")));
-            boolean clearEarly = body.containsKey("earlyTime") && isBlank(toString(body.get("earlyTime")));
-            boolean clearFreeNote = body.containsKey("freeNote") && isBlank(toString(body.get("freeNote")));
-            boolean clearPaidLeave = body.containsKey("paidLeave") && isBlank(toString(body.get("paidLeave")));
-            boolean clearWorkLocation = body.containsKey("workLocation") && isBlank(toString(body.get("workLocation")));
+            boolean clearIrregular = body.getIrregularWorkType() != null && isBlank(body.getIrregularWorkType());
+            boolean clearLate = body.getLateTime() != null && isBlank(body.getLateTime());
+            boolean clearEarly = body.getEarlyTime() != null && isBlank(body.getEarlyTime());
+            boolean clearFreeNote = body.getFreeNote() != null && isBlank(body.getFreeNote());
+            boolean clearPaidLeave = body.getPaidLeave() != null && isBlank(body.getPaidLeave());
+            boolean clearWorkLocation = body.getWorkLocation() != null && isBlank(body.getWorkLocation());
 
-            boolean startProvided = body.containsKey("startTime");
-            boolean endProvided = body.containsKey("endTime");
-            boolean breakProvided = body.containsKey("breakMinutes");
+            boolean startProvided = body.getStartTime() != null;
+            boolean endProvided = body.getEndTime() != null;
+            boolean breakProvided = body.getBreakMinutes() != null;
 
             TimesheetSaveCommand cmd = TimesheetSaveCommand.builder()
                     .userName(auth.getName())
@@ -316,12 +302,8 @@ public class TimesheetController {
     }
 
     @PostMapping("/add-note")
-    public TimesheetEntry addNote(Authentication auth, @RequestBody Map<String, String> body) {
-        String note = body.get("note");
-        if (note == null) {
-            throw new IllegalArgumentException("Note is required");
-        }
-        TimesheetEntry entry = timesheetService.addNoteToEntry(auth.getName(), note);
+    public TimesheetEntry addNote(Authentication auth, @Valid @RequestBody TimesheetAddNoteRequest body) {
+        TimesheetEntry entry = timesheetService.addNoteToEntry(auth.getName(), body.getNote());
         broadcast("add-note", entry, auth.getName());
         return entry;
     }

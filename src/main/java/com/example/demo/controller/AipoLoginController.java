@@ -1,10 +1,14 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.AipoLoginRequest;
+import com.example.demo.dto.AipoSubmitRequest;
 import com.example.demo.service.AipoLoginResult;
 import com.example.demo.service.AipoLoginService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -12,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/aipo")
+@Validated
 @RequiredArgsConstructor
 public class AipoLoginController {
 
@@ -19,7 +24,7 @@ public class AipoLoginController {
 
 
     @PostMapping("/login")
-    public ResponseEntity<AipoLoginResult> login(Authentication auth, @RequestBody AipoLoginRequest request) {
+    public ResponseEntity<AipoLoginResult> login(Authentication auth, @Valid @RequestBody AipoLoginRequest request) {
         AipoLoginResult result = aipoLoginService.login(
                 auth.getName(),
                 request.getUsername(),
@@ -52,7 +57,7 @@ public class AipoLoginController {
     }
 
     @PostMapping("/submit")
-    public ResponseEntity<Map<String, Object>> submit(Authentication auth, @RequestBody AipoSubmitRequest request) {
+    public ResponseEntity<Map<String, Object>> submit(Authentication auth, @Valid @RequestBody AipoSubmitRequest request) {
         Map.Entry<Boolean, String> result = aipoLoginService.submitRequest(auth.getName(), request.getSubmitButtonId());
         Map<String, Object> body = new HashMap<>();
         body.put("success", result.getKey());
@@ -63,18 +68,4 @@ public class AipoLoginController {
         return ResponseEntity.badRequest().body(body);
     }
 
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class AipoLoginRequest {
-        private String username;
-        private String password;
-        private String yearMonth;
-        private boolean autoSubmit;
-    }
-
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class AipoSubmitRequest {
-        private String submitButtonId;
-    }
 }

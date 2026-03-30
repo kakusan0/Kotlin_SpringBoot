@@ -3,11 +3,14 @@ package com.example.demo.controller;
 import com.example.demo.model.ReportJob;
 import com.example.demo.service.ReportJobService;
 import com.example.demo.service.ReportService;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
@@ -20,6 +23,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/timesheet/report")
+@Validated
 @RequiredArgsConstructor
 public class TimesheetReportController {
 
@@ -29,7 +33,7 @@ public class TimesheetReportController {
 
     @GetMapping("/xlsx")
     public ResponseEntity<byte[]> xlsx(
-            @RequestParam String username,
+            @RequestParam @NotBlank String username,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Principal principal
@@ -49,7 +53,7 @@ public class TimesheetReportController {
 
     @GetMapping("/pdf")
     public ResponseEntity<byte[]> pdf(
-            @RequestParam String username,
+            @RequestParam @NotBlank String username,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Principal principal
@@ -69,10 +73,10 @@ public class TimesheetReportController {
 
     @GetMapping("/submit")
     public ResponseEntity<Object> submit(
-            @RequestParam String username,
+            @RequestParam @NotBlank String username,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam String format,
+            @RequestParam @Pattern(regexp = "(?i)xlsx|pdf") String format,
             Principal principal
     ) {
         if (!principal.getName().equals(username)) {
@@ -158,7 +162,7 @@ public class TimesheetReportController {
 
     @GetMapping("/uniss-xlsx")
     public ResponseEntity<byte[]> unissXlsx(
-            @RequestParam String username,
+            @RequestParam @NotBlank String username,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Principal principal

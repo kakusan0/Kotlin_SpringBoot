@@ -1,12 +1,15 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.GeoIpStatus;
 import com.example.demo.service.GeoIpCountryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Validated
 @RequiredArgsConstructor
 public class GeoIpDebugController {
 
@@ -21,6 +24,4 @@ public class GeoIpDebugController {
         return new GeoIpStatus(enabled, testIp, cc);
     }
 
-    public record GeoIpStatus(boolean enabled, String testIp, String countryCode) {
-    }
 }

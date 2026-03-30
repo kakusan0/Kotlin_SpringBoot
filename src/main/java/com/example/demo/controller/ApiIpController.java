@@ -1,16 +1,19 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.AutoBlacklistResult;
+import com.example.demo.dto.IpBlacklistRequest;
 import com.example.demo.mapper.AccessLogMapper;
 import com.example.demo.mapper.BlacklistIpMapper;
 import com.example.demo.mapper.WhitelistIpMapper;
 import com.example.demo.service.BlacklistEventService;
 import com.example.demo.util.BlacklistEventFactory;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/ip")
 @PreAuthorize("hasRole('ADMIN')")
+@Validated
 @RequiredArgsConstructor
 public class ApiIpController {
 
@@ -43,7 +47,7 @@ public class ApiIpController {
     }
 
     @PostMapping("/blacklist")
-    public ResponseEntity<Void> addToBlacklist(@RequestBody BlacklistRequest req, HttpServletRequest httpReq) {
+    public ResponseEntity<Void> addToBlacklist(@Valid @RequestBody IpBlacklistRequest req, HttpServletRequest httpReq) {
         blacklistIpMapper.upsertIncrementTimes(req.getIpAddress());
         whitelistIpMapper.markBlacklistedAndIncrement(req.getIpAddress());
 
@@ -108,13 +112,5 @@ public class ApiIpController {
         return ResponseEntity.ok(new AutoBlacklistResult(candidates.size(), processed));
     }
 
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class BlacklistRequest {
-        @NotBlank
-        private String ipAddress;
-    }
 
-    public record AutoBlacklistResult(int totalCandidates, int processed) {
-    }
 }

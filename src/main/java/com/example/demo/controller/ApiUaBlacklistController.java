@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.UaCreateRuleRequest;
+import com.example.demo.dto.UaCreateRuleResponse;
 import com.example.demo.mapper.AccessLogMapper;
 import com.example.demo.mapper.BlacklistIpMapper;
 import com.example.demo.mapper.UaBlacklistRuleMapper;
@@ -8,11 +10,12 @@ import com.example.demo.model.UaBlacklistRule;
 import com.example.demo.service.BlacklistEventService;
 import com.example.demo.service.UaBlacklistService;
 import com.example.demo.util.BlacklistEventFactory;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
@@ -27,6 +30,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/ua-blacklist")
 @PreAuthorize("hasRole('ADMIN')")
+@Validated
 @RequiredArgsConstructor
 public class ApiUaBlacklistController {
 
@@ -44,7 +48,7 @@ public class ApiUaBlacklistController {
     }
 
     @PostMapping
-    public ResponseEntity<Object> create(@RequestBody CreateRuleRequest req) {
+    public ResponseEntity<Object> create(@Valid @RequestBody UaCreateRuleRequest req) {
         String mt = req.getMatchType() != null ? req.getMatchType().toUpperCase() : "EXACT";
         Set<String> allowed = new HashSet<>(List.of("EXACT", "PREFIX", "REGEX"));
         if (!allowed.contains(mt)) {
@@ -92,7 +96,7 @@ public class ApiUaBlacklistController {
 
         //noinspection SpringUntrustedDataFlow
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateRuleResponse(rule.getId(), blockedCount));
+                .body(new UaCreateRuleResponse(rule.getId(), blockedCount));
     }
 
     @DeleteMapping("/{id}")
@@ -102,15 +106,4 @@ public class ApiUaBlacklistController {
         return ResponseEntity.noContent().build();
     }
 
-    @lombok.Data
-    @lombok.NoArgsConstructor
-    public static class CreateRuleRequest {
-        @NotBlank
-        private String pattern;
-        @NotBlank
-        private String matchType = "EXACT";
-    }
-
-    public record CreateRuleResponse(Long ruleId, int blockedIpsCount) {
-    }
 }

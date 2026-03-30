@@ -42,6 +42,8 @@
             <div class="card-body d-flex gap-2 align-items-center flex-wrap">
                 <input aria-label="User-Agentパターン" class="form-control" id="uaPattern"
                        placeholder="User-Agent パターン（例: curl/）"
+                       maxlength="512"
+                       required
                        style="max-width: 360px;"/>
                 <select aria-label="マッチタイプ" class="form-select" id="uaMatchType" style="max-width: 200px;">
                     <option value="EXACT">EXACT（完全一致）</option>
