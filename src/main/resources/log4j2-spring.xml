@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="WARN" monitorInterval="60" packages="org.apache.logging.log4j">
+<Configuration status="WARN" monitorInterval="60">
     <Properties>
         <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg | rid=%X{requestId}
             uid=%X{userId} ip=%X{clientIp} %X{method} %X{uri}%n%throwable
@@ -11,12 +11,11 @@
             <PatternLayout pattern="${PATTERN}"/>
         </Console>
 
-        <JDBC name="AuditDB" tableName="audit_log">
-            <ConnectionSource class="org.apache.logging.log4j.core.appender.db.jdbc.DriverManagerConnectionSource"
-                              url="${env:LOG_DB_URL}"
-                              user="${env:LOG_DB_USER}"
-                              password="${env:LOG_DB_PASS}"
-                              driverClassName="org.postgresql.Driver"/>
+        <JDBC name="AuditDB" tableName="audit_log" ignoreExceptions="true">
+            <DriverManager connectionString="${env:LOG_DB_URL:-${spring:spring.datasource.url:-jdbc:postgresql://db:5432/demo_db}}"
+                           userName="${env:LOG_DB_USER:-${spring:spring.datasource.username:-demo_user}}"
+                           password="${env:LOG_DB_PASS:-${spring:spring.datasource.password:-demo_pass}}"
+                           driverClassName="org.postgresql.Driver"/>
             <Column name="event_time" isEventTimestamp="true"/>
             <Column name="level" pattern="%level"/>
             <Column name="logger" pattern="%logger"/>
@@ -29,19 +28,27 @@
             <Column name="method" pattern="%X{method}"/>
             <Column name="uri" pattern="%X{uri}"/>
         </JDBC>
+
+        <Async name="AsyncConsole" bufferSize="1024">
+            <AppenderRef ref="Console"/>
+        </Async>
+
+        <Async name="AsyncAuditTargets" bufferSize="1024">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AuditDB"/>
+        </Async>
     </Appenders>
 
     <Loggers>
         <!-- Application loggers -->
-        <AsyncLogger name="com.example.demo" level="info" additivity="false">
-            <AppenderRef ref="Console"/>
-        </AsyncLogger>
+        <Logger name="com.example.demo" level="info" additivity="false">
+            <AppenderRef ref="AsyncConsole"/>
+        </Logger>
 
         <!-- Dedicated audit logger -->
-        <AsyncLogger name="AUDIT" level="info" additivity="false">
-            <AppenderRef ref="Console"/>
-            <AppenderRef ref="AuditDB"/>
-        </AsyncLogger>
+        <Logger name="AUDIT" level="info" additivity="false">
+            <AppenderRef ref="AsyncAuditTargets"/>
+        </Logger>
 
         <Root level="warn">
             <AppenderRef ref="Console"/>
