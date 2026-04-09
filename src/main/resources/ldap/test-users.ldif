@@ -25,7 +25,7 @@ objectclass: inetOrgPerson
 cn: Test User
 sn: User
 uid: testuser
-userPassword: {SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=
+userPassword: {SSHA}rXVtWiPAY6/w8MuTLKIjpBjj2mtzYWx0MTIzNA==
 
 # 管理者ユーザー (パスワード: password)
 dn: uid=ldapadmin,ou=users,dc=example,dc=com
@@ -36,7 +36,7 @@ objectclass: inetOrgPerson
 cn: LDAP Admin
 sn: Admin
 uid: ldapadmin
-userPassword: {SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=
+userPassword: {SSHA}rXVtWiPAY6/w8MuTLKIjpBjj2mtzYWx0MTIzNA==
 
 # USER グループ
 dn: cn=USER,ou=groups,dc=example,dc=com

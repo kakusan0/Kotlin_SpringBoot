@@ -23,6 +23,7 @@ spring:
       host: localhost
   # ---- 組み込みLDAP (UnboundID) 設定 ----
   # app.ldap.enabled=true のときのみ参照される
+  # 組み込みLDAPサーバーは常に起動するが、認証への利用はフラグで制御する
   ldap:
     embedded:
       base-dn: dc=example,dc=com
@@ -48,6 +49,8 @@ app:
     connect-src: "'self' http://localhost:35729 ws://localhost:35729"
   # ---- LDAP認証設定 ----
   # true にすると組み込みLDAPによる認証が有効になる (ローカル開発用)
+  # デフォルトは false: InMemory認証 (SecurityConfig の userDetailsService) が使われる
+  # LDAPサンプルを試す場合は true に変更すること
   # 本番では spring.ldap.urls 等を実際のLDAPサーバーに向けること
   ldap:
     enabled: false

@@ -92,6 +92,9 @@ public class SecurityConfig {
                 "base-uri 'self'; " +
                 "form-action 'self'";
 
+        // LDAPが有効な場合は LDAP AuthenticationProvider を先頭に追加
+        ldapAuthenticationProvider.ifAvailable(http::authenticationProvider);
+
         http
                 .csrf(csrf -> {
                     CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
@@ -143,10 +146,6 @@ public class SecurityConfig {
                         )
                 )
                 .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                // LDAPが有効な場合は LDAP AuthenticationProvider を先頭に追加
-        ;
-        ldapAuthenticationProvider.ifAvailable(http::authenticationProvider);
-        http
                 .formLogin(form -> form
                         .loginPage("/login").permitAll()
                         .defaultSuccessUrl("/tools")
