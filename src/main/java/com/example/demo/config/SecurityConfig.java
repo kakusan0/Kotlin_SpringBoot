@@ -3,6 +3,7 @@ package com.example.demo.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.ldap.authentication.LdapAuthenticationProvider;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -60,6 +61,7 @@ public class SecurityConfig {
 
     private final AuthenticationFailureHandler customAuthenticationFailureHandler;
     private final LoginRateLimitFilter loginRateLimitFilter;
+    private final ObjectProvider<LdapAuthenticationProvider> ldapAuthenticationProvider;
 
 
     @Value("${app.csp.connect-src:'self'}")
@@ -141,6 +143,10 @@ public class SecurityConfig {
                         )
                 )
                 .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                // LDAPが有効な場合は LDAP AuthenticationProvider を先頭に追加
+        ;
+        ldapAuthenticationProvider.ifAvailable(http::authenticationProvider);
+        http
                 .formLogin(form -> form
                         .loginPage("/login").permitAll()
                         .defaultSuccessUrl("/tools")

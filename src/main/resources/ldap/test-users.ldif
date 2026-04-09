@@ -1,0 +1,61 @@
+# ルートドメイン
+dn: dc=example,dc=com
+objectclass: top
+objectclass: domain
+dc: example
+
+# ユーザーOU
+dn: ou=users,dc=example,dc=com
+objectclass: top
+objectclass: organizationalUnit
+ou: users
+
+# グループOU
+dn: ou=groups,dc=example,dc=com
+objectclass: top
+objectclass: organizationalUnit
+ou: groups
+
+# テストユーザー (パスワード: password)
+dn: uid=testuser,ou=users,dc=example,dc=com
+objectclass: top
+objectclass: person
+objectclass: organizationalPerson
+objectclass: inetOrgPerson
+cn: Test User
+sn: User
+uid: testuser
+userPassword: {SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=
+
+# 管理者ユーザー (パスワード: password)
+dn: uid=ldapadmin,ou=users,dc=example,dc=com
+objectclass: top
+objectclass: person
+objectclass: organizationalPerson
+objectclass: inetOrgPerson
+cn: LDAP Admin
+sn: Admin
+uid: ldapadmin
+userPassword: {SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=
+
+# USER グループ
+dn: cn=USER,ou=groups,dc=example,dc=com
+objectclass: top
+objectclass: groupOfNames
+cn: USER
+member: uid=testuser,ou=users,dc=example,dc=com
+member: uid=ldapadmin,ou=users,dc=example,dc=com
+
+# ADMIN グループ
+dn: cn=ADMIN,ou=groups,dc=example,dc=com
+objectclass: top
+objectclass: groupOfNames
+cn: ADMIN
+member: uid=ldapadmin,ou=users,dc=example,dc=com
+
+# UNISS グループ
+dn: cn=UNISS,ou=groups,dc=example,dc=com
+objectclass: top
+objectclass: groupOfNames
+cn: UNISS
+member: uid=testuser,ou=users,dc=example,dc=com

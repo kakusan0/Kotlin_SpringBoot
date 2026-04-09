@@ -21,6 +21,17 @@ spring:
   data:
     redis:
       host: localhost
+  # ---- 組み込みLDAP (UnboundID) 設定 ----
+  # app.ldap.enabled=true のときのみ参照される
+  ldap:
+    embedded:
+      base-dn: dc=example,dc=com
+      ldif: classpath:ldap/test-users.ldif
+      port: 8389
+      validation:
+        enabled: false
+    urls: ldap://localhost:8389
+    base: dc=example,dc=com
 
 geoip:
   mmdb-path: ${location.path:/opt/geoip/GeoLite2-Country.mmdb}
@@ -35,6 +46,15 @@ app:
       refill-minutes: 1
   csp:
     connect-src: "'self' http://localhost:35729 ws://localhost:35729"
+  # ---- LDAP認証設定 ----
+  # true にすると組み込みLDAPによる認証が有効になる (ローカル開発用)
+  # 本番では spring.ldap.urls 等を実際のLDAPサーバーに向けること
+  ldap:
+    enabled: false
+    user-search-base: ou=users
+    user-search-filter: "(uid={0})"
+    group-search-base: ou=groups
+    group-search-filter: "(member={0})"
 
 server:
   port: 8080
