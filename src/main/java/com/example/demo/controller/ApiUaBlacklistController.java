@@ -41,7 +41,6 @@ public class ApiUaBlacklistController {
     private final BlacklistEventService blacklistEventService;
     private final UaBlacklistService uaBlacklistService;
 
-
     @GetMapping
     public ResponseEntity<Object> list() {
         return ResponseEntity.ok(ruleMapper.selectActive());
@@ -71,30 +70,28 @@ public class ApiUaBlacklistController {
                 whitelistIpMapper.markBlacklistedAndIncrementBulk(matchingIps);
                 blockedCount = matchingIps.size();
 
-                for (String ip : matchingIps) {
-                    try {
-                        blacklistEventService.recordEvent(
-                                BlacklistEventFactory.create(
-                                        ip,
-                                        "UA_RULE_" + mt,
-                                        "AUTO",
-                                        UUID.randomUUID().toString(),
-                                        "AUTO",
-                                        "/api/ua-blacklist",
-                                        HttpStatus.CREATED.value(),
-                                        null,
-                                        null,
-                                        null
-                                )
-                        );
-                    } catch (Exception ignored) {
-                    }
+                List<com.example.demo.model.BlacklistEvent> events = matchingIps.stream()
+                        .map(ip -> BlacklistEventFactory.create(
+                                ip,
+                                "UA_RULE_" + mt,
+                                "AUTO",
+                                UUID.randomUUID().toString(),
+                                "AUTO",
+                                "/api/ua-blacklist",
+                                HttpStatus.CREATED.value(),
+                                null,
+                                null,
+                                null))
+                        .toList();
+                try {
+                    blacklistEventService.recordEventsSync(events);
+                } catch (Exception ignored) {
                 }
             }
         } catch (Exception ignored) {
         }
 
-        //noinspection SpringUntrustedDataFlow
+        // noinspection SpringUntrustedDataFlow
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new UaCreateRuleResponse(rule.getId(), blockedCount));
     }

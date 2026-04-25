@@ -20,11 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+
 import java.security.SecureRandom;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -35,15 +37,19 @@ public class WebAuthnService {
     private final SecureRandom random = new SecureRandom();
     private final WebAuthnManager webAuthnManager = WebAuthnManager.createNonStrictWebAuthnManager();
     private final ObjectConverter objectConverter = new ObjectConverter();
-    private final AttestedCredentialDataConverter attestedCredentialDataConverter = new AttestedCredentialDataConverter(objectConverter);
-    private final Map<String, ChallengeData> registrationChallenges = new ConcurrentHashMap<>();
-    private final Map<String, ChallengeData> authenticationChallenges = new ConcurrentHashMap<>();
-    private final Map<String, ChallengeData> discoverableChallenges = new ConcurrentHashMap<>();
+    private final AttestedCredentialDataConverter attestedCredentialDataConverter = new AttestedCredentialDataConverter(
+            objectConverter);
+    /** 各チャレンジは5分で自動失効 */
+    private final Cache<String, byte[]> registrationChallenges = Caffeine.newBuilder()
+            .expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1_000).build();
+    private final Cache<String, byte[]> authenticationChallenges = Caffeine.newBuilder()
+            .expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1_000).build();
+    private final Cache<String, byte[]> discoverableChallenges = Caffeine.newBuilder()
+            .expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1_000).build();
     @Value("${webauthn.rp.id:localhost}")
     private String rpId;
     @Value("${webauthn.rp.origin:http://localhost:8080}")
     private String rpOrigin;
-
 
     public byte[] generateChallenge() {
         byte[] bytes = new byte[32];
@@ -52,41 +58,29 @@ public class WebAuthnService {
     }
 
     public void saveRegistrationChallenge(String username, byte[] challenge) {
-        registrationChallenges.put(username, new ChallengeData(challenge));
+        registrationChallenges.put(username, challenge);
     }
 
     public byte[] consumeRegistrationChallenge(String username) {
-        ChallengeData data = registrationChallenges.remove(username);
-        if (data == null || data.isExpired()) {
-            return null;
-        }
-        return data.getChallenge();
+        return registrationChallenges.asMap().remove(username);
     }
 
     public void saveAuthenticationChallenge(String username, byte[] challenge) {
-        authenticationChallenges.put(username, new ChallengeData(challenge));
+        authenticationChallenges.put(username, challenge);
     }
 
     public byte[] consumeAuthenticationChallenge(String username) {
-        ChallengeData data = authenticationChallenges.remove(username);
-        if (data == null || data.isExpired()) {
-            return null;
-        }
-        return data.getChallenge();
+        return authenticationChallenges.asMap().remove(username);
     }
 
     public String saveDiscoverableChallenge(byte[] challenge) {
         String challengeId = UUID.randomUUID().toString();
-        discoverableChallenges.put(challengeId, new ChallengeData(challenge));
+        discoverableChallenges.put(challengeId, challenge);
         return challengeId;
     }
 
     public byte[] consumeDiscoverableChallenge(String challengeId) {
-        ChallengeData data = discoverableChallenges.remove(challengeId);
-        if (data == null || data.isExpired()) {
-            return null;
-        }
-        return data.getChallenge();
+        return discoverableChallenges.asMap().remove(challengeId);
     }
 
     public List<WebAuthnCredential> findCredentials(String username) {
@@ -110,8 +104,7 @@ public class WebAuthnService {
             String username,
             byte[] challenge,
             byte[] clientDataJSON,
-            byte[] attestationObject
-    ) {
+            byte[] attestationObject) {
         Origin origin = Origin.create(rpOrigin);
 
         @SuppressWarnings("deprecation")
@@ -119,16 +112,14 @@ public class WebAuthnService {
                 origin,
                 rpId,
                 new DefaultChallenge(challenge),
-                null
-        );
+                null);
 
         RegistrationRequest registrationRequest = new RegistrationRequest(attestationObject, clientDataJSON);
         RegistrationParameters registrationParameters = new RegistrationParameters(
                 serverProperty,
                 null,
                 false,
-                false
-        );
+                false);
 
         var registrationData = webAuthnManager.parse(registrationRequest);
         @SuppressWarnings("deprecation")
@@ -162,8 +153,7 @@ public class WebAuthnService {
         log.info(
                 "WebAuthn credential registered for user: {}, credentialId: {}",
                 username,
-                Base64UrlUtil.encodeToString(credentialId)
-        );
+                Base64UrlUtil.encodeToString(credentialId));
         return credential;
     }
 
@@ -174,8 +164,7 @@ public class WebAuthnService {
             byte[] clientDataJSON,
             byte[] authenticatorData,
             byte[] signature,
-            byte[] userHandle
-    ) {
+            byte[] userHandle) {
         Origin origin = Origin.create(rpOrigin);
 
         @SuppressWarnings("deprecation")
@@ -183,8 +172,7 @@ public class WebAuthnService {
                 origin,
                 rpId,
                 new DefaultChallenge(challenge),
-                null
-        );
+                null);
 
         AuthenticationRequest authenticationRequest = new AuthenticationRequest(
                 credentialId,
@@ -192,8 +180,7 @@ public class WebAuthnService {
                 authenticatorData,
                 clientDataJSON,
                 null,
-                signature
-        );
+                signature);
 
         CredentialRecord credentialRecord = buildCredentialRecord(credential);
 
@@ -203,8 +190,7 @@ public class WebAuthnService {
                 credentialRecord,
                 null,
                 false,
-                false
-        );
+                false);
 
         var authenticationData = webAuthnManager.parse(authenticationRequest);
         @SuppressWarnings("deprecation")
@@ -224,8 +210,7 @@ public class WebAuthnService {
                     "Possible cloned authenticator detected for user {}. Expected signCount > {}, got {}",
                     credential.getUsername(),
                     credential.getSignCount(),
-                    newSignCount
-            );
+                    newSignCount);
         }
 
         log.info("WebAuthn authentication successful for user: {}", credential.getUsername());
@@ -238,8 +223,7 @@ public class WebAuthnService {
             throw new IllegalStateException(
                     "Invalid credential: public key is empty. " +
                             "This credential was registered with an old implementation. " +
-                            "Please re-register the passkey."
-            );
+                            "Please re-register the passkey.");
         }
 
         var attestedCredentialData = tryConvert(publicKeyCose);
@@ -253,8 +237,7 @@ public class WebAuthnService {
                 null,
                 null,
                 null,
-                null
-        );
+                null);
     }
 
     private com.webauthn4j.data.attestation.authenticator.AttestedCredentialData tryConvert(byte[] publicKeyCose) {
@@ -264,24 +247,8 @@ public class WebAuthnService {
             throw new IllegalStateException(
                     "Failed to parse credential public key: " + e.getMessage() + ". " +
                             "Please re-register the passkey.",
-                    e
-            );
+                    e);
         }
     }
 
-    @lombok.Getter
-    public static class ChallengeData {
-        private final byte[] challenge;
-        private final long createdAt;
-
-        public ChallengeData(byte[] challenge) {
-            this.challenge = challenge;
-            this.createdAt = System.currentTimeMillis();
-        }
-
-
-        public boolean isExpired() {
-            return System.currentTimeMillis() - createdAt > 5 * 60 * 1000;
-        }
-    }
 }

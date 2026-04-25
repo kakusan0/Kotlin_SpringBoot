@@ -18,4 +18,22 @@
         , #{reason,jdbcType=VARCHAR}, #{source,jdbcType=VARCHAR})
     </insert>
 
+    <insert id="insertBulk" parameterType="list">
+        INSERT INTO
+        blacklist_events (created_at, request_id, ip_address, method, path, status, user_agent, referer, reason, source)
+        VALUES
+        <foreach collection="list" item="event" separator=",">
+            (
+            <choose>
+                <when test="event.createdAt != null">#{event.createdAt,jdbcType=TIMESTAMP,javaType=java.time.OffsetDateTime}</when>
+                <otherwise>CURRENT_TIMESTAMP</otherwise>
+            </choose>
+            , #{event.requestId,jdbcType=VARCHAR}
+            , #{event.ipAddress,jdbcType=VARCHAR}, #{event.method,jdbcType=VARCHAR}, #{event.path,jdbcType=VARCHAR}
+            , #{event.status,jdbcType=INTEGER}, #{event.userAgent,jdbcType=VARCHAR}, #{event.referer,jdbcType=VARCHAR}
+            , #{event.reason,jdbcType=VARCHAR}, #{event.source,jdbcType=VARCHAR}
+            )
+        </foreach>
+    </insert>
+
 </mapper>

@@ -1,6 +1,16 @@
 (() => {
     const b64uToArray = (b64) => Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
-    const arrayToB64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+    const arrayToB64u = (buf) => {
+        const bytes = new Uint8Array(buf);
+        const chunkSize = 0x8000;
+        let binary = '';
+
+        for (let index = 0; index < bytes.length; index += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+        }
+
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+    };
 
     const regBtn = document.getElementById('btnPasskeyRegister');
     const regStatus = document.getElementById('registerStatus');
@@ -16,6 +26,10 @@
     if (regBtn) {
         regBtn.addEventListener('click', async () => {
             try {
+                if (!window.PublicKeyCredential || !navigator.credentials?.create) {
+                    throw new Error('このブラウザはパスキー登録に対応していません');
+                }
+
                 const username = (window.currentUserName || '').trim();
                 if (!username) {
                     showStatus(regStatus, 'ログイン中のユーザーが取得できません', true);

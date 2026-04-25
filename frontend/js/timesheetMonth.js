@@ -2061,10 +2061,23 @@
 
     adjustNoteColumnWidth();
 
+    const persistScrollPosition = (() => {
+        let frameId = null;
+
+        return () => {
+            if (frameId !== null) {
+                return;
+            }
+
+            frameId = window.requestAnimationFrame(() => {
+                frameId = null;
+                localStorage.setItem('scrollPosition', String(window.scrollY));
+            });
+        };
+    })();
+
     // スクロール位置を保存
-    window.addEventListener('scroll', () => {
-        localStorage.setItem('scrollPosition', window.scrollY);
-    });
+    window.addEventListener('scroll', persistScrollPosition, {passive: true});
 
     // ページ読み込み時にスクロール位置を復元
     window.addEventListener('load', () => {

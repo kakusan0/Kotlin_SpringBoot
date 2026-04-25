@@ -36,11 +36,32 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
 public class ReportService {
+
+    private static final List<String> BASE_BEFORE_HEADERS = List.of("日付", "曜日");
+    private static final List<String> BASE_AFTER_HEADERS = List.of("出勤時間", "退勤時間", "休憩", "稼働時間", "実働");
+    private static final List<String> REMARK_HEADER = List.of("備考");
+    private static final List<String> PDF_HEADERS = List.of("備考", "日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働");
+    private static final Map<DayOfWeek, String> JP_WEEK = Map.of(
+            DayOfWeek.MONDAY, "月",
+            DayOfWeek.TUESDAY, "火",
+            DayOfWeek.WEDNESDAY, "水",
+            DayOfWeek.THURSDAY, "木",
+            DayOfWeek.FRIDAY, "金",
+            DayOfWeek.SATURDAY, "土",
+            DayOfWeek.SUNDAY, "日");
+    private static final Set<String> WORKING_NOTES = Set.of("午前休", "午後休", "休日出勤", "振替出勤", "現場休");
+    private static final Set<String> WORKING_NOTES_UNISS = Set.of("午前休", "午後休", "休日出勤", "振替出勤");
+    private static final Set<String> BLANK_NOTES = Set.of("休日", "祝日", "年休", "会社休", "対象外", "振替休日", "特別休暇", "欠勤");
+    private static final Set<String> ANNUAL_LEAVE_NOTES = Set.of("午前休", "午後休", "年休");
+    private static final Color PDF_HEADER_FILL = new Color(217, 217, 217);
+    private static final Color PDF_HOLIDAY_FILL = new Color(0xFF, 0x99, 0xCC);
+    private static final Color PDF_SATURDAY_FILL = new Color(0xCC, 0xCC, 0xFF);
 
     private final TimesheetService timesheetService;
     private final UserSettingsService userSettingsService;
@@ -48,14 +69,15 @@ public class ReportService {
     @Value("${report.holidayPosition:MIDDLE}")
     private final String holidayPositionStr;
     private final ConcurrentHashMap<Integer, Map<LocalDate, String>> holidayCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<HolidayRange, Map<LocalDate, String>> holidayRangeCache = new ConcurrentHashMap<>();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private HolidayPosition holidayPosition;
 
     public ReportService(
             TimesheetService timesheetService,
             UserSettingsService userSettingsService,
-            @Value("${report.holidayPosition:MIDDLE}") String holidayPositionStr
-    ) {
+            @Value("${report.holidayPosition:MIDDLE}") String holidayPositionStr) {
         this.timesheetService = timesheetService;
         this.userSettingsService = userSettingsService;
         this.holidayPositionStr = holidayPositionStr;
@@ -86,6 +108,32 @@ public class ReportService {
         return row.getCell(colIdx) != null ? row.getCell(colIdx) : row.createCell(colIdx);
     }
 
+    private static boolean shouldBlankTime(String noteValue, boolean isHolidayOrWeekend, Set<String> workingNotes) {
+        boolean isWorkingNote = workingNotes.contains(noteValue);
+        boolean isBlankNote = BLANK_NOTES.contains(noteValue);
+        return (isHolidayOrWeekend && !isWorkingNote) || isBlankNote;
+    }
+
+    private static List<String> buildHeaders(HolidayPosition holidayPosition) {
+        return switch (holidayPosition) {
+            case START -> concat(REMARK_HEADER, BASE_BEFORE_HEADERS, BASE_AFTER_HEADERS);
+            case END -> concat(BASE_BEFORE_HEADERS, BASE_AFTER_HEADERS, REMARK_HEADER);
+            default -> concat(BASE_BEFORE_HEADERS, REMARK_HEADER, BASE_AFTER_HEADERS);
+        };
+    }
+
+    private static HeaderIndexes resolveHeaderIndexes(List<String> headers) {
+        return new HeaderIndexes(
+                headers.indexOf("日付"),
+                headers.indexOf("曜日"),
+                headers.indexOf("備考"),
+                headers.indexOf("出勤時間"),
+                headers.indexOf("退勤時間"),
+                headers.indexOf("休憩"),
+                headers.indexOf("稼働時間"),
+                headers.indexOf("実働"));
+    }
+
     @PostConstruct
     public void init() {
         HolidayPosition pos;
@@ -102,14 +150,8 @@ public class ReportService {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
-            List<String> baseBefore = List.of("日付", "曜日");
-            List<String> baseAfter = List.of("出勤時間", "退勤時間", "休憩", "稼働時間", "実働");
-            List<String> headers;
-            switch (holidayPosition) {
-                case START -> headers = concat(List.of("備考"), baseBefore, baseAfter);
-                case END -> headers = concat(baseBefore, baseAfter, List.of("備考"));
-                default -> headers = concat(baseBefore, List.of("備考"), baseAfter);
-            }
+            List<String> headers = buildHeaders(holidayPosition);
+            HeaderIndexes headerIndexes = resolveHeaderIndexes(headers);
 
             var sheet = wb.createSheet(username);
             int rowIdx = 0;
@@ -206,16 +248,13 @@ public class ReportService {
             defaultTextStyle.cloneStyleFrom(baseCellStyle);
             defaultTextStyle.setAlignment(HorizontalAlignment.CENTER);
 
+            var sundayHolidayFont = wb.createFont();
+            sundayHolidayFont.setColor(IndexedColors.WHITE.getIndex());
+            var saturdayHolidayFont = wb.createFont();
+            saturdayHolidayFont.setColor(IndexedColors.BLACK.getIndex());
+            Map<String, CellStyle> holidayStyleCache = new HashMap<>();
+
             Map<LocalDate, String> holidayMap = fetchHolidayDates(from.getYear(), to.getYear());
-            Map<DayOfWeek, String> jpWeek = Map.of(
-                    DayOfWeek.MONDAY, "月",
-                    DayOfWeek.TUESDAY, "火",
-                    DayOfWeek.WEDNESDAY, "水",
-                    DayOfWeek.THURSDAY, "木",
-                    DayOfWeek.FRIDAY, "金",
-                    DayOfWeek.SATURDAY, "土",
-                    DayOfWeek.SUNDAY, "日"
-            );
 
             Map<LocalDate, TimesheetEntry> entryMap = new HashMap<>();
             for (TimesheetEntry e : entries) {
@@ -228,26 +267,17 @@ public class ReportService {
                 var row = sheet.createRow(r++);
                 TimesheetEntry e = entryMap.get(d);
 
-                int dateIdx = headers.indexOf("日付");
-                int wdIdx = headers.indexOf("曜日");
-                int remarkIdx = headers.indexOf("備考");
-                int scIdx = headers.indexOf("出勤時間");
-                int ecIdx = headers.indexOf("退勤時間");
-                int breakIdx = headers.indexOf("休憩");
-                int durIdx = headers.indexOf("稼働時間");
-                int workIdx = headers.indexOf("実働");
-
-                var dateCell = row.createCell(dateIdx);
+                var dateCell = row.createCell(headerIndexes.dateIdx());
                 dateCell.setCellValue(d.getDayOfMonth() + "日");
                 dateCell.setCellStyle(dayOnlyStyle);
 
-                var wdCell = row.createCell(wdIdx);
-                wdCell.setCellValue(jpWeek.get(d.getDayOfWeek()));
+                var wdCell = row.createCell(headerIndexes.weekdayIdx());
+                wdCell.setCellValue(JP_WEEK.get(d.getDayOfWeek()));
                 wdCell.setCellStyle(dayOnlyStyle);
 
                 String noteValue = e != null ? safe(e.getNote()) : "";
                 String displayNote = "現場休".equals(noteValue) ? "休日" : noteValue;
-                var remarkCell = row.createCell(remarkIdx);
+                var remarkCell = row.createCell(headerIndexes.remarkIdx());
                 remarkCell.setCellValue(displayNote);
                 remarkCell.setCellStyle(defaultTextStyle);
 
@@ -255,21 +285,19 @@ public class ReportService {
                 boolean isWeekend = d.getDayOfWeek() == DayOfWeek.SATURDAY || d.getDayOfWeek() == DayOfWeek.SUNDAY;
                 boolean isHolidayOrWeekend = isActualHoliday || isWeekend;
 
-                List<String> workingNotes = List.of("午前休", "午後休", "休日出勤", "振替出勤", "現場休");
-                boolean isWorkingNote = workingNotes.contains(noteValue);
-                List<String> blankNotes = List.of("休日", "祝日", "年休", "会社休", "対象外", "振替休日", "特別休暇", "欠勤");
-                boolean isBlankNote = blankNotes.contains(noteValue);
-                boolean shouldBlank = (isHolidayOrWeekend && !isWorkingNote) || isBlankNote;
+                boolean shouldBlank = shouldBlankTime(noteValue, isHolidayOrWeekend, WORKING_NOTES);
 
-                var sc = row.createCell(scIdx);
-                sc.setCellValue(shouldBlank ? "" : (e != null && e.getStartTime() != null ? e.getStartTime().toString() : ""));
+                var sc = row.createCell(headerIndexes.startTimeIdx());
+                sc.setCellValue(
+                        shouldBlank ? "" : (e != null && e.getStartTime() != null ? e.getStartTime().toString() : ""));
                 sc.setCellStyle(timeTextStyle);
 
-                var ec = row.createCell(ecIdx);
-                ec.setCellValue(shouldBlank ? "" : (e != null && e.getEndTime() != null ? e.getEndTime().toString() : ""));
+                var ec = row.createCell(headerIndexes.endTimeIdx());
+                ec.setCellValue(
+                        shouldBlank ? "" : (e != null && e.getEndTime() != null ? e.getEndTime().toString() : ""));
                 ec.setCellStyle(timeTextStyle);
 
-                var breakCell = row.createCell(breakIdx);
+                var breakCell = row.createCell(headerIndexes.breakIdx());
                 if (shouldBlank) {
                     breakCell.setCellValue("");
                 } else if (e != null && e.getBreakMinutes() != null) {
@@ -279,29 +307,37 @@ public class ReportService {
                 }
                 breakCell.setCellStyle(intStyle);
 
-                var durCell = row.createCell(durIdx);
-                durCell.setCellValue(shouldBlank ? "" : (e != null && e.getDurationMinutes() != null
-                        ? formatMinutesToHM(e.getDurationMinutes()) : ""));
+                var durCell = row.createCell(headerIndexes.durationIdx());
+                durCell.setCellValue(shouldBlank ? ""
+                        : (e != null && e.getDurationMinutes() != null
+                                ? formatMinutesToHM(e.getDurationMinutes())
+                                : ""));
                 durCell.setCellStyle(timeTextStyle);
 
-                var workCell = row.createCell(workIdx);
-                workCell.setCellValue(shouldBlank ? "" : (e != null && e.getWorkingMinutes() != null
-                        ? formatMinutesToHM(e.getWorkingMinutes()) : ""));
+                var workCell = row.createCell(headerIndexes.workingIdx());
+                workCell.setCellValue(shouldBlank ? ""
+                        : (e != null && e.getWorkingMinutes() != null
+                                ? formatMinutesToHM(e.getWorkingMinutes())
+                                : ""));
                 workCell.setCellStyle(timeTextStyle);
 
                 if (isHolidayOrWeekend) {
                     boolean isRed = isActualHoliday || d.getDayOfWeek() == DayOfWeek.SUNDAY;
-                    short fillColor = isRed ? IndexedColors.ROSE.getIndex() : IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex();
-                    var fontForFill = wb.createFont();
-                    fontForFill.setColor(isRed ? IndexedColors.WHITE.getIndex() : IndexedColors.BLACK.getIndex());
+                    short fillColor = isRed ? IndexedColors.ROSE.getIndex()
+                            : IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex();
                     for (int c = 0; c < headers.size(); c++) {
                         var cell = row.getCell(c) != null ? row.getCell(c) : row.createCell(c);
                         var src = cell.getCellStyle() != null ? cell.getCellStyle() : baseCellStyle;
-                        var newStyle = wb.createCellStyle();
-                        newStyle.cloneStyleFrom(src);
-                        newStyle.setFillForegroundColor(fillColor);
-                        newStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                        newStyle.setFont(fontForFill);
+                        String key = src.getIndex() + ":" + fillColor + ":" + isRed;
+                        var newStyle = holidayStyleCache.get(key);
+                        if (newStyle == null) {
+                            newStyle = wb.createCellStyle();
+                            newStyle.cloneStyleFrom(src);
+                            newStyle.setFillForegroundColor(fillColor);
+                            newStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                            newStyle.setFont(isRed ? sundayHolidayFont : saturdayHolidayFont);
+                            holidayStyleCache.put(key, newStyle);
+                        }
                         cell.setCellStyle(newStyle);
                     }
                 }
@@ -360,55 +396,64 @@ public class ReportService {
     }
 
     private Map<LocalDate, String> fetchHolidayDates(int fromYear, int toYear) {
-        Map<LocalDate, String> result = new HashMap<>();
-
-        try (HttpClient client = HttpClient.newBuilder().build()) {
-            for (int y = fromYear; y <= toYear; y++) {
-                Map<LocalDate, String> cached = holidayCache.get(y);
-                if (cached != null) {
-                    result.putAll(cached);
-                    continue;
-                }
-                try {
-                    URI uri = URI.create("https://date.nager.at/api/v3/PublicHolidays/" + y + "/JP");
-                    HttpRequest req = HttpRequest.newBuilder().uri(uri).GET().build();
-                    HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
-                    if (resp.statusCode() != 200) {
-                        log.warn("Holiday API returned {} for year {}", resp.statusCode(), y);
-                        holidayCache.put(y, Map.of());
-                        continue;
-                    }
-                    JsonNode root = objectMapper.readTree(resp.body());
-                    Map<LocalDate, String> mapForYear = new HashMap<>();
-                    if (root.isArray()) {
-                        for (JsonNode node : root) {
-                            String dateStr = node.path("date").asText(null);
-                            String localName = node.path("localName").asText(null);
-                            if (localName == null || localName.isBlank()) {
-                                localName = node.path("name").asText("");
-                            }
-                            if (dateStr != null && !dateStr.isBlank()) {
-                                try {
-                                    LocalDate ld = LocalDate.parse(dateStr);
-                                    mapForYear.put(ld, localName);
-                                } catch (Exception e) {
-                                    log.warn("Failed to parse holiday date '{}' for year {}: {}", dateStr, y, e.getMessage());
-                                }
-                            }
-                        }
-                    }
-                    holidayCache.put(y, mapForYear);
-                    result.putAll(mapForYear);
-                } catch (Exception e) {
-                    log.warn("Failed to fetch holidays for year {}: {}", y, e.getMessage());
-                    holidayCache.put(y, Map.of());
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to create HttpClient for holiday fetch: {}", e.getMessage());
+        if (fromYear > toYear) {
+            return Map.of();
         }
 
-        return result;
+        return holidayRangeCache.computeIfAbsent(new HolidayRange(fromYear, toYear), this::loadHolidayRange);
+    }
+
+    private Map<LocalDate, String> loadHolidayRange(HolidayRange range) {
+        Map<LocalDate, String> result = new HashMap<>();
+        for (int year = range.fromYear(); year <= range.toYear(); year++) {
+            result.putAll(loadHolidaysForYear(year));
+        }
+        return result.isEmpty() ? Map.of() : Map.copyOf(result);
+    }
+
+    private Map<LocalDate, String> loadHolidaysForYear(int year) {
+        return holidayCache.computeIfAbsent(year, this::fetchHolidayYear);
+    }
+
+    private Map<LocalDate, String> fetchHolidayYear(int year) {
+        try {
+            URI uri = URI.create("https://date.nager.at/api/v3/PublicHolidays/" + year + "/JP");
+            HttpRequest req = HttpRequest.newBuilder().uri(uri).GET().build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                log.warn("Holiday API returned {} for year {}", resp.statusCode(), year);
+                return Map.of();
+            }
+
+            JsonNode root = objectMapper.readTree(resp.body());
+            Map<LocalDate, String> mapForYear = new HashMap<>();
+            if (root.isArray()) {
+                for (JsonNode node : root) {
+                    String dateStr = node.path("date").asText(null);
+                    String localName = node.path("localName").asText(null);
+                    if (localName == null || localName.isBlank()) {
+                        localName = node.path("name").asText("");
+                    }
+                    if (dateStr != null && !dateStr.isBlank()) {
+                        try {
+                            LocalDate ld = LocalDate.parse(dateStr);
+                            mapForYear.put(ld, localName);
+                        } catch (Exception e) {
+                            log.warn("Failed to parse holiday date '{}' for year {}: {}", dateStr, year,
+                                    e.getMessage());
+                        }
+                    }
+                }
+            }
+
+            return mapForYear.isEmpty() ? Map.of() : Map.copyOf(mapForYear);
+        } catch (Exception e) {
+            log.warn("Failed to fetch holidays for year {}: {}", year, e.getMessage());
+            return Map.of();
+        }
+    }
+
+    private record HolidayRange(int fromYear, int toYear) {
     }
 
     public byte[] generatePdfBytes(String username, LocalDate from, LocalDate to) {
@@ -416,26 +461,19 @@ public class ReportService {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PDDocument doc = new PDDocument()) {
             org.apache.pdfbox.pdmodel.font.PDFont font = new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
-            try (InputStream fontStream = getClass().getClassLoader().getResourceAsStream("fonts/KazukiReiwa - Bold.ttf")) {
+            try (InputStream fontStream = getClass().getClassLoader()
+                    .getResourceAsStream("fonts/KazukiReiwa - Bold.ttf")) {
                 if (fontStream != null) {
                     font = PDType0Font.load(doc, fontStream, true);
                 }
             }
-            List<String> headers = List.of("備考", "日付", "曜日", "出勤時間", "退勤時間", "休憩", "稼働時間", "実働");
-            float[] colWidths = new float[]{80f, 50f, 40f, 60f, 60f, 40f, 60f, 60f};
+            List<String> headers = PDF_HEADERS;
+            float[] colWidths = new float[] { 80f, 50f, 40f, 60f, 60f, 40f, 60f, 60f };
             float tableWidth = 0f;
-            for (float w : colWidths) tableWidth += w;
+            for (float w : colWidths)
+                tableWidth += w;
 
             Map<LocalDate, String> holidayMap = fetchHolidayDates(from.getYear(), to.getYear());
-            Map<DayOfWeek, String> jpWeek = Map.of(
-                    DayOfWeek.MONDAY, "月",
-                    DayOfWeek.TUESDAY, "火",
-                    DayOfWeek.WEDNESDAY, "水",
-                    DayOfWeek.THURSDAY, "木",
-                    DayOfWeek.FRIDAY, "金",
-                    DayOfWeek.SATURDAY, "土",
-                    DayOfWeek.SUNDAY, "日"
-            );
 
             Map<LocalDate, TimesheetEntry> entryMap = new HashMap<>();
             for (TimesheetEntry e : entries) {
@@ -454,22 +492,23 @@ public class ReportService {
                 boolean isWeekend = d.getDayOfWeek() == DayOfWeek.SATURDAY || d.getDayOfWeek() == DayOfWeek.SUNDAY;
                 boolean isHolidayOrWeekend = isActualHoliday || isWeekend;
 
-                List<String> workingNotes = List.of("午前休", "午後休", "休日出勤", "振替出勤", "現場休");
-                boolean isWorkingNote = workingNotes.contains(noteValue);
-                List<String> blankNotes = List.of("休日", "祝日", "年休", "会社休", "対象外", "振替休日", "特別休暇", "欠勤");
-                boolean isBlankNote = blankNotes.contains(noteValue);
-                boolean shouldBlank = (isHolidayOrWeekend && !isWorkingNote) || isBlankNote;
+                boolean shouldBlank = shouldBlankTime(noteValue, isHolidayOrWeekend, WORKING_NOTES);
 
                 rows.add(List.of(
                         displayNote,
                         d.getDayOfMonth() + "日",
-                        jpWeek.getOrDefault(d.getDayOfWeek(), ""),
+                        JP_WEEK.getOrDefault(d.getDayOfWeek(), ""),
                         shouldBlank ? "" : (e != null && e.getStartTime() != null ? e.getStartTime().toString() : ""),
                         shouldBlank ? "" : (e != null && e.getEndTime() != null ? e.getEndTime().toString() : ""),
-                        shouldBlank ? "" : (e != null && e.getBreakMinutes() != null ? e.getBreakMinutes().toString() : ""),
-                        shouldBlank ? "" : (e != null && e.getDurationMinutes() != null ? formatMinutesToHM(e.getDurationMinutes()) : ""),
-                        shouldBlank ? "" : (e != null && e.getWorkingMinutes() != null ? formatMinutesToHM(e.getWorkingMinutes()) : "")
-                ));
+                        shouldBlank ? ""
+                                : (e != null && e.getBreakMinutes() != null ? e.getBreakMinutes().toString() : ""),
+                        shouldBlank ? ""
+                                : (e != null && e.getDurationMinutes() != null
+                                        ? formatMinutesToHM(e.getDurationMinutes())
+                                        : ""),
+                        shouldBlank ? ""
+                                : (e != null && e.getWorkingMinutes() != null ? formatMinutesToHM(e.getWorkingMinutes())
+                                        : "")));
                 d = d.plusDays(1);
             }
 
@@ -525,7 +564,7 @@ public class ReportService {
 
                     Color fillColor = null;
                     if (rowIdx == 0) {
-                        fillColor = new Color(217, 217, 217);
+                        fillColor = PDF_HEADER_FILL;
                     } else {
                         int dateIdx = 1;
                         int weekdayIdx = 2;
@@ -542,9 +581,9 @@ public class ReportService {
                         String youbi = row.get(weekdayIdx);
                         boolean isActualHoliday = holidayMap.containsKey(currentDate);
                         if ("日".equals(youbi) || isActualHoliday) {
-                            fillColor = new Color(0xFF, 0x99, 0xCC);
+                            fillColor = PDF_HOLIDAY_FILL;
                         } else if ("土".equals(youbi)) {
-                            fillColor = new Color(0xCC, 0xCC, 0xFF);
+                            fillColor = PDF_SATURDAY_FILL;
                         }
                     }
 
@@ -589,8 +628,9 @@ public class ReportService {
         ClassPathResource templateResource = new ClassPathResource(templatePath);
 
         try (InputStream templateStream = templateResource.getInputStream();
-             XSSFWorkbook wb = new XSSFWorkbook(templateStream)) {
+                XSSFWorkbook wb = new XSSFWorkbook(templateStream)) {
             var sheet = wb.getSheetAt(0);
+            Map<Short, CellStyle> wrapTextStyleCache = new HashMap<>();
 
             Map<LocalDate, String> holidayMap = fetchHolidayDates(from.getYear(), to.getYear());
 
@@ -606,7 +646,8 @@ public class ReportService {
             if (settings != null) {
                 if (settings.getCompanyAffiliation() != null)
                     getCell(sheet, 1, 3).setCellValue(settings.getCompanyAffiliation());
-                if (settings.getBranchOffice() != null) getCell(sheet, 1, 8).setCellValue(settings.getBranchOffice());
+                if (settings.getBranchOffice() != null)
+                    getCell(sheet, 1, 8).setCellValue(settings.getBranchOffice());
                 if (settings.getSection() != null)
                     getCell(sheet, 2, 6).setCellValue(settings.getSection().doubleValue());
                 if (settings.getWorkGroup() != null)
@@ -617,7 +658,8 @@ public class ReportService {
                     double fraction = settings.getSiteRegularHours().toSecondOfDay() / 86400.0;
                     getCell(sheet, 3, 9).setCellValue(fraction);
                 }
-                getCell(sheet, 4, 3).setCellValue(settings.getDisplayName() != null ? settings.getDisplayName() : username);
+                getCell(sheet, 4, 3)
+                        .setCellValue(settings.getDisplayName() != null ? settings.getDisplayName() : username);
             } else {
                 getCell(sheet, 4, 3).setCellValue(username);
             }
@@ -650,7 +692,8 @@ public class ReportService {
                 var row = sheet.getRow(rowIdx) != null ? sheet.getRow(rowIdx) : sheet.createRow(rowIdx);
 
                 boolean isActualHoliday = holidayMap.containsKey(date);
-                boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+                boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY
+                        || date.getDayOfWeek() == DayOfWeek.SUNDAY;
                 boolean isHolidayOrWeekend = isActualHoliday || isWeekend;
 
                 String noteValue = entry != null ? safe(entry.getNote()) : "";
@@ -658,28 +701,27 @@ public class ReportService {
                 List<IrregularItem> irregularItems = parseIrregularWorkData(
                         entry != null ? entry.getIrregularWorkData() : null,
                         entry != null ? entry.getIrregularWorkType() : null,
-                        entry != null ? entry.getIrregularWorkDesc() : null
-                );
+                        entry != null ? entry.getIrregularWorkDesc() : null);
 
-                boolean hasWorkingIrregular = irregularItems.stream().anyMatch(it ->
-                        "振替出勤".equals(it.type) || "休日出勤".equals(it.type)
-                );
+                boolean hasWorkingIrregular = irregularItems.stream()
+                        .anyMatch(it -> "振替出勤".equals(it.type) || "休日出勤".equals(it.type));
 
-                boolean isWorkingDay = (!isWeekend && !"祝日".equals(noteValue) && !"休日".equals(noteValue)) || hasWorkingIrregular;
+                boolean isWorkingDay = (!isWeekend && !"祝日".equals(noteValue) && !"休日".equals(noteValue))
+                        || hasWorkingIrregular;
                 var workingDayCell = row.getCell(1) != null ? row.getCell(1) : row.createCell(1);
                 if (workingDayCell.getCellType() == CellType.FORMULA) {
                     workingDayCell.setCellFormula(null);
                 }
                 workingDayCell.setCellValue(isWorkingDay ? 1.0 : 0.0);
 
-                List<String> workingNotes = List.of("午前休", "午後休", "休日出勤", "振替出勤");
-                boolean isWorkingNote = workingNotes.contains(noteValue);
-                List<String> blankNotes = List.of("休日", "祝日", "年休", "会社休", "対象外", "振替休日", "特別休暇", "欠勤");
-                boolean isBlankNote = blankNotes.contains(noteValue);
+                boolean isWorkingNote = WORKING_NOTES_UNISS.contains(noteValue);
+                boolean isBlankNote = BLANK_NOTES.contains(noteValue);
                 boolean shouldBlankTime = (isHolidayOrWeekend && !isWorkingNote) || isBlankNote;
 
-                var startHourCell = row.getCell(colStartHour) != null ? row.getCell(colStartHour) : row.createCell(colStartHour);
-                var startMinCell = row.getCell(colStartMin) != null ? row.getCell(colStartMin) : row.createCell(colStartMin);
+                var startHourCell = row.getCell(colStartHour) != null ? row.getCell(colStartHour)
+                        : row.createCell(colStartHour);
+                var startMinCell = row.getCell(colStartMin) != null ? row.getCell(colStartMin)
+                        : row.createCell(colStartMin);
                 if (!shouldBlankTime && entry != null && entry.getStartTime() != null) {
                     startHourCell.setCellValue(entry.getStartTime().getHour());
                     startMinCell.setCellValue(entry.getStartTime().getMinute());
@@ -688,7 +730,8 @@ public class ReportService {
                     startMinCell.setBlank();
                 }
 
-                var endHourCell = row.getCell(colEndHour) != null ? row.getCell(colEndHour) : row.createCell(colEndHour);
+                var endHourCell = row.getCell(colEndHour) != null ? row.getCell(colEndHour)
+                        : row.createCell(colEndHour);
                 var endMinCell = row.getCell(colEndMin) != null ? row.getCell(colEndMin) : row.createCell(colEndMin);
                 if (!shouldBlankTime && entry != null && entry.getEndTime() != null) {
                     endHourCell.setCellValue(entry.getEndTime().getHour());
@@ -705,7 +748,8 @@ public class ReportService {
                     breakCell.setBlank();
                 }
 
-                var halfDayCell = row.getCell(colHalfDay) != null ? row.getCell(colHalfDay) : row.createCell(colHalfDay);
+                var halfDayCell = row.getCell(colHalfDay) != null ? row.getCell(colHalfDay)
+                        : row.createCell(colHalfDay);
                 if (!isHolidayOrWeekend && ("午前休".equals(noteValue) || "午後休".equals(noteValue))) {
                     halfDayCell.setCellValue("4:00");
                 } else {
@@ -747,7 +791,8 @@ public class ReportService {
                     earlyCell.setBlank();
                 }
 
-                var descCell = row.getCell(colDescription) != null ? row.getCell(colDescription) : row.createCell(colDescription);
+                var descCell = row.getCell(colDescription) != null ? row.getCell(colDescription)
+                        : row.createCell(colDescription);
                 List<String> descriptions = new ArrayList<>();
                 if (entry != null && entry.getLateDesc() != null && !entry.getLateDesc().isBlank()) {
                     descriptions.add("遅刻: " + entry.getLateDesc());
@@ -770,24 +815,41 @@ public class ReportService {
                     } else {
                         descCell.setCellValue(freeNoteValue);
                     }
-                    var style = wb.createCellStyle();
-                    style.setWrapText(true);
+                    var style = wrapTextStyleCache.get(descCell.getCellStyle().getIndex());
+                    if (style == null) {
+                        style = wb.createCellStyle();
+                        style.cloneStyleFrom(descCell.getCellStyle());
+                        style.setWrapText(true);
+                        wrapTextStyleCache.put(descCell.getCellStyle().getIndex(), style);
+                    }
                     descCell.setCellStyle(style);
                 } else if (!descriptions.isEmpty()) {
                     descCell.setCellValue(String.join("\n", prefixBullets(descriptions)));
-                    var style = wb.createCellStyle();
-                    style.setWrapText(true);
+                    var style = wrapTextStyleCache.get(descCell.getCellStyle().getIndex());
+                    if (style == null) {
+                        style = wb.createCellStyle();
+                        style.cloneStyleFrom(descCell.getCellStyle());
+                        style.setWrapText(true);
+                        wrapTextStyleCache.put(descCell.getCellStyle().getIndex(), style);
+                    }
                     descCell.setCellStyle(style);
                 } else {
                     descCell.setBlank();
                 }
 
-                var annualLeaveCell = row.getCell(colAnnualLeave) != null ? row.getCell(colAnnualLeave) : row.createCell(colAnnualLeave);
-                var specialLeaveCell = row.getCell(colSpecialLeave) != null ? row.getCell(colSpecialLeave) : row.createCell(colSpecialLeave);
-                var absenceCell = row.getCell(colAbsence) != null ? row.getCell(colAbsence) : row.createCell(colAbsence);
-                var substituteHolidayCell = row.getCell(colSubstituteHoliday) != null ? row.getCell(colSubstituteHoliday) : row.createCell(colSubstituteHoliday);
-                var substituteWorkCell = row.getCell(colSubstituteWork) != null ? row.getCell(colSubstituteWork) : row.createCell(colSubstituteWork);
-                var holidayWorkCell = row.getCell(colHolidayWork) != null ? row.getCell(colHolidayWork) : row.createCell(colHolidayWork);
+                var annualLeaveCell = row.getCell(colAnnualLeave) != null ? row.getCell(colAnnualLeave)
+                        : row.createCell(colAnnualLeave);
+                var specialLeaveCell = row.getCell(colSpecialLeave) != null ? row.getCell(colSpecialLeave)
+                        : row.createCell(colSpecialLeave);
+                var absenceCell = row.getCell(colAbsence) != null ? row.getCell(colAbsence)
+                        : row.createCell(colAbsence);
+                var substituteHolidayCell = row.getCell(colSubstituteHoliday) != null
+                        ? row.getCell(colSubstituteHoliday)
+                        : row.createCell(colSubstituteHoliday);
+                var substituteWorkCell = row.getCell(colSubstituteWork) != null ? row.getCell(colSubstituteWork)
+                        : row.createCell(colSubstituteWork);
+                var holidayWorkCell = row.getCell(colHolidayWork) != null ? row.getCell(colHolidayWork)
+                        : row.createCell(colHolidayWork);
 
                 annualLeaveCell.setBlank();
                 specialLeaveCell.setBlank();
@@ -796,8 +858,7 @@ public class ReportService {
                 substituteWorkCell.setBlank();
                 holidayWorkCell.setBlank();
 
-                List<String> annualLeaveNotes = List.of("午前休", "午後休", "年休");
-                if (annualLeaveNotes.contains(noteValue)) {
+                if (ANNUAL_LEAVE_NOTES.contains(noteValue)) {
                     annualLeaveCell.setCellValue("○");
                 }
 
@@ -826,7 +887,8 @@ public class ReportService {
             log.info("[UNISS] Fiscal year calculated: {} (from month: {})", fiscalYear, from.getMonthValue());
 
             Map<LocalDate, String> fiscalYearHolidayMap = fetchHolidayDates(fiscalYear, fiscalYear + 1);
-            log.info("[UNISS] Fetched holidays for fiscal year {}: {} holidays", fiscalYear, fiscalYearHolidayMap.size());
+            log.info("[UNISS] Fetched holidays for fiscal year {}: {} holidays", fiscalYear,
+                    fiscalYearHolidayMap.size());
 
             LocalDate displayYearStart = LocalDate.of(from.getYear(), 1, 1);
             LocalDate displayYearEnd = LocalDate.of(from.getYear(), 12, 31);
@@ -844,13 +906,15 @@ public class ReportService {
                 LocalDate holidayDate = displayYearHolidays.get(i);
                 int rowIdx = holidayStartRow + i;
                 var row = sheet.getRow(rowIdx) != null ? sheet.getRow(rowIdx) : sheet.createRow(rowIdx);
-                var holidayCell = row.getCell(colHoliday) != null ? row.getCell(colHoliday) : row.createCell(colHoliday);
+                var holidayCell = row.getCell(colHoliday) != null ? row.getCell(colHoliday)
+                        : row.createCell(colHoliday);
                 if (holidayCell.getCellType() == CellType.FORMULA) {
                     holidayCell.setCellFormula(null);
                 }
                 String formattedDate = holidayDate.format(formatter);
                 holidayCell.setCellValue(formattedDate);
-                log.debug("[UNISS] Set holiday at AR{}: {} ({})", rowIdx + 1, formattedDate, fiscalYearHolidayMap.get(holidayDate));
+                log.debug("[UNISS] Set holiday at AR{}: {} ({})", rowIdx + 1, formattedDate,
+                        fiscalYearHolidayMap.get(holidayDate));
             }
 
             wb.setForceFormulaRecalculation(true);
@@ -862,14 +926,14 @@ public class ReportService {
         return baos.toByteArray();
     }
 
-    private List<IrregularItem> parseIrregularWorkData(String irregularWorkData, String irregularWorkType, String irregularWorkDesc) {
+    private List<IrregularItem> parseIrregularWorkData(String irregularWorkData, String irregularWorkType,
+            String irregularWorkDesc) {
         if (irregularWorkData != null && !irregularWorkData.isBlank()) {
             try {
                 List<Map<String, String>> items = objectMapper.readValue(
                         irregularWorkData,
                         new TypeReference<>() {
-                        }
-                );
+                        });
                 List<IrregularItem> out = new ArrayList<>();
                 for (Map<String, String> item : items) {
                     String type = item.get("type");
@@ -881,7 +945,8 @@ public class ReportService {
                 }
                 return out;
             } catch (Exception e) {
-                log.warn("[UNISS] irregularWorkData parse error: {} irregularWorkData=[{}]", e.getMessage(), irregularWorkData);
+                log.warn("[UNISS] irregularWorkData parse error: {} irregularWorkData=[{}]", e.getMessage(),
+                        irregularWorkData);
                 return List.of();
             }
         }
@@ -893,7 +958,20 @@ public class ReportService {
         return List.of();
     }
 
-    private enum HolidayPosition {START, MIDDLE, END}
+    private enum HolidayPosition {
+        START, MIDDLE, END
+    }
+
+    private record HeaderIndexes(
+            int dateIdx,
+            int weekdayIdx,
+            int remarkIdx,
+            int startTimeIdx,
+            int endTimeIdx,
+            int breakIdx,
+            int durationIdx,
+            int workingIdx) {
+    }
 
     private record IrregularItem(String type, String desc) {
     }

@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 @Order(2)
 public class LoginRateLimitFilter extends OncePerRequestFilter {
 
-
     private final boolean trustProxy;
     private final long capacity;
     private final long refillMinutes;
@@ -42,8 +41,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     public LoginRateLimitFilter(
             @Value("${app.trust-proxy:false}") boolean trustProxy,
             @Value("${app.login.rate-limit.capacity:5}") long capacity,
-            @Value("${app.login.rate-limit.refill-minutes:5}") long refillMinutes
-    ) {
+            @Value("${app.login.rate-limit.refill-minutes:5}") long refillMinutes) {
         this.trustProxy = trustProxy;
         this.capacity = capacity;
         this.refillMinutes = refillMinutes;
@@ -57,13 +55,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
-        if (!"/login".equalsIgnoreCase(request.getRequestURI()) || !"POST".equals(request.getMethod())) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
         String clientIp = IpUtils.clientIp(request, trustProxy);
         Bucket bucket = cache.get(clientIp, key -> createBucket());
 
@@ -78,8 +70,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             response.setCharacterEncoding("UTF-8");
             String message = "ログイン試行回数が上限に達しました。" + refillMinutes + "分後に再度お試しください。";
             response.sendRedirect(
-                    "/login?error=true&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8)
-            );
+                    "/login?error=true&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8));
         }
     }
 

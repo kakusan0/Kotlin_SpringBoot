@@ -10,6 +10,8 @@ import com.example.demo.service.GeoIpCountryService;
 import com.example.demo.service.UaBlacklistService;
 import com.example.demo.util.BlacklistEventFactory;
 import com.example.demo.util.IpUtils;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +28,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 全HTTPアクセスをDBに記録するフィルター
@@ -35,10 +38,20 @@ import java.util.UUID;
 @Order(3)
 public class SecurityAuditFilter extends OncePerRequestFilter {
 
-
     private static final Set<String> SKIP_PREFIXES = Set.of(
-            "/css/", "/js/", "/webjars/", "/favicon", "/actuator/", "/robots.txt"
-    );
+            "/css/", "/js/", "/webjars/", "/favicon", "/actuator/", "/robots.txt");
+
+    /** ブラックリスト判定結果を30秒キャッシュ（ホットパスのDB呼び出しを削減） */
+    private final Cache<String, Boolean> blacklistCache = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterWrite(30, TimeUnit.SECONDS)
+            .build();
+
+    /** ホワイトリスト登録済みかどうかを30秒キャッシュ */
+    private final Cache<String, Boolean> whitelistCache = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterWrite(30, TimeUnit.SECONDS)
+            .build();
 
     private final AccessLogWriteService accessLogWriteService;
     private final WhitelistIpMapper whitelistIpMapper;
@@ -56,8 +69,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             GeoIpCountryService geoIpCountryService,
             BlacklistEventService blacklistEventService,
             UaBlacklistService uaBlacklistService,
-            @Value("${app.trust-proxy:false}") boolean trustProxy
-    ) {
+            @Value("${app.trust-proxy:false}") boolean trustProxy) {
         this.accessLogWriteService = accessLogWriteService;
         this.whitelistIpMapper = whitelistIpMapper;
         this.blacklistIpMapper = blacklistIpMapper;
@@ -85,8 +97,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
         long start = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
         request.setAttribute("requestId", requestId);
@@ -129,10 +140,12 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (remoteIp != null && !remoteIp.isBlank() && blacklistIpMapper.existsByIp(remoteIp)) {
+        if (remoteIp != null && !remoteIp.isBlank()
+                && Boolean.TRUE.equals(blacklistCache.get(remoteIp, blacklistIpMapper::existsByIp))) {
             try {
                 blacklistIpMapper.upsertIncrementTimes(remoteIp);
                 whitelistIpMapper.markBlacklistedAndIncrement(remoteIp);
+                blacklistCache.put(remoteIp, true);
             } catch (Exception ignored) {
             }
             response.setStatus(404);
@@ -144,10 +157,12 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (remoteIp != null && !remoteIp.isBlank() && !whitelistIpMapper.existsByIp(remoteIp)) {
+        if (remoteIp != null && !remoteIp.isBlank()
+                && !Boolean.TRUE.equals(whitelistCache.get(remoteIp, whitelistIpMapper::existsByIp))) {
             WhitelistIp whitelistIp = new WhitelistIp();
             whitelistIp.setIpAddress(remoteIp);
             whitelistIpMapper.insert(whitelistIp);
+            whitelistCache.put(remoteIp, true);
         }
 
         ContentCachingRequestWrapper reqWrap = new ContentCachingRequestWrapper(request, 10240);
@@ -188,8 +203,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                         request.getMethod(),
                         request.getRequestURI(),
                         status,
-                        e.toString()
-                );
+                        e.toString());
             }
         }
     }
@@ -216,7 +230,8 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
         return res.getContentSize();
     }
 
-    private void writeEarlyLog(HttpServletRequest request, String requestId, String remoteIp, long start, int statusCode, String reason) {
+    private void writeEarlyLog(HttpServletRequest request, String requestId, String remoteIp, long start,
+            int statusCode, String reason) {
         long duration = System.currentTimeMillis() - start;
         AccessLog accessLog = new AccessLog();
         accessLog.setRequestId(requestId);
@@ -237,8 +252,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                     request.getMethod(),
                     request.getRequestURI(),
                     statusCode,
-                    e.toString()
-            );
+                    e.toString());
         }
         try {
             blacklistEventService.recordEvent(
@@ -248,13 +262,12 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                             "FILTER",
                             requestId,
                             request.getMethod(),
-                            request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : ""),
+                            request.getRequestURI()
+                                    + (request.getQueryString() != null ? "?" + request.getQueryString() : ""),
                             statusCode,
                             request.getHeader("User-Agent"),
                             request.getHeader("Referer"),
-                            null
-                    )
-            );
+                            null));
         } catch (Exception e) {
             log.warn("ブラックリストイベント保存に失敗: ip={}, reason={}, err={}", remoteIp, reason, e.toString());
         }

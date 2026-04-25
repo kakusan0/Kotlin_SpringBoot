@@ -16,33 +16,46 @@ import java.util.regex.Pattern;
 public class UaBlacklistService {
 
     private static final long TTL_MS = 60_000L;
+    private static final String MATCH_TYPE_EXACT = "EXACT";
+    private static final String MATCH_TYPE_PREFIX = "PREFIX";
+    private static final String MATCH_TYPE_REGEX = "REGEX";
 
     private final UaBlacklistRuleMapper ruleMapper;
     private volatile CacheSnapshot snapshot = new CacheSnapshot(List.of(), 0L);
 
-
     private void ensureLoaded() {
         long now = Instant.now().toEpochMilli();
         CacheSnapshot current = snapshot;
-        if (now - current.loadedAtMs() > TTL_MS) {
+        if (now - current.loadedAtMs() <= TTL_MS) {
+            return;
+        }
+
+        synchronized (this) {
+            current = snapshot;
+            now = Instant.now().toEpochMilli();
+            if (now - current.loadedAtMs() <= TTL_MS) {
+                return;
+            }
+
             List<UaBlacklistRule> rules = ruleMapper.selectActive();
             List<CachedRule> cached = new ArrayList<>(rules.size());
             for (UaBlacklistRule rule : rules) {
                 if (rule == null || rule.getPattern() == null || rule.getPattern().isBlank()) {
                     continue;
                 }
+                String pattern = rule.getPattern();
                 String matchType = rule.getMatchType() != null
                         ? rule.getMatchType().toUpperCase(Locale.ROOT)
-                        : "EXACT";
+                        : MATCH_TYPE_EXACT;
                 Pattern regex = null;
-                if ("REGEX".equals(matchType)) {
+                if (MATCH_TYPE_REGEX.equals(matchType)) {
                     try {
-                        regex = Pattern.compile(rule.getPattern(), Pattern.CASE_INSENSITIVE);
+                        regex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
                     } catch (Exception ignored) {
                         continue;
                     }
                 }
-                cached.add(new CachedRule(matchType, rule.getPattern(), regex));
+                cached.add(new CachedRule(matchType, pattern, pattern.toLowerCase(Locale.ROOT), regex));
             }
             snapshot = new CacheSnapshot(cached, now);
         }
@@ -57,19 +70,27 @@ public class UaBlacklistService {
             return false;
         }
         ensureLoaded();
-        for (CachedRule r : snapshot.rules()) {
+        CacheSnapshot current = snapshot;
+        String userAgentLower = null;
+        for (CachedRule r : current.rules()) {
             switch (r.matchType()) {
-                case "EXACT" -> {
-                    if (userAgent.equalsIgnoreCase(r.pattern())) {
+                case MATCH_TYPE_EXACT -> {
+                    if (userAgentLower == null) {
+                        userAgentLower = userAgent.toLowerCase(Locale.ROOT);
+                    }
+                    if (userAgentLower.equals(r.normalizedPattern())) {
                         return true;
                     }
                 }
-                case "PREFIX" -> {
-                    if (userAgent.regionMatches(true, 0, r.pattern(), 0, r.pattern().length())) {
+                case MATCH_TYPE_PREFIX -> {
+                    if (userAgentLower == null) {
+                        userAgentLower = userAgent.toLowerCase(Locale.ROOT);
+                    }
+                    if (userAgentLower.startsWith(r.normalizedPattern())) {
                         return true;
                     }
                 }
-                case "REGEX" -> {
+                case MATCH_TYPE_REGEX -> {
                     if (r.regex() != null && r.regex().matcher(userAgent).find()) {
                         return true;
                     }
@@ -84,6 +105,6 @@ public class UaBlacklistService {
     private record CacheSnapshot(List<CachedRule> rules, long loadedAtMs) {
     }
 
-    private record CachedRule(String matchType, String pattern, Pattern regex) {
+    private record CachedRule(String matchType, String pattern, String normalizedPattern, Pattern regex) {
     }
 }

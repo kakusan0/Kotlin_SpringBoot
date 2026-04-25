@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.mapper.TimesheetEntryMapper;
 import com.example.demo.model.TimesheetEntry;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -9,57 +11,51 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 public class TimesheetSummaryService {
 
-    private static final long TTL_MILLIS = 60_000L;
-
     private final TimesheetEntryMapper timesheetEntryMapper;
-    private final ConcurrentHashMap<String, Cached> cache = new ConcurrentHashMap<>();
-
+    private final Cache<String, Summary> cache = Caffeine.newBuilder()
+            .expireAfterWrite(60, TimeUnit.SECONDS)
+            .maximumSize(1_000)
+            .build();
 
     private String key(String user, YearMonth ym) {
         return user + ":" + ym;
     }
 
     public Summary summarize(String userName, YearMonth ym) {
-        String k = key(userName, ym);
-        long now = System.currentTimeMillis();
-        Cached cached = cache.get(k);
-        if (cached != null && now - cached.cachedAtMillis() < TTL_MILLIS) {
-            return cached.summary();
-        }
-        LocalDate from = ym.atDay(1);
-        LocalDate to = ym.atEndOfMonth();
-        List<TimesheetEntry> list = timesheetEntryMapper.selectByUserAndRange(userName, from, to);
-        int totalWorking = 0;
-        int totalBreak = 0;
-        int countedDays = 0;
-        for (TimesheetEntry e : list) {
-            Integer w = e.getWorkingMinutes();
-            Integer b = e.getBreakMinutes();
-            if (w != null) {
-                totalWorking += w;
+        return cache.get(key(userName, ym), k -> {
+            LocalDate from = ym.atDay(1);
+            LocalDate to = ym.atEndOfMonth();
+            List<TimesheetEntry> list = timesheetEntryMapper.selectByUserAndRange(userName, from, to);
+            int totalWorking = 0;
+            int totalBreak = 0;
+            int countedDays = 0;
+            for (TimesheetEntry e : list) {
+                Integer w = e.getWorkingMinutes();
+                Integer b = e.getBreakMinutes();
+                if (w != null) {
+                    totalWorking += w;
+                }
+                if (b != null) {
+                    totalBreak += b;
+                }
+                if (e.getStartTime() != null || e.getEndTime() != null) {
+                    countedDays++;
+                }
             }
-            if (b != null) {
-                totalBreak += b;
-            }
-            if (e.getStartTime() != null || e.getEndTime() != null) {
-                countedDays++;
-            }
-        }
-        double avg = countedDays > 0 ? (double) totalWorking / countedDays : 0.0;
-        Summary summary = new Summary(userName, ym.toString(), totalWorking, totalBreak, avg, countedDays);
-        cache.put(k, new Cached(summary, now));
-        return summary;
+            double avg = countedDays > 0 ? (double) totalWorking / countedDays : 0.0;
+            return new Summary(userName, ym.toString(), totalWorking, totalBreak, avg, countedDays);
+        });
     }
 
     public void invalidate(String userName, LocalDate date) {
         YearMonth ym = YearMonth.from(date);
-        cache.remove(key(userName, ym));
+        cache.invalidate(key(userName, ym));
     }
 
     @EventListener
@@ -73,10 +69,7 @@ public class TimesheetSummaryService {
             int totalWorkingMinutes,
             int totalBreakMinutes,
             double averageWorkingMinutes,
-            int daysCount
-    ) {
+            int daysCount) {
     }
 
-    private record Cached(Summary summary, long cachedAtMillis) {
-    }
 }
