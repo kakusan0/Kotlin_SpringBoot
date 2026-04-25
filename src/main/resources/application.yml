@@ -55,6 +55,7 @@ management:
         include: health,info
 
 app:
+  asset-version: "@app.asset.version@"
   login:
     rate-limit:
       capacity: 5

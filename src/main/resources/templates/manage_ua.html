@@ -85,6 +85,6 @@
     </div>
 </main>
 
-<script defer th:src="@{/js/ua-manage.js}"></script>
+<script defer th:src="@{/js/ua-manage.js(v=${@environment.getProperty('app.asset-version')})}"></script>
 </body>
 </html>

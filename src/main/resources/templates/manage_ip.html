@@ -144,6 +144,6 @@
     </div>
 </main>
 
-<script defer th:src="@{/js/ip-manage.js}"></script>
+<script defer th:src="@{/js/ip-manage.js(v=${@environment.getProperty('app.asset-version')})}"></script>
 </body>
 </html>

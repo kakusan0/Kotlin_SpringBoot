@@ -53,7 +53,7 @@
 </div>
 <script src="/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
         th:src="@{/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js}"></script>
-<script defer th:src="@{/js/login.js}"></script>
+<script defer th:src="@{/js/login.js(v=${@environment.getProperty('app.asset-version')})}"></script>
 <script>
     // パスキーログイン処理（ユーザー名なし対応）
     document.addEventListener('DOMContentLoaded', () => {

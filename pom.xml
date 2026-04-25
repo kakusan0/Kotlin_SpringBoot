@@ -20,6 +20,8 @@
         <mainClass>com.example.demo.DemoApplication</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
+        <app.asset.version>${project.version}-${maven.build.timestamp}</app.asset.version>
         <spring-cloud.version>2025.1.1</spring-cloud.version>
         <mybatis-spring-boot.version>3.0.5</mybatis-spring-boot.version>
         <webauthn4j.version>0.31.1.RELEASE</webauthn4j.version>

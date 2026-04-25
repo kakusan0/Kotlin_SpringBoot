@@ -129,6 +129,19 @@
         FULL: /^(\d\d):(\d\d)(?::(\d\d))?$/
     };
 
+    const NOTE_RULES = {
+        HOLIDAY_NOTES: ['休日', '祝日', '年休', '会社休', '対象外', '振替休日', '特別休暇', '欠勤'],
+        CLEAR_NOTES: ['休日', '祝日', '会社休', '対象外'],
+        WORKING_NOTES: ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'],
+        LOCATION_ENABLED_NOTES: ['午前休', '午後休', '現場休'],
+        WORKING_IRREGULARS: ['振替出勤', '休日出勤']
+    };
+
+    const isHolidayNote = (note) => NOTE_RULES.HOLIDAY_NOTES.includes(note);
+    const isClearNote = (note) => NOTE_RULES.CLEAR_NOTES.includes(note);
+    const isWorkingNote = (note) => NOTE_RULES.WORKING_NOTES.includes(note);
+    const isWorkingIrregularType = (type) => NOTE_RULES.WORKING_IRREGULARS.includes(type);
+
     // タッチ端末判定
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
 
@@ -328,11 +341,10 @@
         const iso = row.querySelector('.date-cell')?.dataset?.iso;
         const isWeekend = iso ? isWeekendIso(iso) : false;
         const isHoliday = row.dataset.isHoliday === '1';
-        const holidayNotes = ['休日', '祝日', '年休', '会社休', '対象外', '振替休日', '特別休暇', '欠勤'];
-        const isHolidayNote = holidayNotes.includes(note);
+        const holidayNote = isHolidayNote(note);
 
         // 休日系の場合は警告を解除
-        if (isWeekend || isHoliday || isHolidayNote) {
+        if (isWeekend || isHoliday || holidayNote) {
             noteCell?.classList.remove('blink-warning');
             startCell.classList.remove('incomplete-warning');
             endCell.classList.remove('incomplete-warning');
@@ -1028,11 +1040,7 @@
                 const isHolidayOrWeekend = isWeekendDay || isHolidayDay;
 
                 // 休日・祝日・年休などの場合は入力値をクリアして無効化
-                const clearNotes = ['休日', '祝日', '会社休', '対象外'];
-                // 勤務系の備考（土日祝でも入力可能）
-                const workingNotes = ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'];
-
-                if (clearNotes.includes(noteValue)) {
+                if (isClearNote(noteValue)) {
                     // 完全休みの備考の場合は入力値をクリアして無効化
                     const startCell = row.querySelector('.time-cell[data-type="start"]');
                     const endCell = row.querySelector('.time-cell[data-type="end"]');
@@ -1050,7 +1058,7 @@
 
                     // 入力を無効化
                     disableRowInput(row, true, noteValue);
-                } else if (isHolidayOrWeekend && !workingNotes.includes(noteValue)) {
+                } else if (isHolidayOrWeekend && !isWorkingNote(noteValue)) {
                     // 土日祝で勤務系備考がない場合（「---」含む）は無効化（クリアはしない）
                     disableRowInput(row, true, noteValue);
                 } else {
@@ -1094,10 +1102,8 @@
         // 土日祝でも午前休・午後休・現場休、または変則勤務（振替出勤・休日出勤）の場合は有効化
         const locationBtn = row.querySelector('.work-location-btn');
         if (locationBtn) {
-            const workingNotes = ['午前休', '午後休', '現場休'];
             const irregularType = row.dataset.irregularType || '';
-            const workingIrregulars = ['振替出勤', '休日出勤'];
-            if (workingNotes.includes(noteValue) || workingIrregulars.includes(irregularType)) {
+            if (NOTE_RULES.LOCATION_ENABLED_NOTES.includes(noteValue) || isWorkingIrregularType(irregularType)) {
                 // 勤務系の備考または変則勤務の場合は出社区分を有効化
                 locationBtn.disabled = false;
             } else {
@@ -1262,14 +1268,13 @@
     }
 
     function rowHasWorkingIrregular(row) {
-        const workingIrregulars = ['振替出勤', '休日出勤'];
         const type = row.dataset.irregularType || '';
-        if (workingIrregulars.includes(type)) return true;
+        if (isWorkingIrregularType(type)) return true;
         if (row.dataset.irregularData) {
             try {
                 const items = JSON.parse(row.dataset.irregularData);
                 if (Array.isArray(items)) {
-                    return items.some(item => workingIrregulars.includes(item.type));
+                    return items.some(item => isWorkingIrregularType(item.type));
                 }
             } catch (e) {
                 return false;
@@ -1601,21 +1606,16 @@
                     const isHolidayOrWeekend = isWeekendDay || isHolidayDay;
 
                     // 備考が休日系の場合は入力を無効化
-                    const clearNotes = ['休日', '祝日', '会社休', '対象外'];
-                    // 勤務系の備考（土日祝でも入力可能）
-                    const workingNotes = ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'];
-                    // 変則勤務で勤務扱いになるもの
-                    const workingIrregulars = ['振替出勤', '休日出勤'];
-                    const hasWorkingIrregular = irregularItems.some(item => workingIrregulars.includes(item.type));
+                    const hasWorkingIrregular = irregularItems.some(item => isWorkingIrregularType(item.type));
 
-                    if (clearNotes.includes(noteValue) && !hasWorkingIrregular) {
+                    if (isClearNote(noteValue) && !hasWorkingIrregular) {
                         // 完全休みの備考（変則勤務で勤務扱いでない場合）
                         disableRowInput(row, true, noteValue);
                     } else if (isHolidayOrWeekend && hasWorkingIrregular) {
                         // 土日祝で変則勤務が振替出勤・休日出勤の場合は有効化
                         setRowEditable(row, true);
                         disableRowInput(row, false, noteValue);
-                    } else if (isHolidayOrWeekend && !workingNotes.includes(noteValue) && !hasWorkingIrregular) {
+                    } else if (isHolidayOrWeekend && !isWorkingNote(noteValue) && !hasWorkingIrregular) {
                         // 土日祝で勤務系備考がない場合（「---」含む）は無効化
                         disableRowInput(row, true, noteValue);
                     } else {
@@ -2564,8 +2564,7 @@
                 const isHolidayOrWeekend = isWeekendDay || isHolidayDay;
 
                 // 土日祝かつ振替出勤・休日出勤の場合
-                const workingIrregulars = ['振替出勤', '休日出勤'];
-                const hasWorkingIrregular = irregularItems.some(item => workingIrregulars.includes(item.type));
+                const hasWorkingIrregular = irregularItems.some(item => isWorkingIrregularType(item.type));
 
                 if (isHolidayOrWeekend && hasWorkingIrregular) {
                     // 勤務時間等を活性化
@@ -2587,8 +2586,7 @@
                     // 土日祝で振替出勤・休日出勤以外の場合は無効化（備考に依存）
                     const noteSelect = currentIrregularRow.querySelector('.note-select');
                     const noteValue = noteSelect?.value || '';
-                    const workingNotes = ['午前休', '午後休', '現場休', '休日出勤', '振替出勤'];
-                    if (!workingNotes.includes(noteValue)) {
+                    if (!isWorkingNote(noteValue)) {
                         disableRowInput(currentIrregularRow, true, noteValue);
                     }
                 }
