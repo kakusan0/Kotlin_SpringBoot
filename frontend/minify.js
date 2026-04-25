@@ -7,6 +7,7 @@ const os = require("os");
 
 const srcDir = path.resolve(__dirname, "js");
 const outDir = path.resolve(__dirname, "../src/main/resources/static/js");
+const force = process.argv.includes("--force") || process.env.FORCE_MINIFY === "1";
 
 const MAX_WORKERS = Math.max(1, Math.min(os.cpus().length, 8));
 
@@ -31,8 +32,8 @@ const MAX_WORKERS = Math.max(1, Math.min(os.cpus().length, 8));
                     fs.stat(outputPath).catch(() => null)
                 ]);
 
-                // Skip unchanged files to avoid expensive obfuscation on every build.
-                if (outputStat && outputStat.mtimeMs >= inputStat.mtimeMs) {
+                // Force mode: rebuild every JS regardless of mtime.
+                if (!force && outputStat && outputStat.mtimeMs >= inputStat.mtimeMs) {
                     console.log(`Skip (up-to-date): ${file}`);
                     continue;
                 }

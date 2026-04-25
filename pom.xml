@@ -346,7 +346,7 @@
 
                     <execution>
                         <id>npm-install</id>
-                        <phase>prepare-package</phase>
+                        <phase>generate-resources</phase>
                         <goals>
                             <goal>npm</goal>
                         </goals>
@@ -358,13 +358,13 @@
 
                     <execution>
                         <id>npm-run-obfuscate-minify</id>
-                        <phase>prepare-package</phase>
+                        <phase>generate-resources</phase>
                         <goals>
                             <goal>npm</goal>
                         </goals>
                         <configuration>
                             <skip>${skip.frontend}</skip>
-                            <arguments>run obfuscate-minify</arguments>
+                            <arguments>run obfuscate-minify -- --force</arguments>
                         </configuration>
                     </execution>
                 </executions>
