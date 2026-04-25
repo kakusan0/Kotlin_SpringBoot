@@ -113,6 +113,7 @@
                                         <label class="form-label small mb-0" for="employeeNumber">社員番号</label>
                                         <input class="form-control form-control-sm" id="employeeNumber"
                                                inputmode="numeric"
+                                               maxlength="20"
                                                pattern="\\d*" placeholder="数字のみ" type="text">
                                     </div>
                                     <div class="col-6 col-md-4">
@@ -122,6 +123,7 @@
                                     <div class="col-12 col-md-4">
                                         <label class="form-label small mb-0" for="displayName">氏名</label>
                                         <input class="form-control form-control-sm" id="displayName"
+                                               maxlength="128"
                                                placeholder="氏名を入力"
                                                type="text">
                                     </div>
@@ -362,11 +364,11 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label" for="lateTime">遅刻時間</label>
+                        <label class="form-label" for="lateTimeInput">遅刻時間</label>
                         <input class="form-control" id="lateTimeInput" placeholder="0:30" type="time">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="lateDesc">説明</label>
+                        <label class="form-label" for="lateDescInput">説明</label>
                         <textarea class="form-control" id="lateDescInput" placeholder="遅刻の理由を入力..."
                                   rows="3"></textarea>
                     </div>
@@ -390,11 +392,11 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label" for="earlyTime">早退時間</label>
+                        <label class="form-label" for="earlyTimeInput">早退時間</label>
                         <input class="form-control" id="earlyTimeInput" placeholder="1:00" type="time">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="earlyDesc">説明</label>
+                        <label class="form-label" for="earlyDescInput">説明</label>
                         <textarea class="form-control" id="earlyDescInput" placeholder="早退の理由を入力..."
                                   rows="3"></textarea>
                     </div>

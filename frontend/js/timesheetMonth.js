@@ -1318,6 +1318,7 @@
             const tr = document.createElement('tr');
             if (iso === new Date().toISOString().substring(0, 10)) tr.classList.add('table-primary');
             const isWeekend = isWeekendIso(iso);
+            tr.dataset.isWeekend = isWeekend ? '1' : '0';
             tr.innerHTML = `<td class="date-cell" data-iso="${iso}"><span>${dayLabel(date)}</span><span class="holiday" style="display:none;"></span></td>` +
                 `<td class="weekday-cell">${shortDay(date)}</td>` +
                 `<td class="workday-cell"><button class="btn btn-sm btn-outline-secondary workday-btn" type="button" disabled>非稼働</button></td>` +
@@ -1358,6 +1359,7 @@
                 noteSelect.value = '休日';
                 // 休日の場合は入力を無効化
                 disableRowInput(tr, true);
+                checkRowWarnings(tr);
             }
 
             applyRowShade(tr);
@@ -1384,6 +1386,7 @@
                                 noteSelect.value = '祝日';
                                 // 祝日の場合は入力を無効化
                                 disableRowInput(tr, true);
+                                checkRowWarnings(tr);
                             }
 
                             applyRowShade(tr);
@@ -1435,6 +1438,8 @@
                 try {
                     const isWeekend = isWeekendIso(iso);
                     const isHoliday = !!holidayMap[iso];
+                    row.dataset.isWeekend = isWeekend ? '1' : '0';
+                    row.dataset.isHoliday = isHoliday ? '1' : '0';
 
                     if (!data) {
                         // clear cells
@@ -1459,9 +1464,20 @@
                         const wd = shortDay(date);
                         const wdEl = row.querySelector('.weekday-cell');
                         if (wdEl) wdEl.textContent = wd;
+                        const noteSelect = row.querySelector('.note-select');
+                        if (noteSelect) {
+                            noteSelect.value = isHoliday ? '祝日' : (isWeekend ? '休日' : '');
+                        }
+                        if (isHoliday || isWeekend) {
+                            disableRowInput(row, true, noteSelect ? noteSelect.value : '');
+                        } else {
+                            setRowEditable(row, true);
+                            disableRowInput(row, false, noteSelect ? noteSelect.value : '');
+                        }
                         // ensure shading according to weekend/holiday
                         applyRowShade(row);
-                        updateWorkingDayButton(row);
+                        updateWorkingDayButton(row, noteSelect ? noteSelect.value : null);
+                        checkRowWarnings(row);
                         return;
                     }
 
@@ -2153,6 +2169,37 @@
         }
     }
 
+    const USER_SETTINGS_LIMITS = {
+        employeeNumber: 20,
+        displayName: 128
+    };
+
+    function validateUserSettingsPayload(payload) {
+        if (payload.employeeNumber && !/^\d{1,20}$/.test(payload.employeeNumber)) {
+            return '社員番号は数字20桁以内で入力してください';
+        }
+        if (payload.displayName && payload.displayName.length > USER_SETTINGS_LIMITS.displayName) {
+            return '氏名は128文字以内で入力してください';
+        }
+        return '';
+    }
+
+    async function readErrorMessage(resp, fallback) {
+        try {
+            const contentType = resp.headers.get('Content-Type') || '';
+            if (contentType.includes('application/json')) {
+                const body = await resp.json();
+                if (body?.message) return body.message;
+            } else {
+                const body = await resp.text();
+                if (body) return body;
+            }
+        } catch (err) {
+            console.warn('Failed to parse error response:', err);
+        }
+        return fallback;
+    }
+
     async function loadUserSettings() {
         if (!companyAffiliation && !branchOffice && !section && !workGroup &&
             !employeeNumber && !siteRegularHours && !displayName) return;
@@ -2184,6 +2231,11 @@
             siteRegularHours: siteRegularHours?.value || '',
             displayName: displayName?.value || ''
         };
+        const validationMessage = validateUserSettingsPayload(payload);
+        if (validationMessage) {
+            setUserSettingsStatus(validationMessage, true);
+            return;
+        }
         const csrf = getCsrf();
         const headers = {'Content-Type': 'application/json'};
         if (csrf) headers[csrf.header] = csrf.token;
@@ -2195,7 +2247,8 @@
                 body: JSON.stringify(payload)
             });
             if (!resp.ok) {
-                setUserSettingsStatus('保存に失敗しました', true);
+                const message = await readErrorMessage(resp, '保存に失敗しました');
+                setUserSettingsStatus(message, true);
                 return;
             }
             setUserSettingsStatus('保存しました');
@@ -2207,8 +2260,15 @@
 
     if (employeeNumber) {
         employeeNumber.addEventListener('input', () => {
-            const sanitized = employeeNumber.value.replace(/\D/g, '');
+            const sanitized = employeeNumber.value.replace(/\D/g, '').slice(0, USER_SETTINGS_LIMITS.employeeNumber);
             if (employeeNumber.value !== sanitized) employeeNumber.value = sanitized;
+        });
+    }
+
+    if (displayName) {
+        displayName.addEventListener('input', () => {
+            const trimmed = displayName.value.slice(0, USER_SETTINGS_LIMITS.displayName);
+            if (displayName.value !== trimmed) displayName.value = trimmed;
         });
     }
 
