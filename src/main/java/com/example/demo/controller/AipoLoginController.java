@@ -27,11 +27,11 @@ public class AipoLoginController {
     public ResponseEntity<AipoLoginResult> login(Authentication auth, @Valid @RequestBody AipoLoginRequest request) {
         AipoLoginResult result = aipoLoginService.login(
                 auth.getName(),
-                request.getUsername(),
-                request.getPassword(),
-                request.getYearMonth(),
+                request.username(),
+                request.password(),
+                request.yearMonth(),
                 null,
-                request.isAutoSubmit()
+                request.autoSubmit()
         );
         if (result.success()) {
             return ResponseEntity.ok(result);
@@ -58,7 +58,7 @@ public class AipoLoginController {
 
     @PostMapping("/submit")
     public ResponseEntity<Map<String, Object>> submit(Authentication auth, @Valid @RequestBody AipoSubmitRequest request) {
-        Map.Entry<Boolean, String> result = aipoLoginService.submitRequest(auth.getName(), request.getSubmitButtonId());
+        Map.Entry<Boolean, String> result = aipoLoginService.submitRequest(auth.getName(), request.submitButtonId());
         Map<String, Object> body = new HashMap<>();
         body.put("success", result.getKey());
         body.put("message", result.getValue());

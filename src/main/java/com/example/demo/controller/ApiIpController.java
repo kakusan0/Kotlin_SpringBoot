@@ -46,8 +46,8 @@ public class ApiIpController {
 
     @PostMapping("/blacklist")
     public ResponseEntity<Void> addToBlacklist(@Valid @RequestBody IpBlacklistRequest req, HttpServletRequest httpReq) {
-        blacklistIpMapper.upsertIncrementTimes(req.getIpAddress());
-        whitelistIpMapper.markBlacklistedAndIncrement(req.getIpAddress());
+        blacklistIpMapper.upsertIncrementTimes(req.ipAddress());
+        whitelistIpMapper.markBlacklistedAndIncrement(req.ipAddress());
 
         try {
             Object attr = httpReq.getAttribute("requestId");
@@ -56,7 +56,7 @@ public class ApiIpController {
                     + (httpReq.getQueryString() != null ? "?" + httpReq.getQueryString() : "");
             blacklistEventService.recordEvent(
                     BlacklistEventFactory.create(
-                            req.getIpAddress(),
+                            req.ipAddress(),
                             "MANUAL",
                             "API",
                             requestId,

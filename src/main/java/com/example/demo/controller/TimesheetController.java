@@ -303,7 +303,7 @@ public class TimesheetController {
 
     @PostMapping("/add-note")
     public TimesheetEntry addNote(Authentication auth, @Valid @RequestBody TimesheetAddNoteRequest body) {
-        TimesheetEntry entry = timesheetService.addNoteToEntry(auth.getName(), body.getNote());
+        TimesheetEntry entry = timesheetService.addNoteToEntry(auth.getName(), body.note());
         broadcast("add-note", entry, auth.getName());
         return entry;
     }

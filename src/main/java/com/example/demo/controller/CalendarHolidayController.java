@@ -53,7 +53,7 @@ public class CalendarHolidayController {
             @Valid @RequestBody AddHolidayRequest body
     ) {
         try {
-            CalendarHoliday holiday = calendarHolidayService.addHoliday(body.getDate(), body.getName());
+            CalendarHoliday holiday = calendarHolidayService.addHoliday(body.date(), body.name());
             Map<String, Object> resp = new HashMap<>();
             resp.put("success", true);
             resp.put("holiday", holiday);

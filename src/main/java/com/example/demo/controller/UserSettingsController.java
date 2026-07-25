@@ -29,24 +29,24 @@ public class UserSettingsController {
     public UserSettings saveSettings(Authentication auth, @Valid @RequestBody SaveUserSettingsRequest body) {
         UserSettings settings = new UserSettings();
         settings.setUserName(auth.getName());
-        String companyAffiliation = body.getCompanyAffiliation();
+        String companyAffiliation = body.companyAffiliation();
         if (companyAffiliation != null && !companyAffiliation.isBlank())
             settings.setCompanyAffiliation(companyAffiliation);
-        if (body.getSection() != null) {
-            settings.setSection(body.getSection());
+        if (body.section() != null) {
+            settings.setSection(body.section());
         }
-        String branchOffice = body.getBranchOffice();
+        String branchOffice = body.branchOffice();
         if (branchOffice != null && !branchOffice.isBlank()) settings.setBranchOffice(branchOffice);
-        if (body.getWorkGroup() != null) {
-            settings.setWorkGroup(body.getWorkGroup());
+        if (body.workGroup() != null) {
+            settings.setWorkGroup(body.workGroup());
         }
-        String employeeNumber = body.getEmployeeNumber();
+        String employeeNumber = body.employeeNumber();
         if (employeeNumber != null && !employeeNumber.isBlank()) settings.setEmployeeNumber(employeeNumber);
-        LocalTime siteRegularHours = body.getSiteRegularHours();
+        LocalTime siteRegularHours = body.siteRegularHours();
         if (siteRegularHours != null) {
             settings.setSiteRegularHours(siteRegularHours);
         }
-        String displayName = body.getDisplayName();
+        String displayName = body.displayName();
         settings.setDisplayName(displayName != null && !displayName.isBlank() ? displayName : auth.getName());
         return userSettingsService.saveOrUpdate(settings);
     }
