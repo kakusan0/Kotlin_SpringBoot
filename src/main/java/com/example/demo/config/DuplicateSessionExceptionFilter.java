@@ -29,22 +29,22 @@ public class DuplicateSessionExceptionFilter implements Filter {
             chain.doFilter(request, response);
         } catch (Exception ex) {
             if (isDuplicateKeyException(ex)) {
-                HttpServletRequest req = (request instanceof HttpServletRequest) ? (HttpServletRequest) request : null;
-                HttpServletResponse res = (response instanceof HttpServletResponse) ? (HttpServletResponse) response : null;
+                HttpServletRequest req = (request instanceof HttpServletRequest r) ? r : null;
+                HttpServletResponse res = (response instanceof HttpServletResponse r) ? r : null;
                 try {
                     String path = req != null ? req.getContextPath() : "";
                     if (res != null) {
                         res.sendRedirect(path + "/login");
                         return;
                     }
-                } catch (Exception ignored) {
+                } catch (Exception _) {
                 }
             }
-            if (ex instanceof ServletException) {
-                throw (ServletException) ex;
+            if (ex instanceof ServletException se) {
+                throw se;
             }
-            if (ex instanceof IOException) {
-                throw (IOException) ex;
+            if (ex instanceof IOException ioe) {
+                throw ioe;
             }
             throw new ServletException(ex);
         }

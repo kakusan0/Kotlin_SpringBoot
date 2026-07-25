@@ -51,7 +51,7 @@ public class ApiIpController {
 
         try {
             Object attr = httpReq.getAttribute("requestId");
-            String requestId = attr instanceof String ? (String) attr : UUID.randomUUID().toString();
+            String requestId = (attr instanceof String s) ? s : UUID.randomUUID().toString();
             String path = httpReq.getRequestURI()
                     + (httpReq.getQueryString() != null ? "?" + httpReq.getQueryString() : "");
             blacklistEventService.recordEvent(
@@ -66,7 +66,7 @@ public class ApiIpController {
                             httpReq.getHeader("User-Agent"),
                             httpReq.getHeader("Referer"),
                             null));
-        } catch (Exception ignored) {
+        } catch (Exception _) {
         }
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }

@@ -21,6 +21,8 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
+import static java.lang.StringTemplate.STR;
+
 @RestController
 @RequestMapping("/timesheet/report")
 @Validated
@@ -46,8 +48,8 @@ public class TimesheetReportController {
         byte[] bytes = reportService.generateXlsxBytes(username, from, to);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
-        String safeNameXlsx = URLEncoder.encode("timesheet_" + username + "_" + from + "_to_" + to + ".xlsx", StandardCharsets.UTF_8);
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + safeNameXlsx);
+        String safeNameXlsx = URLEncoder.encode(STR."timesheet_\{username}_\{from}_to_\{to}.xlsx", StandardCharsets.UTF_8);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, STR."attachment; filename*=UTF-8''\{safeNameXlsx}");
         return ResponseEntity.ok().headers(headers).body(bytes);
     }
 
@@ -66,8 +68,8 @@ public class TimesheetReportController {
         byte[] bytes = reportService.generatePdfBytes(username, from, to);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
-        String safeNamePdf = URLEncoder.encode("timesheet_" + username + "_" + from + "_to_" + to + ".pdf", StandardCharsets.UTF_8);
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + safeNamePdf);
+        String safeNamePdf = URLEncoder.encode(STR."timesheet_\{username}_\{from}_to_\{to}.pdf", StandardCharsets.UTF_8);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, STR."attachment; filename*=UTF-8''\{safeNamePdf}");
         return ResponseEntity.ok().headers(headers).body(bytes);
     }
 
@@ -86,27 +88,29 @@ public class TimesheetReportController {
         }
         long days = ChronoUnit.DAYS.between(from, to) + 1;
         if (days <= 31) {
+            final byte[] bytes;
+            final MediaType contentType;
+            final String filename;
             switch (format.toLowerCase()) {
                 case "xlsx" -> {
-                    byte[] bytes = reportService.generateXlsxBytes(username, from, to);
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
-                    String safeName = URLEncoder.encode("timesheet_" + username + "_" + from + "_to_" + to + ".xlsx", StandardCharsets.UTF_8);
-                    headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + safeName);
-                    return ResponseEntity.ok().headers(headers).body(bytes);
+                    bytes = reportService.generateXlsxBytes(username, from, to);
+                    contentType = MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                    filename = STR."timesheet_\{username}_\{from}_to_\{to}.xlsx";
                 }
                 case "pdf" -> {
-                    byte[] bytes = reportService.generatePdfBytes(username, from, to);
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setContentType(MediaType.APPLICATION_PDF);
-                    String safeName = URLEncoder.encode("timesheet_" + username + "_" + from + "_to_" + to + ".pdf", StandardCharsets.UTF_8);
-                    headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + safeName);
-                    return ResponseEntity.ok().headers(headers).body(bytes);
+                    bytes = reportService.generatePdfBytes(username, from, to);
+                    contentType = MediaType.APPLICATION_PDF;
+                    filename = STR."timesheet_\{username}_\{from}_to_\{to}.pdf";
                 }
                 default -> {
                     return ResponseEntity.badRequest().body("unsupported format");
                 }
             }
+            String safeName = URLEncoder.encode(filename, StandardCharsets.UTF_8);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(contentType);
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, STR."attachment; filename*=UTF-8''\{safeName}");
+            return ResponseEntity.ok().headers(headers).body(bytes);
         }
         Long jobId = reportJobService.submitJob(username, from, to, format);
         return ResponseEntity.accepted().body(Map.of("jobId", jobId));
@@ -176,10 +180,10 @@ public class TimesheetReportController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
         String safeNameXlsx = URLEncoder.encode(
-                from.getYear() + "年" + String.format("%02d", from.getMonthValue()) + "月度UNISS勤務表(" + username + ").xlsx",
+                STR."\{from.getYear()}年\{String.format("%02d", from.getMonthValue())}月度UNISS勤務表(\{username}).xlsx",
                 StandardCharsets.UTF_8
         );
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + safeNameXlsx);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, STR."attachment; filename*=UTF-8''\{safeNameXlsx}");
         return ResponseEntity.ok().headers(headers).body(bytes);
     }
 }

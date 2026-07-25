@@ -433,8 +433,7 @@ public class AipoLoginService {
                                     log.info("Generating UNISS timesheet for {}: {} to {}", username, from, to);
                                     byte[] xlsxBytes = reportService.generateUnissXlsxBytes(username, from, to);
 
-                                    String fileName = from.getYear() + "年" + String.format("%02d", from.getMonthValue()) +
-                                            "月度UNISS勤務表(" + username + ").xlsx";
+                                    String fileName = STR."\{from.getYear()}年\{String.format("%02d", from.getMonthValue())}月度UNISS勤務表(\{username}).xlsx";
                                     File tempDir = new File(System.getProperty("java.io.tmpdir"));
                                     tempFile = new File(tempDir, fileName);
                                     java.nio.file.Files.write(tempFile.toPath(), xlsxBytes);

@@ -16,7 +16,7 @@
     <description>Demo project for Spring Boot with MyBatis</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>21</java.version>
         <mainClass>com.example.demo.DemoApplication</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -308,6 +308,9 @@
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
                     <release>${java.version}</release>
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                    </compilerArgs>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
