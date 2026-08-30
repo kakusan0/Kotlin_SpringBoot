@@ -7,10 +7,6 @@ spring:
       maximum-pool-size: 20
   flyway:
     clean-disabled: true
-  devtools:
-    restart:
-      additional-paths: src/main/resources/templates,src/main/resources/static
-      exclude: logs/**,tmp/**,**/*Test.class,**/*.log
   data:
     redis:
       host: localhost
