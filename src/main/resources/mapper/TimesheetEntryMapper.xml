@@ -32,31 +32,37 @@
         <result property="paidLeave" column="paid_leave"/>
     </resultMap>
 
+    <sql id="BaseColumns">
+        id, work_date, user_name, start_time, end_time, note, created_at, updated_at,
+        break_minutes, duration_minutes, working_minutes, version, holiday_work,
+        work_location, irregular_work_type, irregular_work_desc, irregular_work_data,
+        late_time, late_desc, early_time, early_desc, free_note, paid_leave
+    </sql>
+
+    <sql id="UpdateColumns">
+        start_time = #{startTime},
+        end_time = #{endTime},
+        note = #{note, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler},
+        updated_at = NOW(),
+        break_minutes = #{breakMinutes},
+        duration_minutes = #{durationMinutes},
+        working_minutes = #{workingMinutes},
+        version = version + 1,
+        holiday_work = #{holidayWork},
+        work_location = #{workLocation},
+        irregular_work_type = #{irregularWorkType},
+        irregular_work_desc = #{irregularWorkDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler},
+        irregular_work_data = #{irregularWorkData},
+        late_time = #{lateTime},
+        late_desc = #{lateDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler},
+        early_time = #{earlyTime},
+        early_desc = #{earlyDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler},
+        free_note = #{freeNote, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler},
+        paid_leave = #{paidLeave}
+    </sql>
+
     <select id="selectByUserAndDate" resultMap="TimesheetEntryResult">
-        SELECT
-            id
-            , work_date
-            , user_name
-            , start_time
-            , end_time
-            , note
-            , created_at
-            , updated_at
-            , break_minutes
-            , duration_minutes
-            , working_minutes
-            , version
-            , holiday_work
-            , work_location
-            , irregular_work_type
-            , irregular_work_desc
-            , irregular_work_data
-            , late_time
-            , late_desc
-            , early_time
-            , early_desc
-            , free_note
-            , paid_leave
+        SELECT <include refid="BaseColumns"/>
         FROM
             timesheet_entries
         WHERE
@@ -65,30 +71,7 @@
     </select>
 
     <select id="selectByUserAndRange" resultMap="TimesheetEntryResult">
-        SELECT
-            id
-            , work_date
-            , user_name
-            , start_time
-            , end_time
-            , note
-            , created_at
-            , updated_at
-            , break_minutes
-            , duration_minutes
-            , working_minutes
-            , version
-            , holiday_work
-            , work_location
-            , irregular_work_type
-            , irregular_work_desc
-            , irregular_work_data
-            , late_time
-            , late_desc
-            , early_time
-            , early_desc
-            , free_note
-            , paid_leave
+        SELECT <include refid="BaseColumns"/>
         FROM
             timesheet_entries
         WHERE
@@ -119,25 +102,7 @@
     <update id="updateTimes" parameterType="com.example.demo.model.TimesheetEntry">
         UPDATE timesheet_entries
         SET
-            start_time            = #{startTime}
-            , end_time            = #{endTime}
-            , note                = #{note, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , updated_at          = NOW()
-            , break_minutes       = #{breakMinutes}
-            , duration_minutes    = #{durationMinutes}
-            , working_minutes     = #{workingMinutes}
-            , version             = version + 1
-            , holiday_work        = #{holidayWork}
-            , work_location       = #{workLocation}
-            , irregular_work_type = #{irregularWorkType}
-            , irregular_work_desc = #{irregularWorkDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , irregular_work_data = #{irregularWorkData}
-            , late_time           = #{lateTime}
-            , late_desc           = #{lateDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , early_time          = #{earlyTime}
-            , early_desc          = #{earlyDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , free_note           = #{freeNote, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , paid_leave          = #{paidLeave}
+            <include refid="UpdateColumns"/>
         WHERE
             id = #{id}
             AND version = #{version}
@@ -146,25 +111,7 @@
     <update id="updateTimesForce" parameterType="com.example.demo.model.TimesheetEntry">
         UPDATE timesheet_entries
         SET
-            start_time            = #{startTime}
-            , end_time            = #{endTime}
-            , note                = #{note, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , updated_at          = NOW()
-            , break_minutes       = #{breakMinutes}
-            , duration_minutes    = #{durationMinutes}
-            , working_minutes     = #{workingMinutes}
-            , version             = version + 1
-            , holiday_work        = #{holidayWork}
-            , work_location       = #{workLocation}
-            , irregular_work_type = #{irregularWorkType}
-            , irregular_work_desc = #{irregularWorkDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , irregular_work_data = #{irregularWorkData}
-            , late_time           = #{lateTime}
-            , late_desc           = #{lateDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , early_time          = #{earlyTime}
-            , early_desc          = #{earlyDesc, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , free_note           = #{freeNote, typeHandler=com.example.demo.mybatis.EncryptedStringTypeHandler}
-            , paid_leave          = #{paidLeave}
+            <include refid="UpdateColumns"/>
         WHERE
             id = #{id}
     </update>

@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.model.TimesheetEntry;
 import com.example.demo.model.UserSettings;
+import com.example.demo.util.TextUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -81,7 +82,7 @@ public class ReportService {
     }
 
     private static String safe(String value) {
-        return value != null ? value : "";
+        return TextUtils.nullToEmpty(value);
     }
 
     private static List<String> concat(List<String> a, List<String> b, List<String> c) {

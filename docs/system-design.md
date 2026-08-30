@@ -72,6 +72,8 @@ ControllerはHTTPリクエストの受付とレスポンス変換のみを担当
 
 Serviceは業務ルールとトランザクションを担当する。Controllerから呼び出されるServiceの公開メソッドは、実行ログAOPの対象となる。
 
+長大なServiceは責務ごとに分割する。Aipo連携では、`AipoLoginService`を業務フローに集中させ、`AipoDriverFactory`をWebDriver生成、`AipoSessionStore`をユーザー別セッション管理に使用する。
+
 ### 3.3 Mapper
 
 MapperおよびMapper XMLはデータベース入出力に限定する。業務判断はServiceで行い、SQLに業務ルールを分散させない。
@@ -133,6 +135,12 @@ APIエラーは以下の形式で返す。
 | `GeoIpProperties` | `geoip` | MMDBパス、許可国コード |
 | `WebAuthnProperties` | `webauthn.rp` | RP ID、表示名、Origin |
 | `ReportProperties` | `report` | 帳票テンプレート、休日表示位置 |
+
+### 4.4 共通ユーティリティ
+
+- `AuthorizationUtils`で本人または管理者による対象ユーザーへのアクセス判定を共通化する
+- `TextUtils`でnull文字列、空白文字列および時刻変換の扱いを統一する
+- ControllerやServiceに同一の入力判定・認可判定を重複実装しない
 
 ## 5. 勤怠・備考保存仕様
 

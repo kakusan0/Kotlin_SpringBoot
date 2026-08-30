@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.model.ReportJob;
 import com.example.demo.service.ReportJobService;
 import com.example.demo.service.ReportService;
+import com.example.demo.util.AuthorizationUtils;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -41,10 +42,8 @@ public class TimesheetReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Principal principal
     ) {
-        if (!principal.getName().equals(username)) {
-            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            boolean hasAdmin = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-            if (!hasAdmin) return ResponseEntity.status(403).build();
+        if (!AuthorizationUtils.canAccessUser(principal, username)) {
+            return ResponseEntity.status(403).build();
         }
         byte[] bytes = reportService.generateXlsxBytes(username, from, to);
         HttpHeaders headers = new HttpHeaders();
@@ -61,10 +60,8 @@ public class TimesheetReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Principal principal
     ) {
-        if (!principal.getName().equals(username)) {
-            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            boolean hasAdmin = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-            if (!hasAdmin) return ResponseEntity.status(403).build();
+        if (!AuthorizationUtils.canAccessUser(principal, username)) {
+            return ResponseEntity.status(403).build();
         }
         byte[] bytes = reportService.generatePdfBytes(username, from, to);
         HttpHeaders headers = new HttpHeaders();
@@ -82,10 +79,8 @@ public class TimesheetReportController {
             @RequestParam @Pattern(regexp = "(?i)xlsx|pdf") String format,
             Principal principal
     ) {
-        if (!principal.getName().equals(username)) {
-            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            boolean hasAdmin = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-            if (!hasAdmin) return ResponseEntity.status(403).build();
+        if (!AuthorizationUtils.canAccessUser(principal, username)) {
+            return ResponseEntity.status(403).build();
         }
         long days = ChronoUnit.DAYS.between(from, to) + 1;
         if (days <= 31) {
@@ -121,10 +116,8 @@ public class TimesheetReportController {
     public ResponseEntity<Object> jobStatus(@PathVariable Long id, Principal principal) {
         ReportJob job = reportJobService.getJob(id);
         if (job == null) return ResponseEntity.notFound().build();
-        if (!principal.getName().equals(job.getUsername())) {
-            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            boolean hasAdmin = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-            if (!hasAdmin) return ResponseEntity.status(403).build();
+        if (!AuthorizationUtils.canAccessUser(principal, job.getUsername())) {
+            return ResponseEntity.status(403).build();
         }
         Map<String, Object> resp = Map.of(
                 "id", job.getId(),
@@ -139,10 +132,8 @@ public class TimesheetReportController {
     public ResponseEntity<Object> jobDownload(@PathVariable Long id, Principal principal) throws IOException {
         ReportJob job = reportJobService.getJob(id);
         if (job == null) return ResponseEntity.notFound().build();
-        if (!principal.getName().equals(job.getUsername())) {
-            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            boolean hasAdmin = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-            if (!hasAdmin) return ResponseEntity.status(403).build();
+        if (!AuthorizationUtils.canAccessUser(principal, job.getUsername())) {
+            return ResponseEntity.status(403).build();
         }
         if (!"DONE".equals(job.getStatus()) || job.getFilePath() == null || job.getFilePath().isBlank()) {
             return ResponseEntity.status(409).body(Map.of("status", job.getStatus()));

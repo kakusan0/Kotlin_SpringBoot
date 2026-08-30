@@ -10,6 +10,7 @@ import com.example.demo.model.TimesheetEntry;
 import com.example.demo.model.TimesheetSaveCommand;
 import com.example.demo.service.TimesheetService;
 import com.example.demo.service.TimesheetSummaryService;
+import com.example.demo.util.TextUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -45,25 +46,6 @@ public class TimesheetController {
         return t;
     });
 
-
-    private static LocalTime parseLocalTime(String value) {
-        if (value == null || value.isBlank()) return null;
-        try {
-            return LocalTime.parse(value).withSecond(0).withNano(0);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) return null;
-        String trimmed = value.trim();
-        return trimmed.isBlank() ? null : trimmed;
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
 
     @PostMapping("/clock-in")
     public TimesheetEntry clockIn(Authentication auth) {
@@ -177,8 +159,8 @@ public class TimesheetController {
             String endTimeStr = entry.endTime();
             try {
                 LocalDate workDate = LocalDate.parse(workDateStr);
-                LocalTime startTime = parseLocalTime(startTimeStr);
-                LocalTime endTime = parseLocalTime(endTimeStr);
+                LocalTime startTime = TextUtils.parseLocalTimeOrNull(startTimeStr);
+                LocalTime endTime = TextUtils.parseLocalTimeOrNull(endTimeStr);
                 Integer breakMinutes = entry.breakMinutes();
                 boolean holidayWork = Boolean.TRUE.equals(entry.holidayWork());
 
@@ -231,31 +213,31 @@ public class TimesheetController {
     public Map<String, Object> saveEntry(Authentication auth, @Valid @RequestBody TimesheetSaveEntryRequest body) {
         String workDateStr = body.workDate();
         LocalDate workDate = LocalDate.parse(workDateStr);
-        LocalTime startTime = parseLocalTime(body.startTime());
-        LocalTime endTime = parseLocalTime(body.endTime());
+        LocalTime startTime = TextUtils.parseLocalTimeOrNull(body.startTime());
+        LocalTime endTime = TextUtils.parseLocalTimeOrNull(body.endTime());
         Integer breakMinutes = body.breakMinutes();
         boolean force = Boolean.TRUE.equals(body.force());
         boolean holidayWork = Boolean.TRUE.equals(body.holidayWork());
 
-        String note = trimToNull(body.note());
+        String note = TextUtils.trimToNull(body.note());
         boolean noteProvided = body.note() != null;
-        String workLocation = trimToNull(body.workLocation());
-        String irregularWorkType = trimToNull(body.irregularWorkType());
-        String irregularWorkDesc = trimToNull(body.irregularWorkDesc());
-        String irregularWorkData = trimToNull(body.irregularWorkData());
-        String lateTime = trimToNull(body.lateTime());
-        String lateDesc = trimToNull(body.lateDesc());
-        String earlyTime = trimToNull(body.earlyTime());
-        String earlyDesc = trimToNull(body.earlyDesc());
-        String freeNote = trimToNull(body.freeNote());
-        String paidLeave = trimToNull(body.paidLeave());
+        String workLocation = TextUtils.trimToNull(body.workLocation());
+        String irregularWorkType = TextUtils.trimToNull(body.irregularWorkType());
+        String irregularWorkDesc = TextUtils.trimToNull(body.irregularWorkDesc());
+        String irregularWorkData = TextUtils.trimToNull(body.irregularWorkData());
+        String lateTime = TextUtils.trimToNull(body.lateTime());
+        String lateDesc = TextUtils.trimToNull(body.lateDesc());
+        String earlyTime = TextUtils.trimToNull(body.earlyTime());
+        String earlyDesc = TextUtils.trimToNull(body.earlyDesc());
+        String freeNote = TextUtils.trimToNull(body.freeNote());
+        String paidLeave = TextUtils.trimToNull(body.paidLeave());
 
-        boolean clearIrregular = body.irregularWorkType() != null && isBlank(body.irregularWorkType());
-        boolean clearLate = body.lateTime() != null && isBlank(body.lateTime());
-        boolean clearEarly = body.earlyTime() != null && isBlank(body.earlyTime());
-        boolean clearFreeNote = body.freeNote() != null && isBlank(body.freeNote());
-        boolean clearPaidLeave = body.paidLeave() != null && isBlank(body.paidLeave());
-        boolean clearWorkLocation = body.workLocation() != null && isBlank(body.workLocation());
+        boolean clearIrregular = body.irregularWorkType() != null && TextUtils.isBlank(body.irregularWorkType());
+        boolean clearLate = body.lateTime() != null && TextUtils.isBlank(body.lateTime());
+        boolean clearEarly = body.earlyTime() != null && TextUtils.isBlank(body.earlyTime());
+        boolean clearFreeNote = body.freeNote() != null && TextUtils.isBlank(body.freeNote());
+        boolean clearPaidLeave = body.paidLeave() != null && TextUtils.isBlank(body.paidLeave());
+        boolean clearWorkLocation = body.workLocation() != null && TextUtils.isBlank(body.workLocation());
 
         boolean startProvided = body.startTime() != null;
         boolean endProvided = body.endTime() != null;

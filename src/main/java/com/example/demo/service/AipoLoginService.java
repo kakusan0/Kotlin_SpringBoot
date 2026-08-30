@@ -5,12 +5,11 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
+import com.example.demo.util.TextUtils;
 
 import java.io.File;
 import java.time.Duration;
@@ -18,7 +17,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,12 +31,13 @@ public class AipoLoginService {
     private static final Pattern URL_PATTERN = Pattern.compile("showDialog\\s*\\(\\s*['\"]([^'\"]+?)(?:%27|['\"])[,)]");
 
     private final ReportService reportService;
-    private final Map<String, WebDriver> userSessions = new ConcurrentHashMap<>();
-
+    private final AipoDriverFactory driverFactory;
+    private final AipoSessionStore sessionStore;
 
     private static String safe(String value) {
-        return value != null ? value : "";
+        return TextUtils.nullToEmpty(value);
     }
+
 
     @PostConstruct
     public void init() {
@@ -143,25 +142,7 @@ public class AipoLoginService {
         WebDriver driver = null;
 
         try {
-            WebDriver existingDriver = userSessions.get(username);
-            if (existingDriver != null) {
-                try {
-                    existingDriver.quit();
-                } catch (Exception e) {
-                    log.warn("Failed to close existing session for user: {}", username, e);
-                }
-            }
-
-            ChromeOptions options = new ChromeOptions();
-            options.addArguments("--headless=new");
-            options.addArguments("--no-sandbox");
-            options.addArguments("--disable-dev-shm-usage");
-            options.addArguments("--disable-gpu");
-            options.addArguments("--window-size=1920,1080");
-            options.addArguments("--remote-allow-origins=*");
-            options.addArguments("--lang=ja");
-
-            driver = new ChromeDriver(options);
+            driver = driverFactory.create();
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(LOGIN_TIMEOUT_SECONDS));
 
             log.info("Navigating to Aipo login page for user: {}", username);
@@ -637,7 +618,7 @@ public class AipoLoginService {
                 sessionId = String.valueOf(remote.getSessionId());
             } catch (Exception ignored) {
             }
-            userSessions.put(username, driver);
+            sessionStore.replace(username, driver);
 
             log.info("Aipo login successful for user: {}, sessionId: {}, workflowUrl: {}, createRequestUrl: {}, timesheetSelected: {}, fileUploaded: {}, formReady: {}, autoSubmitted: {}",
                     username, sessionId, workflowUrl, createRequestUrl, timesheetSelected, fileUploaded,
@@ -683,7 +664,7 @@ public class AipoLoginService {
 
     public boolean logout(String username) {
         try {
-            WebDriver driver = userSessions.remove(username);
+            WebDriver driver = sessionStore.remove(username);
             if (driver != null) {
                 try {
                     driver.get(AIPO_LOGOUT_URL);
@@ -704,20 +685,20 @@ public class AipoLoginService {
     }
 
     public boolean isLoggedIn(String username) {
-        if (!userSessions.containsKey(username)) {
+        if (!sessionStore.contains(username)) {
             return false;
         }
         try {
-            WebDriver driver = userSessions.get(username);
+            WebDriver driver = sessionStore.get(username);
             return driver != null && driver.getCurrentUrl() != null;
         } catch (Exception e) {
-            userSessions.remove(username);
+            sessionStore.removeIfBroken(username);
             return false;
         }
     }
 
     public Map.Entry<Boolean, String> submitRequest(String username, String submitButtonId) {
-        WebDriver driver = userSessions.get(username);
+        WebDriver driver = sessionStore.get(username);
         if (driver == null) {
             log.warn("No session found for user: {}", username);
             return Map.entry(false, "セッションが見つかりません。再度ログインしてください。");
@@ -958,14 +939,6 @@ public class AipoLoginService {
     }
 
     public void cleanupAllSessions() {
-        userSessions.forEach((username, driver) -> {
-            try {
-                driver.quit();
-                log.info("Cleaned up Aipo session for user: {}", username);
-            } catch (Exception e) {
-                log.warn("Failed to cleanup session for user: {}", username, e);
-            }
-        });
-        userSessions.clear();
+        sessionStore.closeAll();
     }
 }
