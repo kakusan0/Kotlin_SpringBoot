@@ -373,14 +373,14 @@
                     </execution>
 
                     <execution>
-                        <id>npm-run-copy-static</id>
+                        <id>npm-run-obfuscate-minify</id>
                         <phase>generate-resources</phase>
                         <goals>
                             <goal>npm</goal>
                         </goals>
                         <configuration>
                             <skip>${skip.frontend}</skip>
-                            <arguments>run copy-static</arguments>
+                            <arguments>run obfuscate-minify -- --force</arguments>
                         </configuration>
                     </execution>
                 </executions>

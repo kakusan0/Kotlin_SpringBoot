@@ -70,7 +70,6 @@
     let dragStarted = false;
     let dragStartTime = 0;
 
-    const holidayCache = {};
     let suppressAutoSaveAll = 0;
 
     function suspendAutoSave() {
@@ -214,12 +213,10 @@
             console.warn('祝日取得スキップ: 無効な年', year);
             return {};
         }
-        if (holidayCache[numericYear]) return holidayCache[numericYear];
         try {
             const extRes = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${numericYear}/JP`);
             if (!extRes.ok) {
                 console.warn('祝日取得失敗 (外部API):', extRes.status);
-                holidayCache[numericYear] = {};
                 return {};
             }
             const data = await extRes.json();
@@ -227,11 +224,9 @@
             for (const h of data) {
                 map[h.date] = h.localName || h.name || '';
             }
-            holidayCache[numericYear] = map;
             return map;
         } catch (err) {
             console.warn('祝日取得失敗 (外部API):', err);
-            holidayCache[numericYear] = {};
             return {};
         }
     }
@@ -1251,8 +1246,8 @@
     function isHolidayIso(iso) {
         try {
             const y = Number(iso.split('-')[0]);
-            const map = holidayCache[y];
-            return map && map[iso];
+            const row = document.querySelector(`.date-cell[data-iso="${iso}"]`)?.closest('tr');
+            return row?.dataset?.isHoliday === '1';
         } catch (e) {
             return false;
         }
@@ -1377,7 +1372,7 @@
             try {
                 const monthInput = document.getElementById('monthInput');
                 const [selectedYear, selectedMonth] = monthInput.value.split('-').map(Number);
-                const holidayMap = holidayCache[selectedYear] || await fetchHolidays(selectedYear);
+                const holidayMap = await fetchHolidays(selectedYear);
                 populateHolidayInfo(holidayMap, selectedMonth);
                 tbody.querySelectorAll('.date-cell').forEach(cell => {
                     const iso = cell.dataset.iso;
@@ -1429,7 +1424,7 @@
             for (const e of entries) map[e.workDate] = e;
             // ensure holiday info is available for the month so we can create switches for weekday holidays
             const ymYear = Number(monthInput.value.split('-')[0]);
-            const holidayMap = holidayCache[ymYear] || await fetchHolidays(ymYear);
+            const holidayMap = await fetchHolidays(ymYear);
 
             document.querySelectorAll('#tableBody tr').forEach(row => {
                 const iso = row.querySelector('.date-cell').dataset.iso;

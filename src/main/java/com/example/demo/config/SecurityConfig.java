@@ -140,8 +140,10 @@ public class SecurityConfig {
                                         webAuthn.rpName(webAuthnProperties.getName());
                                         webAuthn.rpId(webAuthnProperties.getId());
                                         Set<String> origins;
-                                        if (webAuthnProperties.getAllowedOrigins() != null && !webAuthnProperties.getAllowedOrigins().isBlank()) {
-                                                origins = Arrays.stream(webAuthnProperties.getAllowedOrigins().split(","))
+                                        if (webAuthnProperties.getAllowedOrigins() != null
+                                                        && !webAuthnProperties.getAllowedOrigins().isBlank()) {
+                                                origins = Arrays.stream(
+                                                                webAuthnProperties.getAllowedOrigins().split(","))
                                                                 .map(String::trim)
                                                                 .collect(Collectors.toSet());
                                         } else {

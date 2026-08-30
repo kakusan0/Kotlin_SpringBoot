@@ -173,6 +173,7 @@ APIエラーは以下の形式で返す。
 - `@EnableCaching`を使用しない
 - `spring-boot-starter-cache`を依存しない
 - 休日および勤怠集計は必要時にDBから取得する
+- フロントエンドの休日情報も保持せず、画面更新時に最新情報を取得する
 - 静的リソースおよびThymeleafのキャッシュ設定を追加しない
 
 ただし、以下は業務データキャッシュではなく、セキュリティ制御のため維持する。
@@ -194,15 +195,18 @@ APIエラーは以下の形式で返す。
 
 ## 8. フロントエンド資産
 
-JavaScriptは難読化・minifyせず、`frontend/js`のソースを`src/main/resources/static/js`へコピーする。
+JavaScriptはMavenビルド時にminify・難読化し、`frontend/js`のソースから`src/main/resources/static/js`へ生成する。
 
 ```text
 frontend/js/*.js
-  -> frontend/copy-static.js
+  -> frontend/minify.js
+  -> minify -> 難読化 -> minify
   -> src/main/resources/static/js/*.js
 ```
 
-ビルド時に内容を変更しないため、ブラウザデバッグ、障害解析およびソース行特定を容易にする。
+本番配布資産の容量を削減し、ブラウザからのソース解析を困難にする。デバッグ時は`frontend/js`のソースを使用する。
+
+休日情報はブラウザ内にキャッシュせず、表示対象の再構築・勤怠データ読み込み時に取得する。これにより管理画面で休日を変更した後も、古い休日情報を表示し続けない。
 
 ## 9. 帳票設計
 
