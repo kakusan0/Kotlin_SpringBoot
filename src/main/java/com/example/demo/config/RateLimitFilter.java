@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -40,8 +39,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             .expireAfterAccess(10, TimeUnit.MINUTES)
             .build();
 
-    public RateLimitFilter(@Value("${app.trust-proxy:false}") boolean trustProxy) {
-        this.trustProxy = trustProxy;
+    public RateLimitFilter(AppProperties properties) {
+        this.trustProxy = properties.isTrustProxy();
     }
 
     @Override

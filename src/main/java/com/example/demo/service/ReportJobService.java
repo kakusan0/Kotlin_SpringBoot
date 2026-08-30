@@ -3,7 +3,6 @@ package com.example.demo.service;
 import com.example.demo.mapper.ReportJobMapper;
 import com.example.demo.model.ReportJob;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -26,11 +25,11 @@ public class ReportJobService {
     public ReportJobService(
             ReportJobMapper reportJobMapper,
             ReportService reportService,
-            @Value("${app.report.dir:reports}") String reportDir
+            com.example.demo.config.AppProperties properties
     ) {
         this.reportJobMapper = reportJobMapper;
         this.reportService = reportService;
-        this.reportDir = reportDir;
+        this.reportDir = properties.getReport().getDir();
     }
 
     public Long submitJob(String username, LocalDate from, LocalDate to, String format) {

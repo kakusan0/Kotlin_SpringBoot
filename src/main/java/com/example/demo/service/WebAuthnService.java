@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.config.WebAuthnProperties;
 import com.example.demo.mapper.WebAuthnCredentialMapper;
 import com.example.demo.model.WebAuthnCredential;
 import com.webauthn4j.WebAuthnManager;
@@ -15,9 +16,7 @@ import com.webauthn4j.data.client.Origin;
 import com.webauthn4j.data.client.challenge.DefaultChallenge;
 import com.webauthn4j.server.ServerProperty;
 import com.webauthn4j.util.Base64UrlUtil;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -30,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class WebAuthnService {
 
     private final WebAuthnCredentialMapper credentialMapper;
@@ -46,10 +44,14 @@ public class WebAuthnService {
             .expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1_000).build();
     private final Cache<String, byte[]> discoverableChallenges = Caffeine.newBuilder()
             .expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1_000).build();
-    @Value("${webauthn.rp.id:localhost}")
     private String rpId;
-    @Value("${webauthn.rp.origin:http://localhost:8080}")
     private String rpOrigin;
+
+    public WebAuthnService(WebAuthnCredentialMapper credentialMapper, WebAuthnProperties properties) {
+        this.credentialMapper = credentialMapper;
+        this.rpId = properties.getId();
+        this.rpOrigin = properties.getOrigin();
+    }
 
     public byte[] generateChallenge() {
         byte[] bytes = new byte[32];

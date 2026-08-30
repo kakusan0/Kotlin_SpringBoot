@@ -2,18 +2,15 @@ package com.example.demo.service;
 
 import com.example.demo.util.EncryptionUtils;
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-@Slf4j
 @Service
 public class CryptoService {
 
     private final String rawKey;
 
-    public CryptoService(@Value("${app.encryption.key:}") String rawKey) {
-        this.rawKey = rawKey;
+    public CryptoService(com.example.demo.config.AppProperties properties) {
+        this.rawKey = properties.getEncryption().getKey();
     }
 
     @PostConstruct

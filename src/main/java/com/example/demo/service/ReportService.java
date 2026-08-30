@@ -18,7 +18,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -37,7 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -66,10 +64,8 @@ public class ReportService {
     private final TimesheetService timesheetService;
     private final UserSettingsService userSettingsService;
 
-    @Value("${report.holidayPosition:MIDDLE}")
     private final String holidayPositionStr;
-    private final ConcurrentHashMap<Integer, Map<LocalDate, String>> holidayCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<HolidayRange, Map<LocalDate, String>> holidayRangeCache = new ConcurrentHashMap<>();
+    private final String templateName;
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private HolidayPosition holidayPosition;
@@ -77,10 +73,11 @@ public class ReportService {
     public ReportService(
             TimesheetService timesheetService,
             UserSettingsService userSettingsService,
-            @Value("${report.holidayPosition:MIDDLE}") String holidayPositionStr) {
+            com.example.demo.config.ReportProperties properties) {
         this.timesheetService = timesheetService;
         this.userSettingsService = userSettingsService;
-        this.holidayPositionStr = holidayPositionStr;
+        this.holidayPositionStr = properties.getHolidayPosition();
+        this.templateName = properties.getTemplate();
     }
 
     private static String safe(String value) {
@@ -400,7 +397,7 @@ public class ReportService {
             return Map.of();
         }
 
-        return holidayRangeCache.computeIfAbsent(new HolidayRange(fromYear, toYear), this::loadHolidayRange);
+        return loadHolidayRange(new HolidayRange(fromYear, toYear));
     }
 
     private Map<LocalDate, String> loadHolidayRange(HolidayRange range) {
@@ -412,7 +409,7 @@ public class ReportService {
     }
 
     private Map<LocalDate, String> loadHolidaysForYear(int year) {
-        return holidayCache.computeIfAbsent(year, this::fetchHolidayYear);
+        return fetchHolidayYear(year);
     }
 
     private Map<LocalDate, String> fetchHolidayYear(int year) {
@@ -624,8 +621,7 @@ public class ReportService {
         }
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        String templatePath = "2025年10月度UNISS勤務表(〇〇).xlsx";
-        ClassPathResource templateResource = new ClassPathResource(templatePath);
+        ClassPathResource templateResource = new ClassPathResource(templateName);
 
         try (InputStream templateStream = templateResource.getInputStream();
                 XSSFWorkbook wb = new XSSFWorkbook(templateStream)) {

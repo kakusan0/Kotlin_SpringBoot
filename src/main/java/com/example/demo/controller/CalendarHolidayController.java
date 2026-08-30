@@ -52,32 +52,22 @@ public class CalendarHolidayController {
     public ResponseEntity<Map<String, Object>> addHoliday(
             @Valid @RequestBody AddHolidayRequest body
     ) {
-        try {
-            CalendarHoliday holiday = calendarHolidayService.addHoliday(body.date(), body.name());
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("success", true);
-            resp.put("holiday", holiday);
-            return ResponseEntity.ok(resp);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", e.getMessage() != null ? e.getMessage() : "Failed to add holiday"));
-        }
+        CalendarHoliday holiday = calendarHolidayService.addHoliday(body.date(), body.name());
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("success", true);
+        resp.put("holiday", holiday);
+        return ResponseEntity.ok(resp);
     }
 
     @DeleteMapping("/holidays/{id}")
     public ResponseEntity<Map<String, Object>> deleteHoliday(
             @PathVariable Long id
     ) {
-        try {
-            int deleted = calendarHolidayService.deleteHoliday(id);
-            if (deleted > 0) {
-                return ResponseEntity.ok(Map.of("success", true, "deleted", deleted));
-            }
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", e.getMessage() != null ? e.getMessage() : "Failed to delete holiday"));
+        int deleted = calendarHolidayService.deleteHoliday(id);
+        if (deleted > 0) {
+            return ResponseEntity.ok(Map.of("success", true, "deleted", deleted));
         }
+        return ResponseEntity.notFound().build();
     }
 
 }

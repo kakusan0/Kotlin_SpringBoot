@@ -10,14 +10,6 @@ spring:
       maximum-pool-size: 20
   flyway:
     clean-disabled: true
-  thymeleaf:
-    cache: true
-  web:
-    resources:
-      cache:
-        cachecontrol:
-          max-age: 31536000
-          cache-public: true
   data:
     redis:
       host: ${redis.host:${REDIS_HOST:redis}}

@@ -230,75 +230,71 @@ public class TimesheetController {
     @PostMapping("/entry")
     public Map<String, Object> saveEntry(Authentication auth, @Valid @RequestBody TimesheetSaveEntryRequest body) {
         String workDateStr = body.getWorkDate();
-        try {
-            LocalDate workDate = LocalDate.parse(workDateStr);
-            LocalTime startTime = parseLocalTime(body.getStartTime());
-            LocalTime endTime = parseLocalTime(body.getEndTime());
-            Integer breakMinutes = body.getBreakMinutes();
-            boolean force = Boolean.TRUE.equals(body.getForce());
-            boolean holidayWork = Boolean.TRUE.equals(body.getHolidayWork());
+        LocalDate workDate = LocalDate.parse(workDateStr);
+        LocalTime startTime = parseLocalTime(body.getStartTime());
+        LocalTime endTime = parseLocalTime(body.getEndTime());
+        Integer breakMinutes = body.getBreakMinutes();
+        boolean force = Boolean.TRUE.equals(body.getForce());
+        boolean holidayWork = Boolean.TRUE.equals(body.getHolidayWork());
 
-            String note = trimToNull(body.getNote());
-            boolean noteProvided = body.getNote() != null;
-            String workLocation = trimToNull(body.getWorkLocation());
-            String irregularWorkType = trimToNull(body.getIrregularWorkType());
-            String irregularWorkDesc = trimToNull(body.getIrregularWorkDesc());
-            String irregularWorkData = trimToNull(body.getIrregularWorkData());
-            String lateTime = trimToNull(body.getLateTime());
-            String lateDesc = trimToNull(body.getLateDesc());
-            String earlyTime = trimToNull(body.getEarlyTime());
-            String earlyDesc = trimToNull(body.getEarlyDesc());
-            String freeNote = trimToNull(body.getFreeNote());
-            String paidLeave = trimToNull(body.getPaidLeave());
+        String note = trimToNull(body.getNote());
+        boolean noteProvided = body.getNote() != null;
+        String workLocation = trimToNull(body.getWorkLocation());
+        String irregularWorkType = trimToNull(body.getIrregularWorkType());
+        String irregularWorkDesc = trimToNull(body.getIrregularWorkDesc());
+        String irregularWorkData = trimToNull(body.getIrregularWorkData());
+        String lateTime = trimToNull(body.getLateTime());
+        String lateDesc = trimToNull(body.getLateDesc());
+        String earlyTime = trimToNull(body.getEarlyTime());
+        String earlyDesc = trimToNull(body.getEarlyDesc());
+        String freeNote = trimToNull(body.getFreeNote());
+        String paidLeave = trimToNull(body.getPaidLeave());
 
-            boolean clearIrregular = body.getIrregularWorkType() != null && isBlank(body.getIrregularWorkType());
-            boolean clearLate = body.getLateTime() != null && isBlank(body.getLateTime());
-            boolean clearEarly = body.getEarlyTime() != null && isBlank(body.getEarlyTime());
-            boolean clearFreeNote = body.getFreeNote() != null && isBlank(body.getFreeNote());
-            boolean clearPaidLeave = body.getPaidLeave() != null && isBlank(body.getPaidLeave());
-            boolean clearWorkLocation = body.getWorkLocation() != null && isBlank(body.getWorkLocation());
+        boolean clearIrregular = body.getIrregularWorkType() != null && isBlank(body.getIrregularWorkType());
+        boolean clearLate = body.getLateTime() != null && isBlank(body.getLateTime());
+        boolean clearEarly = body.getEarlyTime() != null && isBlank(body.getEarlyTime());
+        boolean clearFreeNote = body.getFreeNote() != null && isBlank(body.getFreeNote());
+        boolean clearPaidLeave = body.getPaidLeave() != null && isBlank(body.getPaidLeave());
+        boolean clearWorkLocation = body.getWorkLocation() != null && isBlank(body.getWorkLocation());
 
-            boolean startProvided = body.getStartTime() != null;
-            boolean endProvided = body.getEndTime() != null;
-            boolean breakProvided = body.getBreakMinutes() != null;
+        boolean startProvided = body.getStartTime() != null;
+        boolean endProvided = body.getEndTime() != null;
+        boolean breakProvided = body.getBreakMinutes() != null;
 
-            TimesheetSaveCommand cmd = TimesheetSaveCommand.builder()
-                    .userName(auth.getName())
-                    .workDate(workDate)
-                    .startProvided(startProvided)
-                    .startTime(startTime)
-                    .endProvided(endProvided)
-                    .endTime(endTime)
-                    .breakProvided(breakProvided)
-                    .breakMinutes(breakMinutes)
-                    .force(force)
-                    .holidayWork(holidayWork)
-                    .noteProvided(noteProvided)
-                    .note(note)
-                    .workLocation(workLocation)
-                    .irregularWorkType(irregularWorkType)
-                    .irregularWorkDesc(irregularWorkDesc)
-                    .irregularWorkData(irregularWorkData)
-                    .lateTime(lateTime)
-                    .lateDesc(lateDesc)
-                    .earlyTime(earlyTime)
-                    .earlyDesc(earlyDesc)
-                    .freeNote(freeNote)
-                    .paidLeave(paidLeave)
-                    .clearIrregular(clearIrregular)
-                    .clearLate(clearLate)
-                    .clearEarly(clearEarly)
-                    .clearFreeNote(clearFreeNote)
-                    .clearPaidLeave(clearPaidLeave)
-                    .clearWorkLocation(clearWorkLocation)
-                    .build();
+        TimesheetSaveCommand cmd = TimesheetSaveCommand.builder()
+                .userName(auth.getName())
+                .workDate(workDate)
+                .startProvided(startProvided)
+                .startTime(startTime)
+                .endProvided(endProvided)
+                .endTime(endTime)
+                .breakProvided(breakProvided)
+                .breakMinutes(breakMinutes)
+                .force(force)
+                .holidayWork(holidayWork)
+                .noteProvided(noteProvided)
+                .note(note)
+                .workLocation(workLocation)
+                .irregularWorkType(irregularWorkType)
+                .irregularWorkDesc(irregularWorkDesc)
+                .irregularWorkData(irregularWorkData)
+                .lateTime(lateTime)
+                .lateDesc(lateDesc)
+                .earlyTime(earlyTime)
+                .earlyDesc(earlyDesc)
+                .freeNote(freeNote)
+                .paidLeave(paidLeave)
+                .clearIrregular(clearIrregular)
+                .clearLate(clearLate)
+                .clearEarly(clearEarly)
+                .clearFreeNote(clearFreeNote)
+                .clearPaidLeave(clearPaidLeave)
+                .clearWorkLocation(clearWorkLocation)
+                .build();
 
-            TimesheetEntry saved = timesheetService.saveOrUpdateWithFlags(cmd);
-            broadcast("timesheet-updated", saved, auth.getName());
-            return Map.of("success", true, "entry", saved);
-        } catch (Exception ex) {
-            return Map.of("success", false, "message", ex.getMessage() != null ? ex.getMessage() : "save error");
-        }
+        TimesheetEntry saved = timesheetService.saveOrUpdateWithFlags(cmd);
+        broadcast("timesheet-updated", saved, auth.getName());
+        return Map.of("success", true, "entry", saved);
     }
 
     @PostMapping("/add-note")

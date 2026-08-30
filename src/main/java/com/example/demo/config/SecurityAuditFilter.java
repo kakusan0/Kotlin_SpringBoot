@@ -18,7 +18,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -69,14 +68,14 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
             GeoIpCountryService geoIpCountryService,
             BlacklistEventService blacklistEventService,
             UaBlacklistService uaBlacklistService,
-            @Value("${app.trust-proxy:false}") boolean trustProxy) {
+            AppProperties properties) {
         this.accessLogWriteService = accessLogWriteService;
         this.whitelistIpMapper = whitelistIpMapper;
         this.blacklistIpMapper = blacklistIpMapper;
         this.geoIpCountryService = geoIpCountryService;
         this.blacklistEventService = blacklistEventService;
         this.uaBlacklistService = uaBlacklistService;
-        this.trustProxy = trustProxy;
+        this.trustProxy = properties.isTrustProxy();
     }
 
     @Override

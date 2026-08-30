@@ -17,14 +17,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.validation.annotation.Validated;
@@ -37,7 +34,6 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/webauthn")
 @Validated
-@RequiredArgsConstructor
 public class WebAuthnController {
 
     private final WebAuthnService webAuthnService;
@@ -45,21 +41,26 @@ public class WebAuthnController {
     private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
 
 
-    @Value("${webauthn.rp.id:localhost}")
     private String rpId;
 
-    @Value("${webauthn.rp.name:Dev RP}")
     private String rpName;
+
+    public WebAuthnController(
+            WebAuthnService webAuthnService,
+            UserDetailsService userDetailsService,
+            SessionAuthenticationStrategy sessionAuthenticationStrategy,
+            com.example.demo.config.WebAuthnProperties properties) {
+        this.webAuthnService = webAuthnService;
+        this.userDetailsService = userDetailsService;
+        this.sessionAuthenticationStrategy = sessionAuthenticationStrategy;
+        this.rpId = properties.getId();
+        this.rpName = properties.getName();
+    }
 
 
     @GetMapping("/registration/options")
     public ResponseEntity<Object> registrationOptions(@RequestParam @NotBlank String username) {
-        try {
-            userDetailsService.loadUserByUsername(username);
-        } catch (UsernameNotFoundException e) {
-            log.warn("Registration attempted for non-existent user: {}", username);
-            return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
-        }
+        userDetailsService.loadUserByUsername(username);
 
         byte[] challenge = webAuthnService.generateChallenge();
         webAuthnService.saveRegistrationChallenge(username, challenge);
@@ -92,16 +93,11 @@ public class WebAuthnController {
             return ResponseEntity.badRequest().body(Map.of("message", "Challenge not found or expired"));
         }
 
-        try {
-            byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
-            byte[] attestationObject = Base64UrlUtil.decode(req.getResponse().getAttestationObject());
-            webAuthnService.registerCredential(username, challenge, clientDataJSON, attestationObject);
-            log.info("Passkey registered successfully for user: {}", username);
-            return ResponseEntity.ok(Map.of("message", "registered"));
-        } catch (Exception e) {
-            log.error("Failed to register passkey for user {}: {}", username, e.getMessage(), e);
-            return ResponseEntity.badRequest().body(Map.of("message", "Registration failed: " + e.getMessage()));
-        }
+        byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
+        byte[] attestationObject = Base64UrlUtil.decode(req.getResponse().getAttestationObject());
+        webAuthnService.registerCredential(username, challenge, clientDataJSON, attestationObject);
+        log.info("Passkey registered successfully for user: {}", username);
+        return ResponseEntity.ok(Map.of("message", "registered"));
     }
 
     @GetMapping("/authentication/options")
@@ -173,31 +169,25 @@ public class WebAuthnController {
             return ResponseEntity.status(403).body(Map.of("message", "Credential does not match userHandle"));
         }
 
-        try {
-            byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
-            byte[] authenticatorData = Base64UrlUtil.decode(req.getResponse().getAuthenticatorData());
-            byte[] signature = Base64UrlUtil.decode(req.getResponse().getSignature());
-            byte[] userHandleBytes = Base64UrlUtil.decode(userHandle);
+        byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
+        byte[] authenticatorData = Base64UrlUtil.decode(req.getResponse().getAuthenticatorData());
+        byte[] signature = Base64UrlUtil.decode(req.getResponse().getSignature());
+        byte[] userHandleBytes = Base64UrlUtil.decode(userHandle);
 
-            webAuthnService.verifyAssertion(
-                    credential,
-                    challenge,
-                    credentialId,
-                    clientDataJSON,
-                    authenticatorData,
-                    signature,
-                    userHandleBytes
-            );
+        webAuthnService.verifyAssertion(
+                credential,
+                challenge,
+                credentialId,
+                clientDataJSON,
+                authenticatorData,
+                signature,
+                userHandleBytes
+        );
 
-            establishSecuritySession(credential.getUsername(), request, response);
+        establishSecuritySession(credential.getUsername(), request, response);
 
-            log.info("Discoverable passkey authentication successful for user: {}", credential.getUsername());
-            return ResponseEntity.ok(Map.of("message", "authenticated", "username", credential.getUsername()));
-        } catch (Exception e) {
-            log.error("Discoverable passkey authentication failed: {} - {}", e.getClass().getSimpleName(), e.getMessage(), e);
-            String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            return ResponseEntity.status(401).body(Map.of("message", "Authentication failed: " + errorMessage));
-        }
+        log.info("Discoverable passkey authentication successful for user: {}", credential.getUsername());
+        return ResponseEntity.ok(Map.of("message", "authenticated", "username", credential.getUsername()));
     }
 
     @PostMapping("/authentication/finish")
@@ -223,33 +213,27 @@ public class WebAuthnController {
             return ResponseEntity.status(403).body(Map.of("message", "Credential does not belong to user"));
         }
 
-        try {
-            byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
-            byte[] authenticatorData = Base64UrlUtil.decode(req.getResponse().getAuthenticatorData());
-            byte[] signature = Base64UrlUtil.decode(req.getResponse().getSignature());
-            byte[] userHandle = req.getResponse().getUserHandle() != null
-                    ? Base64UrlUtil.decode(req.getResponse().getUserHandle())
-                    : null;
+        byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
+        byte[] authenticatorData = Base64UrlUtil.decode(req.getResponse().getAuthenticatorData());
+        byte[] signature = Base64UrlUtil.decode(req.getResponse().getSignature());
+        byte[] userHandle = req.getResponse().getUserHandle() != null
+                ? Base64UrlUtil.decode(req.getResponse().getUserHandle())
+                : null;
 
-            webAuthnService.verifyAssertion(
-                    credential,
-                    challenge,
-                    credentialId,
-                    clientDataJSON,
-                    authenticatorData,
-                    signature,
-                    userHandle
-            );
+        webAuthnService.verifyAssertion(
+                credential,
+                challenge,
+                credentialId,
+                clientDataJSON,
+                authenticatorData,
+                signature,
+                userHandle
+        );
 
-            establishSecuritySession(username, request, response);
+        establishSecuritySession(username, request, response);
 
-            log.info("Passkey authentication successful for user: {}", username);
-            return ResponseEntity.ok(Map.of("message", "authenticated"));
-        } catch (Exception e) {
-            log.error("Passkey authentication failed for user {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage(), e);
-            String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            return ResponseEntity.status(401).body(Map.of("message", "Authentication failed: " + errorMessage));
-        }
+        log.info("Passkey authentication successful for user: {}", username);
+        return ResponseEntity.ok(Map.of("message", "authenticated"));
     }
 
     private void establishSecuritySession(String username, HttpServletRequest request, HttpServletResponse response) {

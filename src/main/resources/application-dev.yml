@@ -7,17 +7,10 @@ spring:
       maximum-pool-size: 20
   flyway:
     clean-disabled: true
-  thymeleaf:
-    cache: false
   devtools:
     restart:
       additional-paths: src/main/resources/templates,src/main/resources/static
       exclude: logs/**,tmp/**,**/*Test.class,**/*.log
-  web:
-    resources:
-      cache:
-        cachecontrol:
-          max-age: 0
   data:
     redis:
       host: localhost

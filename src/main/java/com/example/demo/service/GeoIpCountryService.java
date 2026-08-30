@@ -1,8 +1,8 @@
 package com.example.demo.service;
 
+import com.example.demo.config.GeoIpProperties;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -24,12 +24,9 @@ public class GeoIpCountryService {
     private Class<?> readerClass;
     private volatile Set<String> allowedCodes = Set.of();
 
-    public GeoIpCountryService(
-            @Value("${geoip.mmdb-path:}") String dbPath,
-            @Value("${geoip.allowed-country-codes:JP}") String allowedCodesCsv
-    ) {
-        this.dbPath = dbPath;
-        this.allowedCodesCsv = allowedCodesCsv;
+    public GeoIpCountryService(GeoIpProperties properties) {
+        this.dbPath = properties.getMmdbPath();
+        this.allowedCodesCsv = properties.getAllowedCountryCodes();
     }
 
     @PostConstruct

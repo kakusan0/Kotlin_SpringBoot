@@ -14,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
@@ -135,7 +136,7 @@ public class TimesheetReportController {
     }
 
     @GetMapping("/job/{id}/download")
-    public ResponseEntity<Object> jobDownload(@PathVariable Long id, Principal principal) {
+    public ResponseEntity<Object> jobDownload(@PathVariable Long id, Principal principal) throws IOException {
         ReportJob job = reportJobService.getJob(id);
         if (job == null) return ResponseEntity.notFound().build();
         if (!principal.getName().equals(job.getUsername())) {
@@ -148,12 +149,7 @@ public class TimesheetReportController {
         }
         File f = new File(job.getFilePath());
         if (!f.exists()) return ResponseEntity.notFound().build();
-        byte[] bytes;
-        try {
-            bytes = java.nio.file.Files.readAllBytes(f.toPath());
-        } catch (java.io.IOException e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to read file"));
-        }
+        byte[] bytes = java.nio.file.Files.readAllBytes(f.toPath());
         HttpHeaders headers = new HttpHeaders();
         MediaType contentType = f.getName().endsWith(".pdf")
                 ? MediaType.APPLICATION_PDF

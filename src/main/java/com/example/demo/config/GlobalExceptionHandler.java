@@ -15,8 +15,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
+import java.io.IOException;
 import java.util.Map;
+import java.time.format.DateTimeParseException;
 import java.util.stream.Collectors;
 
 /**
@@ -89,6 +92,30 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUsernameNotFound(UsernameNotFoundException ex) {
+        log.warn("ユーザーが見つかりません: {}", ex.getMessage());
+        return ResponseEntity.badRequest().body(
+                new ErrorResponse("User not found", null)
+        );
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<ErrorResponse> handleDateTimeParseException(DateTimeParseException ex) {
+        log.warn("日付パースエラー: {}", ex.getParsedString());
+        return ResponseEntity.badRequest().body(
+                new ErrorResponse("日付の形式が正しくありません", null)
+        );
+    }
+
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<ErrorResponse> handleIOException(IOException ex) {
+        log.error("I/O エラー: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                new ErrorResponse("Failed to read file", null)
+        );
+    }
+
     /**
      * Timesheet系例外のハンドリング
      */
@@ -124,9 +151,26 @@ public class GlobalExceptionHandler {
      * その他の例外のハンドリング
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex) {
-        log.error("予期しないエラーが発生: {}", ex.getMessage(), ex);
+    public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex, HttpServletRequest request) {
+        String requestUri = request != null ? request.getRequestURI() : "";
 
+        if (requestUri.startsWith("/api/webauthn/registration/finish")) {
+            log.error("Passkey registration failed on {}: {}", requestUri, ex.getMessage(), ex);
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("Registration failed: " + safeMessage(ex), null));
+        }
+        if (requestUri.startsWith("/api/webauthn/authentication/finish")) {
+            log.error("Passkey authentication failed on {}: {}", requestUri, ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("Authentication failed: " + safeMessage(ex), null));
+        }
+        if (requestUri.startsWith("/api/calendar/holidays")) {
+            log.warn("Calendar holiday request failed on {}: {}", requestUri, ex.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse(safeMessage(ex), null));
+        }
+
+        log.error("予期しないエラーが発生: {}", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("サーバー内部エラーが発生しました", null));
     }
@@ -155,5 +199,9 @@ public class GlobalExceptionHandler {
     }
 
     public record ErrorResponse(String message, Map<String, String> errors) {
+    }
+
+    private String safeMessage(Exception ex) {
+        return ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
     }
 }

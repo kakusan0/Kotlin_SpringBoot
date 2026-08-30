@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -38,13 +37,10 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     private final Cache<String, Bucket> cache;
 
-    public LoginRateLimitFilter(
-            @Value("${app.trust-proxy:false}") boolean trustProxy,
-            @Value("${app.login.rate-limit.capacity:5}") long capacity,
-            @Value("${app.login.rate-limit.refill-minutes:5}") long refillMinutes) {
-        this.trustProxy = trustProxy;
-        this.capacity = capacity;
-        this.refillMinutes = refillMinutes;
+    public LoginRateLimitFilter(AppProperties properties) {
+        this.trustProxy = properties.isTrustProxy();
+        this.capacity = properties.getLogin().getRateLimit().getCapacity();
+        this.refillMinutes = properties.getLogin().getRateLimit().getRefillMinutes();
         this.cache = Caffeine.newBuilder()
                 .maximumSize(10_000)
                 .expireAfterAccess(Math.max(refillMinutes * 2, 10), TimeUnit.MINUTES)

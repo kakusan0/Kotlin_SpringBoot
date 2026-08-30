@@ -4,8 +4,6 @@ import com.example.demo.mapper.CalendarHolidayMapper;
 import com.example.demo.model.CalendarHoliday;
 import com.example.demo.util.DbUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +19,6 @@ public class CalendarHolidayService {
     private final CalendarHolidayMapper calendarHolidayMapper;
 
 
-    @Cacheable(value = "holidays", key = "#year")
     public List<CalendarHoliday> getHolidaysByYear(int year) {
         return DbUtils.dbCall("selectByYear", () -> calendarHolidayMapper.selectByYear(year), year);
     }
@@ -33,7 +30,6 @@ public class CalendarHolidayService {
         return DbUtils.dbCall("selectByDateRange", () -> calendarHolidayMapper.selectByDateRange(from, to), from, to);
     }
 
-    @Cacheable(value = "holidaysMap", key = "#year")
     public Map<String, String> getHolidaysMapByYear(int year) {
         List<CalendarHoliday> holidays = getHolidaysByYear(year);
         return holidays.stream().collect(Collectors.toMap(
@@ -47,7 +43,6 @@ public class CalendarHolidayService {
     }
 
     @Transactional
-    @CacheEvict(value = {"holidays", "holidaysMap"}, allEntries = true)
     public CalendarHoliday addHoliday(LocalDate date, String name) {
         CalendarHoliday holiday = new CalendarHoliday();
         holiday.setHolidayDate(date);
@@ -58,7 +53,6 @@ public class CalendarHolidayService {
     }
 
     @Transactional
-    @CacheEvict(value = {"holidays", "holidaysMap"}, allEntries = true)
     public int updateHoliday(Long id, String name) {
         CalendarHoliday holiday = new CalendarHoliday();
         holiday.setId(id);
@@ -67,7 +61,6 @@ public class CalendarHolidayService {
     }
 
     @Transactional
-    @CacheEvict(value = {"holidays", "holidaysMap"}, allEntries = true)
     public int deleteHoliday(Long id) {
         return DbUtils.dbCall("deleteById", () -> calendarHolidayMapper.deleteById(id), id);
     }

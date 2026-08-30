@@ -2,7 +2,6 @@ package com.example.demo.service;
 
 import com.example.demo.model.UserSettings;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -13,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserSettingsService {

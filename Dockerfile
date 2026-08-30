@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
@@ -12,4 +12,4 @@ USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-XX:InitialRAMPercentage=25", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "--enable-preview", "-XX:MaxRAMPercentage=75", "-XX:InitialRAMPercentage=25", "-jar", "/app/app.jar"]

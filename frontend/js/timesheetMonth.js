@@ -908,7 +908,8 @@
         const end = endCell?.textContent.trim() || '';
         const breakVal = breakCell?.textContent.trim() || '';
         const workLocation = locationBtn?.dataset.location || null;
-        const note = noteSelect?.value || null;
+        // --- は空文字を明示送信し、サーバー側で既存の備考をクリアできるようにする。
+        const note = noteSelect ? noteSelect.value : null;
 
         // 変則勤務・遅刻・早退データを取得
         // undefinedの場合は空文字列を送信してサーバー側でクリアさせる
@@ -1593,10 +1594,6 @@
 
                     // reflect note data
                     const noteSelect = row.querySelector('.note-select');
-                    const noteValue = data.note || '';
-                    if (noteSelect && noteValue) {
-                        noteSelect.value = noteValue;
-                    }
 
                     // 土日祝判定
                     const dateForCheck = new Date(iso + 'T00:00:00');
@@ -1604,6 +1601,11 @@
                     const isWeekendDay = (dayForCheck === 0 || dayForCheck === 6);
                     const isHolidayDay = row.dataset.isHoliday === '1';
                     const isHolidayOrWeekend = isWeekendDay || isHolidayDay;
+                    // 空の備考も反映し、---を選択した後に旧値が画面へ戻らないようにする。
+                    const noteValue = data.note || (isHolidayDay ? '祝日' : (isWeekendDay ? '休日' : ''));
+                    if (noteSelect) {
+                        noteSelect.value = noteValue;
+                    }
 
                     // 備考が休日系の場合は入力を無効化
                     const hasWorkingIrregular = irregularItems.some(item => isWorkingIrregularType(item.type));
@@ -2509,6 +2511,16 @@
             irregularItems = [];
             irregularType.value = '';
             irregularDesc.value = '';
+
+            // 半日休の備考はExcelの有給休暇欄へ反映されるため、変則勤務の全クリア時に解除する。
+            const noteSelect = currentIrregularRow?.querySelector('.note-select');
+            if (noteSelect && (noteSelect.value === '午前休' || noteSelect.value === '午後休')) {
+                const iso = currentIrregularRow.querySelector('.date-cell')?.dataset?.iso || '';
+                const isWeekend = iso ? isWeekendIso(iso) : false;
+                const isHoliday = currentIrregularRow.dataset.isHoliday === '1';
+                noteSelect.value = isHoliday ? '祝日' : (isWeekend ? '休日' : '');
+            }
+
             updateIrregularList();
             updateAddButtonVisibility();
         });
@@ -2939,7 +2951,8 @@
             endTime: endCell?.textContent.trim() || null,
             breakMinutes: breakCell?.textContent.trim() || null,
             workLocation: locationBtn?.dataset.location || null,
-            note: noteSelect?.value || null,
+            // --- は空文字を明示送信し、サーバー側で既存の備考をクリアできるようにする。
+            note: noteSelect ? noteSelect.value : null,
             // 拡張フィールド: 空文字も送信することでクリアを明示
             irregularWorkType: row.dataset.irregularType ?? null,
             irregularWorkDesc: row.dataset.irregularDesc ?? null,

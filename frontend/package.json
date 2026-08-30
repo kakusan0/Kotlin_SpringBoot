@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "obfuscate-minify": "node minify.js"
+    "copy-static": "node copy-static.js"
   },
   "devDependencies": {
     "javascript-obfuscator": "latest",

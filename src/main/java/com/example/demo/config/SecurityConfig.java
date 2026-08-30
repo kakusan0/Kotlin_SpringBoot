@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -66,23 +65,12 @@ public class SecurityConfig {
         private final AuthenticationFailureHandler customAuthenticationFailureHandler;
         private final LoginRateLimitFilter loginRateLimitFilter;
 
-        @Value("${app.csp.connect-src:'self'}")
-        private String cspConnectSrc;
-
-        @Value("${webauthn.rp.id:localhost}")
-        private String webAuthnRpId;
-
-        @Value("${webauthn.rp.name:Dev RP}")
-        private String webAuthnRpName;
-
-        @Value("${webauthn.rp.origin:http://localhost:8080}")
-        private String webAuthnRpOrigin;
-
-        @Value("${webauthn.rp.allowed-origins:}")
-        private String webAuthnAllowedOrigins;
+        private final AppProperties appProperties;
+        private final WebAuthnProperties webAuthnProperties;
 
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http, SessionRegistry sessionRegistry) {
+                String cspConnectSrc = appProperties.getCsp().getConnectSrc();
                 String cspPolicy = "default-src 'self'; " +
                                 "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
                                 "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
@@ -149,15 +137,15 @@ public class SecurityConfig {
                                                 .defaultSuccessUrl("/tools")
                                                 .failureHandler(customAuthenticationFailureHandler))
                                 .webAuthn(webAuthn -> {
-                                        webAuthn.rpName(webAuthnRpName);
-                                        webAuthn.rpId(webAuthnRpId);
+                                        webAuthn.rpName(webAuthnProperties.getName());
+                                        webAuthn.rpId(webAuthnProperties.getId());
                                         Set<String> origins;
-                                        if (webAuthnAllowedOrigins != null && !webAuthnAllowedOrigins.isBlank()) {
-                                                origins = Arrays.stream(webAuthnAllowedOrigins.split(","))
+                                        if (webAuthnProperties.getAllowedOrigins() != null && !webAuthnProperties.getAllowedOrigins().isBlank()) {
+                                                origins = Arrays.stream(webAuthnProperties.getAllowedOrigins().split(","))
                                                                 .map(String::trim)
                                                                 .collect(Collectors.toSet());
                                         } else {
-                                                origins = Set.of(webAuthnRpOrigin);
+                                                origins = Set.of(webAuthnProperties.getOrigin());
                                         }
                                         webAuthn.allowedOrigins(origins);
                                 })
