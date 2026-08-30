@@ -1,16 +1,20 @@
 package com.example.demo.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@NoArgsConstructor
-public class UaCreateRuleRequest {
+public record UaCreateRuleRequest(
     @NotBlank
-    private String pattern;
+    String pattern,
 
     @NotBlank
-    private String matchType = "EXACT";
+    String matchType
+) {
+    public UaCreateRuleRequest {
+        if (matchType == null || matchType.isBlank()) {
+            matchType = "EXACT";
+        }
+    }
+
+    public UaCreateRuleRequest(String pattern) {
+        this(pattern, "EXACT");
+    }
 }
-

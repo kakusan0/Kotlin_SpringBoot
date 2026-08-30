@@ -2,18 +2,13 @@ package com.example.demo.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@NoArgsConstructor
-public class TimesheetBatchEntryRequest {
+public record TimesheetBatchEntryRequest(
     @NotBlank
-    private String workDate;
-    private String startTime;
-    private String endTime;
+    String workDate,
+    String startTime,
+    String endTime,
     @Min(0)
-    private Integer breakMinutes;
-    private Boolean holidayWork;
+    Integer breakMinutes,
+    Boolean holidayWork
+) {
 }
-

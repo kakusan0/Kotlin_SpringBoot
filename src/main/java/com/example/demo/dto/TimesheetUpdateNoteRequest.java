@@ -1,11 +1,7 @@
 package com.example.demo.dto;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@NoArgsConstructor
-public class TimesheetUpdateNoteRequest {
-    private String note;
+public record TimesheetUpdateNoteRequest(String note) {
+    public TimesheetUpdateNoteRequest() {
+        this(null);
+    }
 }
-

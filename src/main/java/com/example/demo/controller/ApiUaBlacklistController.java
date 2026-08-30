@@ -48,7 +48,7 @@ public class ApiUaBlacklistController {
 
     @PostMapping
     public ResponseEntity<Object> create(@Valid @RequestBody UaCreateRuleRequest req) {
-        String mt = req.getMatchType() != null ? req.getMatchType().toUpperCase() : "EXACT";
+        String mt = req.matchType() != null ? req.matchType().toUpperCase() : "EXACT";
         Set<String> allowed = new HashSet<>(List.of("EXACT", "PREFIX", "REGEX"));
         if (!allowed.contains(mt)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -56,7 +56,7 @@ public class ApiUaBlacklistController {
         }
 
         UaBlacklistRule rule = new UaBlacklistRule();
-        rule.setPattern(req.getPattern());
+        rule.setPattern(req.pattern());
         rule.setMatchType(mt);
         rule.setDeleted(false);
         ruleMapper.insert(rule);
@@ -64,7 +64,7 @@ public class ApiUaBlacklistController {
 
         int blockedCount = 0;
         try {
-            List<String> matchingIps = accessLogMapper.selectIpsByUserAgentPattern(req.getPattern(), mt);
+            List<String> matchingIps = accessLogMapper.selectIpsByUserAgentPattern(req.pattern(), mt);
             if (!matchingIps.isEmpty()) {
                 blacklistIpMapper.upsertIncrementTimesBulk(matchingIps);
                 whitelistIpMapper.markBlacklistedAndIncrementBulk(matchingIps);

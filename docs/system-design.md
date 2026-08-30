@@ -76,6 +76,10 @@ Serviceは業務ルールとトランザクションを担当する。Controller
 
 MapperおよびMapper XMLはデータベース入出力に限定する。業務判断はServiceで行い、SQLに業務ルールを分散させない。
 
+### 3.4 DTO
+
+`com.example.demo.dto`配下のDTOはすべてJava recordで定義する。リクエストDTOはコンストラクタバインディングとBean Validationを使用し、レスポンスDTOは不変オブジェクトとして生成する。既定値が必要なDTOはコンストラクタで補完し、Controllerからのsetterによる状態変更は行わない。
+
 ## 4. 共通処理設計
 
 ### 4.1 グローバル例外処理

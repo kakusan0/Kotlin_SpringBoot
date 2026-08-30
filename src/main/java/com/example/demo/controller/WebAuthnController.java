@@ -75,11 +75,8 @@ public class WebAuthnController {
                 new WebAuthnPubKeyParam("public-key", -7),
                 new WebAuthnPubKeyParam("public-key", -257)
         );
-        WebAuthnRegistrationOptionsResponse res = new WebAuthnRegistrationOptionsResponse();
-        res.setChallenge(Base64UrlUtil.encodeToString(challenge));
-        res.setRp(rp);
-        res.setUser(user);
-        res.setPubKeyCredParams(params);
+        WebAuthnRegistrationOptionsResponse res = new WebAuthnRegistrationOptionsResponse(
+                Base64UrlUtil.encodeToString(challenge), rp, user, params);
         return ResponseEntity.ok(res);
     }
 
@@ -93,8 +90,8 @@ public class WebAuthnController {
             return ResponseEntity.badRequest().body(Map.of("message", "Challenge not found or expired"));
         }
 
-        byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
-        byte[] attestationObject = Base64UrlUtil.decode(req.getResponse().getAttestationObject());
+        byte[] clientDataJSON = Base64UrlUtil.decode(req.response().clientDataJSON());
+        byte[] attestationObject = Base64UrlUtil.decode(req.response().attestationObject());
         webAuthnService.registerCredential(username, challenge, clientDataJSON, attestationObject);
         log.info("Passkey registered successfully for user: {}", username);
         return ResponseEntity.ok(Map.of("message", "registered"));
@@ -105,14 +102,14 @@ public class WebAuthnController {
         byte[] challenge = webAuthnService.generateChallenge();
         if (username == null || username.isBlank()) {
             String challengeId = webAuthnService.saveDiscoverableChallenge(challenge);
-            WebAuthnDiscoverableAuthenticationOptionsResponse res = new WebAuthnDiscoverableAuthenticationOptionsResponse();
-            res.setChallenge(Base64UrlUtil.encodeToString(challenge));
-            res.setRpId(rpId);
+            WebAuthnDiscoverableAuthenticationOptionsResponse res =
+                    new WebAuthnDiscoverableAuthenticationOptionsResponse(
+                            Base64UrlUtil.encodeToString(challenge), rpId);
             Map<String, Object> body = new HashMap<>();
-            body.put("challenge", res.getChallenge());
-            body.put("rpId", res.getRpId());
-            body.put("timeout", res.getTimeout());
-            body.put("userVerification", res.getUserVerification());
+            body.put("challenge", res.challenge());
+            body.put("rpId", res.rpId());
+            body.put("timeout", res.timeout());
+            body.put("userVerification", res.userVerification());
             body.put("challengeId", challengeId);
             return ResponseEntity.ok(body);
         }
@@ -132,10 +129,8 @@ public class WebAuthnController {
             }
             allow.add(new WebAuthnAllowCredential("public-key", Base64UrlUtil.encodeToString(cred.getCredentialId()), transports));
         }
-        WebAuthnAuthenticationOptionsResponse res = new WebAuthnAuthenticationOptionsResponse();
-        res.setChallenge(Base64UrlUtil.encodeToString(challenge));
-        res.setRpId(rpId);
-        res.setAllowCredentials(allow);
+        WebAuthnAuthenticationOptionsResponse res = new WebAuthnAuthenticationOptionsResponse(
+                Base64UrlUtil.encodeToString(challenge), rpId, allow);
         return ResponseEntity.ok(res);
     }
 
@@ -151,13 +146,13 @@ public class WebAuthnController {
             return ResponseEntity.badRequest().body(Map.of("message", "Challenge not found or expired"));
         }
 
-        byte[] credentialId = Base64UrlUtil.decode(req.getRawId());
+        byte[] credentialId = Base64UrlUtil.decode(req.rawId());
         WebAuthnCredential credential = webAuthnService.findByCredentialId(credentialId);
         if (credential == null) {
             return ResponseEntity.status(404).body(Map.of("message", "Credential not found"));
         }
 
-        String userHandle = req.getResponse().getUserHandle();
+        String userHandle = req.response().userHandle();
         if (userHandle == null || userHandle.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "userHandle is required for discoverable credentials"));
         }
@@ -169,9 +164,9 @@ public class WebAuthnController {
             return ResponseEntity.status(403).body(Map.of("message", "Credential does not match userHandle"));
         }
 
-        byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
-        byte[] authenticatorData = Base64UrlUtil.decode(req.getResponse().getAuthenticatorData());
-        byte[] signature = Base64UrlUtil.decode(req.getResponse().getSignature());
+        byte[] clientDataJSON = Base64UrlUtil.decode(req.response().clientDataJSON());
+        byte[] authenticatorData = Base64UrlUtil.decode(req.response().authenticatorData());
+        byte[] signature = Base64UrlUtil.decode(req.response().signature());
         byte[] userHandleBytes = Base64UrlUtil.decode(userHandle);
 
         webAuthnService.verifyAssertion(
@@ -202,7 +197,7 @@ public class WebAuthnController {
             return ResponseEntity.badRequest().body(Map.of("message", "Challenge not found or expired"));
         }
 
-        byte[] credentialId = Base64UrlUtil.decode(req.getRawId());
+        byte[] credentialId = Base64UrlUtil.decode(req.rawId());
         WebAuthnCredential credential = webAuthnService.findByCredentialId(credentialId);
         if (credential == null) {
             return ResponseEntity.status(404).body(Map.of("message", "Credential not found"));
@@ -213,11 +208,11 @@ public class WebAuthnController {
             return ResponseEntity.status(403).body(Map.of("message", "Credential does not belong to user"));
         }
 
-        byte[] clientDataJSON = Base64UrlUtil.decode(req.getResponse().getClientDataJSON());
-        byte[] authenticatorData = Base64UrlUtil.decode(req.getResponse().getAuthenticatorData());
-        byte[] signature = Base64UrlUtil.decode(req.getResponse().getSignature());
-        byte[] userHandle = req.getResponse().getUserHandle() != null
-                ? Base64UrlUtil.decode(req.getResponse().getUserHandle())
+        byte[] clientDataJSON = Base64UrlUtil.decode(req.response().clientDataJSON());
+        byte[] authenticatorData = Base64UrlUtil.decode(req.response().authenticatorData());
+        byte[] signature = Base64UrlUtil.decode(req.response().signature());
+        byte[] userHandle = req.response().userHandle() != null
+                ? Base64UrlUtil.decode(req.response().userHandle())
                 : null;
 
         webAuthnService.verifyAssertion(
